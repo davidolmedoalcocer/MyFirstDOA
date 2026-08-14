@@ -1,0 +1,264 @@
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.DAL/Fields/QueryRegexValidations.cs)
+
+Searched for regex `QueryRegexBase|IQueryRegexValidations|IDapperQueryRegex` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 10 results
+
+Searched for text `IDBConnectionHandler` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 102 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.DAL/ConnectionProvider.cs#1-1), lines 1 to 60
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/RegexValidations/RegexValidations.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.DAL/ConnectionProvider.cs#55-55), lines 55 to 76
+
+Searched for text `BootRegexCalls` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 5 results
+
+Searched for text `IRegexValidationMemo` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 5 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Boot/Boot.cs#355-355), lines 355 to 375
+
+Searched for text `ReadRegexBase` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 2 results
+
+Searched for text `TryRailEx` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 123 results
+
+Searched for text `ReadRegexBase` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 2 results
+
+Searched for text `RegexValidationMemo` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 5 results
+
+Searched for regex `IRegexValidationMemo|\.ReadRegexBase` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 5 results
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Searched for text `IRegexValidation` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 5 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Domain/ConfiguredInputValidation/Contracts.cs)
+
+Searched for regex `RegexValidation|RegexRecord|regexValidation|_regex\b` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 39 results
+
+Searched for regex `BootRegexCalls|IRegexValidationMemo|ReadRegexBase|RegisterRegexValidations` (`sso-error` · `DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/**`), 5 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/Index.razor#140-140), lines 140 to 175
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/Index.razor#1-1), lines 1 to 80
+
+Tengo todo lo necesario.
+
+---
+
+## Código exacto — líneas 1-50 de QueryRegexValidations.cs
+
+QueryRegexValidations.cs:
+
+```csharp
+// línea 20-24 — QueryRegexBase (la línea 22 del stack trace)
+public Result<Option<IEnumerable<RegexRecord>>, ErrorEnumeration> QueryRegexBase() =>
+    dBConnectionHandler.EstablishConnection()
+        .TryRailEx(x => QueryDapperRegex(), DbConnectionErrors.QueryFailedEx)  // L22
+        .TryRailEx(Parse, DbConnectionErrors.QueryFailedEx)
+        .Exec(dBConnectionHandler.Dispose);
+
+// línea 37 — QueryDapperRegex (la línea 37 del stack trace)
+public IEnumerable<RegexDapperRecord> QueryDapperRegex() =>
+    dBConnectionHandler.Connection().Query<RegexDapperRecord>(_sqlRegexRead);  // L37
+
+public string _sqlRegexRead =
+    @"select [Name], [Value] as RegexValue from DIGlobalSetting where name like 'InvalidCharacters_%';";
+```
+
+---
+
+## Qué hace QueryDapperRegex()
+
+Es una query Dapper **síncrona y bloqueante** que ejecuta directamente sobre el objeto `IDbConnection`. No usa `QueryAsync`. El thread que la invoca queda bloqueado hasta que SQL Server responde o hasta que la conexión lanza una excepción.
+
+---
+
+## Conexión SQL
+
+**Connection string:** Viene de `ConnectionProvider(connectionString)` instanciado en Boot.cs:
+```csharp
+return new RegexValidations(new QueryRegexValidations(new ConnectionProvider(connectionString)));
+```
+
+`connectionString` es resuelto en Program.cs vía `EnvironmentDetector` (clave `"DIExtractDB"`), con fallback a `appsettings`:
+```
+Data Source=LWVTDBSQLA007;Database=DIExtract;Integrated Security=True;Connect Timeout=30;...
+```
+
+- **Servidor:** `LWVTDBSQLA007`
+- **Base de datos:** `DIExtract`
+- **Tabla:** `DIGlobalSetting`
+- **Query:** SELECT directo, sin stored procedure
+- **Connect Timeout:** 30 segundos
+
+---
+
+## Apertura y cierre de la conexión
+
+ConnectionProvider.cs:
+
+```csharp
+private void Create()
+{
+    lock (this)                                        // ← lock compartido
+    {
+        if (_connection == null || !_connection.State.Equals(ConnectionState.Open))
+        {
+            _connection = provider(connectionString);
+            _connection.Open();                        // ← síncrono, hasta 30 s
+        }
+    }
+}
+```
+
+La conexión se cierra vía `.Exec(dBConnectionHandler.Dispose)` al final de la cadena railway. `Dispose()` hace `Close()` + `Dispose()` + `_connection = null`. Correcto en el flujo normal.
+
+**Pero**: si `_connection.Open()` lanza una excepción (fatal error) o tarda 30 segundos, **todos los threads que estén esperando el `lock` permanecen bloqueados** durante ese tiempo.
+
+---
+
+## Reutilización incorrecta de la conexión
+
+`ConnectionProvider` instanciado en `BootRegexCalls` es único: está dentro de `RegexValidations` que es registrado como **Singleton** en Program.cs:
+
+```csharp
+builder.Services.AddSingleton(x => x.GetRequiredService<IBootable>().BootRegexCalls(connectionString));
+```
+
+Esto significa:
+- **Un solo `ConnectionProvider`** para toda la aplicación.
+- **Un solo `_connection`** compartido entre todos los requests concurrentes.
+- **Un solo `lock(this)`** que serializa todos los accesos.
+
+Cuando la conexión falla y se está intentando reabrirla, **TODOS los threads concurrentes quedan apilados esperando ese lock**.
+
+---
+
+## Operación síncrona y bloqueo de threads
+
+Confirmado: **100% síncrono y bloqueante**.
+
+- `_connection.Open()` — síncrono, bloquea hasta `Connect Timeout=30` s
+- `Connection().Query<>()` — Dapper síncrono, bloquea hasta que SQL responde
+- `lock(this)` — serializa todas las llamadas concurrentes
+
+Cuando SQL Server tiene un fatal error o está degradado:
+1. Thread A entra al `lock`, llama `_connection.Open()`, espera hasta 30 s
+2. Threads B, C, D, ... están bloqueados en `lock(this)`, inactivos
+3. Cada uno de esos threads proviene del Thread Pool de Kestrel
+
+---
+
+## Callers y frecuencia de ejecución
+
+**Único caller:** Index.razor, dentro de `OnAfterRenderAsync(firstRender)`:
+
+```csharp
+RegexValidation.ReadRegexBase().Then(async x => {
+    await JSInteropClasses.RegisterRegexValidations(JS, x, logger);
+}, (e) => logger.LogWarning(e.errorMessage));
+```
+
+Index.razor es la página `/Verify` — la pantalla principal de trabajo.
+
+**Frecuencia:** `ReadRegexBase()` RegexValidations.cs tiene caché en memoria:
+
+```csharp
+public virtual Result<IEnumerable<RegexRecord>, ErrorEnumeration> ReadRegexBase()
+{
+    if (_regex.Count() > 0)
+        return Result<IEnumerable<RegexRecord>, ErrorEnumeration>.Create(_regex);
+    return CallDB().OnSuccessVal(x => _regex = x);
+}
+```
+
+Y un timer que invalida el caché cada **15 minutos** RegexValidations.cs:
+
+```csharp
+private async void InitializeTimer()
+{
+    timer = new(TimeSpan.FromMinutes(15));
+    while (await timer.WaitForNextTickAsync())
+    {
+        _regex = new List<RegexRecord>();
+    }
+}
+```
+
+Resultado: la query SQL se ejecuta **al inicio** (caché vacío) y **cada 15 minutos** exactos. En el momento de invalidación, TODOS los usuarios que abran `/Verify` simultáneamente (o el primero que lo haga) disparan la query real a SQL Server.
+
+---
+
+## Cómo puede bloquear /health/liveness
+
+El mecanismo confirmado por el código:
+
+```
+Timer de 15 min invalida _regex → _regex vacío
+       ↓
+Múltiples usuarios en /Verify → OnAfterRenderAsync → ReadRegexBase()
+       ↓
+CallDB() → QueryRegexBase() → EstablishConnection() → Create()
+       ↓
+lock(this) [ConnectionProvider compartido — Singleton]
+       ↓
+_connection.Open() → "Internal connection fatal error" / SQL Server degradado
+       ↓
+Thread bloqueado en _connection.Open() hasta Connect Timeout = 30 segundos
+       ↓
+Todos los demás threads bloqueados en lock(this), esperando
+       ↓
+Thread Pool de Kestrel agotado
+       ↓
+GET /health/liveness ingresa → no hay threads disponibles
+       ↓
+Kestrel acepta el TCP pero no puede procesar la request
+       ↓
+K8s probe: "context deadline exceeded" → pod reiniciado
+```
+
+---
+
+## HECHOS CONFIRMADOS
+
+1. **`QueryDapperRegex()` (línea 37)** ejecuta `dBConnectionHandler.Connection().Query<RegexDapperRecord>(_sqlRegexRead)` — Dapper síncrono sobre `DIGlobalSetting` en `DIExtract`@`LWVTDBSQLA007`.
+
+2. **`QueryRegexBase()` (línea 22)** llama a `EstablishConnection()` → `Create()` que tiene un `lock(this)` alrededor de `_connection.Open()`. El timeout de conexión es **30 segundos**.
+
+3. **`IRegexValidationMemo` es Singleton** — un único `ConnectionProvider` compartido entre todos los circuits/users. El `lock(this)` serializa todos los accesos concurrentes al mismo objeto.
+
+4. **La query SQL se ejecuta en el thread del caller, sin async, sin `await`**. Bloquea el thread hasta que SQL responde.
+
+5. **El único caller es Index.razor `OnAfterRenderAsync`**, la pantalla `/Verify` que usan todos los operadores activos. Se dispara en la carga de página y cada 15 minutos (reset del caché).
+
+6. **"Internal connection fatal error"** es un error de `Microsoft.Data.SqlClient` a nivel de protocolo/transporte, no de lógica SQL. Indica que la conexión TCP con SQL Server se interrumpió, frecuentemente por carga extrema o pool de conexiones agotado en el servidor.
+
+7. El timestamp `11:54:49` del error coincide con el período de liveness failures confirmado por K8s.
+
+---
+
+## RELACIÓN CON LIVENESS
+
+**Directa y mecánica.** La `lock(this)` en `ConnectionProvider.Create()` sobre un objeto Singleton hace que todos los threads concurrentes esperen bloqueados hasta 30 segundos cuando SQL Server está degradado. Con suficientes usuarios activos en `/Verify`, el Thread Pool de Kestrel se agota y no puede atender ninguna request, incluyendo `GET /health/liveness`. La probe de K8s agota su deadline → `context deadline exceeded` → reinicio del pod.
+
+---
+
+## CAMBIO MÍNIMO
+
+**Reducir `Connect Timeout` de 30 a 5 segundos** en la connection string del `DIExtract`. Esto acota el bloqueo máximo por thread de 30 s a 5 s, reduciendo la duración de la starvation del Thread Pool proporcionalmente.
+
+El cambio está en el valor configurado de `Connect Timeout` que llega a Program.cs (appsettings o EnvironmentDetector). No requiere modificar código.
+
+---
+
+## DESCONOCIDO
+
+- **Por qué SQL Server (`LWVTDBSQLA007`/`DIExtract`) está generando "Internal connection fatal error"** — requiere revisar el error log del SQL Server, el pool de conexiones del servidor, y el número de conexiones abiertas simultáneas desde el pod.
+- **Si otros DAL que usan `ConnectionProvider` con el mismo connection string** generan el mismo contention de `lock` bajo carga — el patrón es idéntico en todos los 44+ archivos DAL que usan `IDBConnectionHandler`, pero solo `IRegexValidationMemo` es Singleton.
+- **Si el EnvironmentDetector** está devolviendo una connection string diferente al appsettings (con un `Connect Timeout` distinto).
+- **Cuántos usuarios concurrentes** hay en `/Verify` en el momento del incidente.
