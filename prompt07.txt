@@ -1,0 +1,49 @@
+NO modifiques ningún archivo.
+
+Tengo evidencia de producción de este error en DocExtractVerify:
+
+Internal connection fatal error
+
+Stack trace:
+
+DS.UI.Web.DocExtractVerify.DAL.Fields.QueryRegexValidations.QueryDapperRegex()
+QueryRegexValidations.cs line 37
+
+También aparece QueryRegexValidations.cs line 22.
+
+Ocurrió a las 11:54:49.973, durante el mismo periodo en que Kubernetes reportó:
+Liveness probe failed: context deadline exceeded
+
+Necesito investigar EXCLUSIVAMENTE este error.
+
+1. Abre QueryRegexValidations.cs y muestra el código de las líneas 1-50.
+
+2. Explica exactamente qué hace QueryDapperRegex().
+
+3. Identifica:
+   - qué conexión SQL usa;
+   - de dónde obtiene la connection string;
+   - qué base de datos utiliza;
+   - qué query/stored procedure ejecuta.
+No muestres passwords ni secretos.
+
+4. Indica si la conexión se abre/cierra correctamente.
+
+5. Indica si SqlConnection, SqlDataReader o Dapper pueden quedar abiertos o reutilizarse incorrectamente.
+
+6. Determina si esta operación es síncrona/bloqueante y si una conexión SQL lenta/fallida puede bloquear un thread.
+
+7. Busca todos los callers de QueryDapperRegex() y determina con qué frecuencia puede ejecutarse.
+
+8. Determina si múltiples fallos o esperas aquí pueden impedir que Kestrel atienda /health/liveness.
+
+9. NO propongas otros bugs no relacionados.
+
+Termina con:
+
+HECHOS CONFIRMADOS
+RELACIÓN CON LIVENESS
+CAMBIO MÍNIMO
+DESCONOCIDO
+
+No hagas cambios.
