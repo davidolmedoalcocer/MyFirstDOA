@@ -1,0 +1,47 @@
+NO modifiques código. Solo investiga.
+
+Estoy revisando si SSOApi YA registra suficiente información para diagnosticar los fallos LDAP antes de proponer cambios de logging.
+
+1. Busca la implementación completa de LogAuditEventToDb utilizada por SSOService.VerifyInternalUser.
+
+2. Traza exactamente dónde termina esa información:
+   - base de datos
+   - stored procedure
+   - TrackGuardLogging
+   - API
+   - archivo
+   - otra dependencia
+
+3. Busca en toda la solución cualquier referencia a:
+   TrackGuardLogging
+   TrackGuard
+   AuditEvent
+   LogAuditEventToDb
+
+4. Para el flujo donde ValidateCredentials falla y se genera PASSWORD_INVALID_CREDENTIALS/PW018, identifica TODOS los logs/auditorías que se generan, no solamente _logger.LogError.
+
+5. Determina si alguna de esas fuentes registra alguno de estos datos:
+   - NglsDomain
+   - NgicDomain
+   - NglsHostName
+   - NgicHostName
+   - hostname LDAP utilizado
+   - LDAP ResultCode
+   - LDAP error code/subcode
+   - username/login
+   - CorrelationId
+   - TraceId
+   - PW018
+
+6. Identifica si TrackGuardLogging recibe información para este flujo y exactamente qué campos recibe.
+
+7. No muestres passwords, tokens, secrets ni connection strings.
+
+Termina únicamente con:
+
+HECHOS CONFIRMADOS
+INFORMACIÓN QUE YA SE REGISTRA
+INFORMACIÓN QUE NO SE REGISTRA
+DESCONOCIDO
+
+No hagas inferencias.
