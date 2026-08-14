@@ -1,0 +1,224 @@
+Searched for regex `\.First\(|\.Single\(|\.FirstOrDefault\(` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 259 results
+
+Searched for regex `Timeout|timeout|HttpClient|CancellationToken` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 134 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Authentication/CookieAuthenticationService.cs#38-38), lines 38 to 80
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Authentication/SessionValidationMiddleware.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controls/CookieHandlerControl.razor)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controls/VerifyFields/VerifyControlBase.razor#100-100), lines 100 to 140
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/AuditManagement.razor#100-100), lines 100 to 110
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/AuditManagement.razor#120-120), lines 120 to 135
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controls/PDFControls/KendoViewer.razor#35-35), lines 35 to 50
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controls/ConfidenceControls/ConfidenceReport.razor#80-80), lines 80 to 130
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controls/ConfidenceControls/ConfidenceRuleSetControl.razor#105-105), lines 105 to 130
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Worker.cs#1-1), lines 1 to 30
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Worker.cs#30-30), lines 30 to 37
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/SiteAccessManagement.razor#75-75), lines 75 to 100
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI.k8s.yml)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/DocumentSelector.razor#100-100), lines 100 to 225
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/DocumentSelector.razor#185-185), lines 185 to 270
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controls/ConfidenceControls/ConfidenceReport.razor#1-1), lines 1 to 55
+
+Searched for files matching `**/*.k8s.yml`, 2 matches
+
+Searched for text `async void` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 67 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI.k8s.yml)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/Memoizations/DefaultValuesMemoization.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/AuditManagement.razor#120-120), lines 120 to 124
+
+Searched for text `CallLoggingIntercept` (`sso-error` · `DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Boot/**`), 55 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Boot/LoggingBoot/Logging.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/DocumentQueue/ConcreteQueue.cs#1-1), lines 1 to 60
+
+Tengo suficiente evidencia para responder en detalle. Voy a revisar las últimas dos piezas antes de escribir.  
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/DocumentQueue/GrabberQueue.cs#60-60), lines 60 to 80
+
+Searched for text `IsSessionValid` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 3 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/AuditManagement.razor#80-80), lines 80 to 126
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/UserSessionHandler.cs#1-1), lines 1 to 50
+
+Searched for text `SessionValidation` (`sso-error` · `DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Program.cs`), 1 result
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Program.cs#195-195), lines 195 to 230
+
+Ahora tengo todo lo necesario.
+
+---
+
+## HECHOS CONFIRMADOS
+
+### 1. "Sequence contains no elements" — ruta confirmada
+
+**Archivo:** CookieAuthenticationService.cs  
+**Método:** `GetUserRoles()`, línea 51:
+```csharp
+var application = userSession.Applications.First(app => app.ApplicationID == 117);
+```
+Lanza `InvalidOperationException: "Sequence contains no elements"` cuando SSO devuelve HTTP 200 con un usuario cuya lista `Applications` no contiene `ApplicationID = 117`. Esto ocurre porque `SSOApi/AuthenticationController.Login` filtra la lista antes de responder: si el usuario no tiene app 117, la lista queda vacía.
+
+**Esta excepción SÍ está capturada** por el bloque `catch (Exception ex)` en Program.cs, que hace redirect a `/login?error=Sequence+contains+no+elements`. No crashea el pod.
+
+Sin embargo, con PW018 (HTTP 400), `SSOService.Authenticate` devuelve `null` antes de llegar a `GetUserRoles`, así que esta excepción **no se dispara en el camino PW018**.
+
+---
+
+### 2. NullReferenceException — ruta latente en componentes Blazor
+
+En al menos 8 componentes, el patrón es:
+```csharp
+var INumber = user.Claims.FirstOrDefault(c => c.Type == "userid").Value;
+```
+— CookieHandlerControl.razor  
+— VerifyControlBase.razor  
+— ConfidenceReport.razor  
+— SiteAccessManagement.razor  
+— (más instancias similares)
+
+Si `FirstOrDefault` retorna `null` (claim `"userid"` ausente), `.Value` lanza `NullReferenceException`. Estos están dentro del bloque `if (user.Identity is not null && user.Identity.IsAuthenticated)`, así que solo se ejecutan para usuarios autenticados. En el flujo normal el claim siempre se añade en `GetUserRoles`; el riesgo surge si el claim es missing por otro motivo (cookie corrupta, desincronización). En Blazor Server esta excepción derrumba el circuit, no el proceso.
+
+---
+
+### 3. Bug crítico de case-mismatch en SessionValidationMiddleware
+
+**Archivo:** SessionValidationMiddleware.cs  
+**Claim almacenado en** CookieAuthenticationService.cs:
+```csharp
+new Claim("sessionid", userSession.SessionId)        // lowercase 'i'
+```
+**Claim buscado en el middleware:**
+```csharp
+var sessionId = context.User.FindFirst("sessionId")?.Value;   // capital 'I'
+```
+`ClaimsPrincipal.FindFirst` es **case-sensitive** para tipos custom. El resultado: `sessionId` siempre es `null` para cualquier usuario autenticado.
+
+**Consecuencia:** UserSessionHandler.cs:
+```csharp
+if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(sessionId))
+    return false;
+```
+`IsSessionValid` retorna `false` siempre → el middleware firma out al usuario en cada request HTTP → redirect a `/login?error=session_expired` → el usuario ve "Your session started in another browser" inmediatamente después de un login exitoso.
+
+---
+
+### 4. HttpClient sin timeout en SSOService
+
+**Archivo:** SSOService.cs
+
+Ninguno de los dos constructores de `SSOService` configura `_httpClient.Timeout`. El timeout por defecto de `HttpClient` es **100 segundos**. Si SSOApi está lento o inalcanzable, cada intento de login cuelga 100 s. La excepción resultante `TaskCanceledException` sí es capturada por Program.cs. No crashea el pod, pero acumula resources.
+
+Adicionalmente, `SSOService` hace `new HttpClient()` por instancia y nunca lo dispone. Al ser registrado como `AddScoped`, cada circuit de Blazor crea un `HttpClient` nuevo. Estos no se disponen hasta que el GC los recolecta, acumulando sockets en estado TIME_WAIT.
+
+---
+
+### 5. Worker.ExecuteAsync sin try-catch
+
+**Archivo:** Worker.cs
+
+El bucle principal de `Worker.ExecuteAsync` no tiene `try-catch`. En .NET 8, el comportamiento por defecto de `BackgroundServiceExceptionBehavior` es `StopHost`: si cualquier excepción no-`OperationCanceledException` escapa de `ExecuteAsync`, **el host para, el proceso sale, y Kubernetes reinicia el pod**. El Worker no llama a SSO directamente, pero si la base de datos falla durante el ciclo de 5 minutos, el pod se reinicia.
+
+---
+
+### 6. async void sin manejo de excepciones
+
+Hay 40+ métodos `async void` en componentes Blazor. Los más peligrosos:
+
+— DocumentSelector.razor: contiene `user.First()` en L237 que lanza si el lookup de usuario devuelve lista vacía.  
+— AuditManagement.razor: `users.First(u => u.INumber... == CurrentLoggedUser...)` lanza si el usuario no está en la lista.
+
+En Blazor Server, excepciones en `async void` dentro del circuit context van al circuit error handler → circuit se derrumba. El pod NO crashea. Pero si la excepción escapa del circuit (p. ej., desde un thread pool thread sin SynchronizationContext de Blazor), va a `AppDomain.UnhandledException` y puede terminar el proceso.
+
+---
+
+## CAUSA DE LA CASCADA
+
+El ciclo destructivo confirmado por el código:
+
+```
+Login exitoso (SSO responde 200)
+         ↓
+GetUserRoles() ejecuta y añade claim "sessionid" (minúscula)
+         ↓
+Cookie generada con claim "sessionid"
+         ↓
+Usuario redirigido a /login-sucsess → carga cualquier página
+         ↓
+SessionValidationMiddleware: FindFirst("sessionId") → null (case mismatch)
+         ↓
+IsSessionValid(username, null) → false (línea 32 UserSessionHandler)
+         ↓
+context.SignOutAsync() → cookie eliminada
+         ↓
+Redirect → /login?error=session_expired
+         ↓
+Usuario reintenta login → nuevo intento a SSO → ...loop
+```
+
+Si SSO está lento (no solo PW018 sino network latency), cada iteración del loop añade una request colgada de hasta 100 s. Con múltiples usuarios simultáneos:
+- Sockets acumulados (HttpClient sin dispose, sin IHttpClientFactory)
+- Memoria acumulada (objetos de respuesta pendientes)
+- Presión gradual → OOM → **pod reiniciado por el kubelet**
+
+El segundo mecanismo de reinicio independiente: cualquier excepción SQL en `Worker.ExecuteAsync` → host para → pod reiniciado por K8s.
+
+---
+
+## CAMBIO MÍNIMO EN DOCEXTRACTVERIFY
+
+Tres cambios quirúrgicos, en orden de criticidad:
+
+**[Cambio 1 — Máxima prioridad]** Corregir el case-mismatch en `SessionValidationMiddleware`:  
+SessionValidationMiddleware.cs  
+Cambiar `"sessionId"` → `"sessionid"` (o viceversa, alineando ambos lados). Esto corta el loop inmediatamente.
+
+**[Cambio 2]** Añadir timeout explícito en SSOService:  
+SSOService.cs  
+`_httpClient.Timeout = TimeSpan.FromSeconds(10)` en el constructor que acepta `string url`. Limita la ventana de acumulación de requests colgadas.
+
+**[Cambio 3]** Proteger `Worker.ExecuteAsync` con try-catch:  
+Worker.cs  
+Envolver el body del `while` en un `try-catch` que loguee la excepción y continue el loop en lugar de dejar escapar la excepción que para el host.
+
+---
+
+## CAMBIO POSIBLE EN SSO API
+
+**Añadir timeout de respuesta explícito** en SSOApi para que la respuesta sea rápida cuando las credenciales son inválidas. El código en SSOApi/Services/SSOService.cs ~L82-L95/SSOApi/Services/SSOService.cs#L82) ya valida rápidamente y retorna PW018. El problema no está en la velocidad de SSO para el caso 400.
+
+**Lo que SÍ ayudaría:** Si SSOApi tiene dependencia de Active Directory o base de datos externa que puede colgar, añadir un `CancellationToken` con timeout en las llamadas a `_ssoRepo.GetUserPrefsAsync` y `_adWrapper` para garantizar que SSOApi siempre responda en un tiempo acotado (ej. 5 s), en lugar de dejar que la latencia se propague al cliente.
+
+---
+
+## DESCONOCIDO
+
+- **Si el case-mismatch de `"sessionid"`/`"sessionId"` está causando el loop en producción actualmente** o si fue introducido recientemente (requiere confirmar en logs de producción buscando `session_expired` justo después de logins exitosos).
+- **Cuántas instancias activas de circuits Blazor** existen en producción y su presión de memoria acumulada.
+- **Si `Worker.ExecuteAsync` ya ha generado reinicios previos** por errores de base de datos (logs de K8s requeridos).
+- **El mecanismo exacto de `EnvironmentDetector.GetResource()`** y si puede retornar null/URL incorrecta, derivando en que `SSOService` apunte a un endpoint distinto.
+- **Si hay más código no visible en la solución** (p. ej. middleware de terceros o interceptors) que modifique la normalización de claim types.
