@@ -1,0 +1,1093 @@
+Necesito que actúes como un Senior/Staff Software Engineer especializado en .NET, autenticación/SSO, concurrencia, SQL Server, observabilidad y troubleshooting de incidentes de producción.
+
+TIENES ACCESO AL CÓDIGO DE SSO API EN ESTE WORKSPACE.
+
+Tu objetivo NO es hacer una revisión general del sistema.
+
+Tu único objetivo es:
+
+ENCONTRAR LA CAUSA RAÍZ DEL INCIDENTE DE PRODUCCIÓN DE SSO API REPORTADO POR MI JEFA Y PROPONER/IMPLEMENTAR EL CAMBIO CORRECTO CUANDO LA EVIDENCIA SEA SUFICIENTE.
+
+============================================================
+0. HANDOFF DE CHATGPT
+============================================================
+
+Soy ChatGPT y estoy entregando este handoff porque no logré cerrar este incidente con el rigor que requería.
+
+Cometí varios errores durante la investigación:
+
+1. Mezclé distintos errores de producción como si pudieran pertenecer al mismo problema sin demostrar primero que estaban correlacionados.
+
+2. Me desvié del problema original de SSO hacia DS.UI.Web.DocExtractVerify porque encontré reinicios de pods, liveness failures y errores SQL.
+
+3. Encontré un bug real de DocExtractVerify (`sessionid` vs `sessionId`) y empecé a tratarlo como candidato importante aunque NO estaba demostrado que tuviera relación con el incidente solicitado por la jefa.
+
+4. Seguí una transacción de SSO que terminó en:
+   LDAP → Invalid Credentials → PW018
+   y me enfoqué demasiado en ella, aunque el incidente original habla de TOKEN REJECTED/INVALID OR EXPIRED antes del OTP.
+
+5. Terminé enfocándome en un usuario específico (`I225461`) aun cuando el reporte original indica que el problema afecta a distintos usuarios (~1% de los intentos).
+
+6. Repetí búsquedas que ya se habían realizado en Elasticsearch y TrackGuard.
+
+7. En varios momentos presenté inferencias con demasiada seguridad.
+   Ejemplos:
+   - asumir que el primer `Invalid Credentials` era NGLS y el segundo NGIC;
+   - asumir que ciertos problemas de Thread Pool eran la causa de los restarts;
+   - asumir que un hallazgo de DocExtractVerify explicaba el incidente de SSO.
+
+8. Empecé a proponer mejoras de logging, timeouts y hardening antes de demostrar que solucionarían la causa raíz.
+
+9. Perdí el foco de la solicitud principal:
+   MI JEFA PIDIÓ AYUDA PARA SOLUCIONAR UN PROBLEMA DE SSO API.
+
+NO REPITAS ESTOS ERRORES.
+
+Necesito que tomes control de la investigación como un ingeniero senior.
+
+============================================================
+1. REGLAS OBLIGATORIAS
+============================================================
+
+Este es PRODUCCIÓN.
+
+NO inventes.
+NO asumas.
+NO completes huecos con "lo más probable".
+NO conviertas una correlación temporal en causalidad.
+NO cambies código simplemente porque encuentres un bug.
+NO hagas una auditoría general.
+NO persigas otros errores si no están relacionados con el incidente reportado.
+NO propongas "hardening" como solución si no corrige la causa.
+
+Clasifica tus conclusiones explícitamente como:
+
+HECHO
+INFERENCIA
+DESCONOCIDO
+
+Una INFERENCIA nunca debe presentarse como ROOT CAUSE.
+
+Si puedes comprobar algo leyendo código, hazlo tú.
+No me pidas buscar manualmente un símbolo que tú puedes buscar.
+
+Si necesitas información de SQL Server, Datadog, Elasticsearch o TrackGuard que tú no puedas consultar, dame UNA consulta/acción exacta, read-only, y explícame qué decisión permitirá tomar.
+
+No me hagas ejecutar consultas pequeñas de manera interminable.
+
+No vuelvas a pedir una búsqueda que ya está documentada abajo, salvo que exista una razón NUEVA y concreta.
+
+No muestres:
+- passwords
+- tokens completos
+- secrets
+- connection strings con credenciales
+- información sensible innecesaria
+
+No hagas cambios todavía.
+
+Primero demuestra la causa raíz y presenta el cambio exacto.
+
+============================================================
+2. PROBLEMA ORIGINAL REPORTADO POR MI JEFA
+============================================================
+
+Este es el problema que importa.
+
+Mi jefa reportó desde la mañana un problema equivalente a:
+
+- Backend SSO auth failure
+- aproximadamente ~1% de los intentos
+- afecta a usuarios específicos
+- el session token es rechazado por el SSO provider
+- ocurre antes de que se envíe el OTP email
+- ayer hubo al menos un usuario que reintentó aproximadamente 4 veces
+
+IMPORTANTE:
+
+Esto describe un problema de TOKEN / SSO.
+
+NO lo confundas automáticamente con:
+
+- password incorrecto
+- LDAP Invalid Credentials
+- PW018
+- reinicios de DocExtractVerify
+- liveness de Kubernetes
+- SQL de DocExtractVerify
+
+La hipótesis que circuló originalmente fue algo parecido a:
+
+"stale/expired token race condition"
+
+Eso NO está confirmado.
+
+Necesito que determines si esa hipótesis está soportada o refutada por el código y la evidencia.
+
+============================================================
+3. EVIDENCIA REAL EN TRACKGUARD SOBRE TOKENS
+============================================================
+
+En TrackGuardLogging se consultaron errores de:
+
+System = SSOAPI
+ResponseCode <> 200
+
+y aparecieron múltiples entradas de SSO con mensajes como:
+
+"Error: Token was invalid or expired"
+
+Esto es MUCHO más cercano al incidente original que el PW018 que investigamos después.
+
+Sin embargo:
+
+NO llegamos a cerrar correctamente la correlación de esas entradas con el incidente original antes de desviarnos.
+
+Por tanto:
+
+HECHO:
+existen respuestas de SSO en producción con:
+
+"Token was invalid or expired"
+
+DESCONOCIDO:
+cuál endpoint exacto produce todos esos casos,
+qué usuarios corresponden,
+qué token lifecycle específico los provoca,
+y si esas entradas son exactamente los casos del ~1% reportados por mi jefa.
+
+No vuelvas a hacer una búsqueda amplia por todos los errores de SSO.
+Si necesitas información adicional de esas filas, usa una búsqueda quirúrgica.
+
+============================================================
+4. TRACKGUARDLOGGING — ESTRUCTURA QUE YA DESCUBRIMOS
+============================================================
+
+Tenemos acceso a SQL Server / TrackGuardLogging.
+
+Tabla conocida:
+
+dbo.CommLog
+
+Columnas observadas:
+
+Id
+RequestTimeStampUtc
+ResponseTimeStampUtc
+System
+Server
+RequestAddress
+Request
+Response
+ResponseCode
+CorrelationId
+
+También descubrimos:
+
+dbo.InfoLog
+
+Columnas confirmadas:
+
+Id
+TimeStampUtc
+System
+Server
+TypeCode
+Component
+Message
+UserId
+CorrelationId
+
+SSO usa TrackGuard/CommonLoggingAPI para varios eventos.
+
+El código analizado mostró que existen dos vías diferentes:
+
+1. Event logging:
+   EventLoggerInterface.LogEventInfo / LogEventError
+
+2. Request/response logging:
+   RequestResponseLogging
+   → LoggingService
+   → CommRecordModel
+   → LogEventComm
+
+En InfoLog se pudo localizar un mensaje con formato:
+
+VerifyUser login: <login> ipAddress: <ip>
+
+Esto fue útil para identificar un usuario en OTRO flujo, pero NO demuestra nada todavía sobre el problema de token.
+
+============================================================
+5. ELASTICSEARCH / SERILOG — LO QUE YA SABEMOS
+============================================================
+
+SSO API usa Serilog.
+
+El código tiene enriquecimiento de CorrelationID mediante:
+
+.Enrich.WithCorrelationIdHeader("CorrelationID")
+
+Los logs de ADWrapper terminan en Console/Elasticsearch.
+
+El índice/configuración observada corresponde a algo del tipo:
+
+log-ngls-ssoapi-{date}
+
+En Elasticsearch ya se siguieron traces/correlation IDs.
+
+NO vuelvas a hacer búsquedas genéricas ahí sin una pregunta concreta.
+
+============================================================
+6. TRANSACCIÓN PW018/LDAP YA INVESTIGADA
+   ***NO ASUMIR QUE ES EL INCIDENTE ORIGINAL***
+============================================================
+
+Esta investigación fue real y está bastante bien documentada, pero puede ser un incidente diferente.
+
+CorrelationId:
+
+fd5ef64b-39f4-4444-8cfd-14c2fe88ee81
+
+TrackGuard CommLog mostró:
+
+RequestTimeStampUtc:
+2026-08-14 15:17:31.9300000
+
+ResponseTimeStampUtc:
+2026-08-14 15:17:32.6266667
+
+System:
+SSOAPI
+
+Server/pod:
+ds-web-ssoapi-84cdcf8d8c-g8mgs
+
+RequestAddress:
+
+http://sso-api.appsprod.ngls.ngic.com/Authentication/Login
+
+Response:
+
+{
+  "errorCode":"PW018",
+  "errorMessage":"User did not authenticate, either the account or password were incorrect."
+}
+
+ResponseCode:
+400
+
+Tiempo total aproximado de respuesta:
+697 ms
+
+Por tanto:
+
+HECHO:
+esa petición concreta NO estuvo colgada durante decenas de segundos.
+SSO respondió en menos de un segundo.
+
+El Request persistido por TrackGuard apareció como algo equivalente a:
+
+{
+  "LoginName":[],
+  "Password":[],
+  "ApplicationId":[[]],
+  "IpAddress":[]
+}
+
+Aunque el análisis del código sugería que únicamente Password debía ser nulificado, EN LOS DATOS REALES LoginName también apareció vacío.
+
+No asumas por qué.
+Puede existir sanitización posterior en CommonLoggingAPI/TrackGuard.
+
+============================================================
+7. USUARIO IDENTIFICADO EN INFOLOG PARA ESA TRANSACCIÓN
+============================================================
+
+Después se consultó dbo.InfoLog alrededor de esa transacción.
+
+Apareció:
+
+15:17:31.970
+VerifyUser login: I225461 ipAddress:
+
+y después:
+
+15:17:32.106
+VerifyUser - Authenticate this user against AD
+
+Así se identificó:
+
+I225461
+
+como usuario de ESA transacción.
+
+IMPORTANTE:
+
+NO te enfoques en I225461 como causa del incidente general.
+
+El problema reportado por la jefa afecta a varios usuarios/~1% de intentos.
+
+I225461 solo demuestra que pudimos correlacionar una transacción específica.
+
+============================================================
+8. FLUJO LDAP/PW018 CONFIRMADO EN CÓDIGO
+   ***MANTENER SEPARADO DEL TOKEN ISSUE***
+============================================================
+
+En SSOService se encontró un flujo de autenticación contra Active Directory.
+
+El código intenta dos configuraciones:
+
+primero:
+NglsDomain
+NglsHostName
+
+y si success == false:
+
+NgicDomain
+NgicHostName
+
+El flujo es aproximadamente:
+
+VerifyInternalUser
+    ↓
+ValidateAgainstDomain(NGLS)
+    ↓
+ADWrapper.ValidateCredentials()
+    ↓
+LDAP Bind
+
+si falla:
+
+ValidateAgainstDomain(NGIC)
+    ↓
+ADWrapper.ValidateCredentials()
+    ↓
+LDAP Bind
+
+En ADWrapper se construye el username así:
+
+domain\login
+
+cuando domain tiene valor.
+
+La conexión usa:
+
+LdapConnection
+SecureSocketLayer = true
+
+y:
+
+LdapConnection.DEFAULT_SSL_PORT
+
+Se verificó manualmente en el código/librería que ese puerto es:
+
+636
+
+por lo tanto usa LDAPS.
+
+El Bind ocurre en:
+
+ldapConnection.Bind(
+    LdapConnection.Ldap_V3,
+    username,
+    password
+)
+
+El catch encontrado:
+
+catch (LdapException ex)
+
+registra aproximadamente:
+
+ValidateCredentials failed: {Message}|{InnerException}
+
+y después retorna false.
+
+Para la transacción indicada arriba, Elasticsearch mostró dos entradas:
+
+ValidateCredentials failed: Invalid Credentials
+
+dentro de la misma petición/trace.
+
+HECHO:
+el código permite dos intentos LDAP.
+
+INFERENCIA:
+el primero probablemente corresponde a NGLS y el segundo a NGIC por el orden del código.
+
+NO lo presentes como HECHO porque el log no escribe el dominio/hostname.
+
+Cuando ambos fallan termina retornando:
+
+HTTP 400
+PW018
+
+============================================================
+9. VOLUMEN DE INVALID CREDENTIALS
+============================================================
+
+Se buscó:
+
+"ValidateCredentials failed"
+
+en Elasticsearch aproximadamente entre:
+
+08:30 AM y 10:00 AM
+
+Se observaron aproximadamente:
+
+40 eventos
+
+repartidos durante todo el periodo.
+
+En el momento ~09:17 correspondiente a la transacción anterior NO se observó un pico extraordinario.
+
+Por tanto:
+
+HECHO:
+Invalid Credentials ocurre también fuera del caso individual.
+
+INFERENCIA:
+puede ser ruido normal de usuarios fallando login y NO necesariamente la causa del incidente general.
+
+NO uses ese error como root cause del problema de token sin correlación directa.
+
+============================================================
+10. LOGGING LDAP — LIMITACIÓN CONFIRMADA
+============================================================
+
+El log actual de ADWrapper NO incluye:
+
+- login
+- domain
+- hostname
+- NglsDomain
+- NgicDomain
+- NglsHostName
+- NgicHostName
+- LDAP ResultCode
+- LDAP diagnostic subcode
+
+El catch usa básicamente:
+
+ex.Message
+ex.InnerException
+
+Esto dificulta diagnosticar LDAP.
+
+Pero:
+
+NO propongas mejorar logging LDAP como solución al token issue
+a menos que demuestres que el token issue realmente pasa por LDAP.
+
+============================================================
+11. LOGAUDITEVENTTODB / SQL SSO — YA INVESTIGADO
+============================================================
+
+SSOService tiene un wrapper privado:
+
+LogAuditEventToDb(...)
+
+que llama a:
+
+SSOAuthRepository.LogAuditEventToDb(...)
+
+Este abre SQLConnection y ejecuta:
+
+SSOInsertLogEvent
+
+Los parámetros encontrados incluyen:
+
+@MessageGUID
+@Sender
+@MessageType
+@MessageText
+@LoginName
+@StoreInReplay
+@AppID
+@FoundInReplay output
+
+Para el flujo PW018 se guarda loginName en este audit SQL.
+
+El CorrelationID NO forma parte de esos parámetros.
+
+Esto es relevante para entender logging, pero NO significa que el token issue utilice esta misma auditoría.
+
+============================================================
+12. SSOAUTHORIZATIONFILTER
+============================================================
+
+Durante la investigación apareció el nombre:
+
+SSOAuthorizationFilter
+
+pero al buscar ese nombre en el código disponible de SSO API:
+
+NO se encontró una clase/símbolo con ese nombre.
+
+Por tanto:
+
+NO asumas que existe.
+
+Puede ser:
+- un nombre conceptual usado por otra persona,
+- otro componente,
+- otro repositorio,
+- middleware externo,
+- o simplemente una interpretación incorrecta.
+
+Si encuentras un componente equivalente, demuéstralo por código.
+
+============================================================
+13. POSIBLE FLUJO DE TOKEN — ESTADO DEL HANDOFF
+============================================================
+
+ChatGPT llegó a afirmar durante la investigación que se habían identificado nombres como:
+
+ValidateToken
+CheckLoginToken
+SSOAuthRepository
+SSOTokenCheck
+SSOTokenInsert
+
+y que `Token was invalid or expired` estaría relacionado con esa ruta.
+
+SIN EMBARGO:
+
+debido a los errores que cometí en el seguimiento y a que no quiero contaminar tu investigación con una afirmación no respaldada por evidencia disponible en este handoff:
+
+TRATA ESOS NOMBRES COMO DATOS A VERIFICAR EN EL CÓDIGO, NO COMO HECHOS.
+
+Haz búsquedas rápidas de esos símbolos.
+
+Si existen:
+continúa desde ahí.
+
+Si no existen:
+descarta inmediatamente esa afirmación de ChatGPT y encuentra el flujo real.
+
+No gastes tiempo intentando demostrar que ChatGPT tenía razón.
+
+============================================================
+14. DESVÍO A DOCEXTRACTVERIFY
+   ***NO CONTINUAR POR ESTA LÍNEA SIN PRUEBA DIRECTA***
+============================================================
+
+También tenemos acceso al proyecto:
+
+DS.UI.Web.DocExtractVerify
+
+Esta aplicación apareció porque una trace mostraba:
+
+DocExtractVerify /login
+    ↓
+SSOApi /Authentication/Login
+
+Después revisamos Kubernetes/Datadog porque el deployment tenía múltiples restarts.
+
+En Datadog Kubernetes Explorer se observó el deployment:
+
+ds-ui-web-docextractverify
+
+y un pod en Winston con aproximadamente:
+
+25 restarts
+
+mientras otros pods tenían muchos menos/0.
+
+El contenedor principal era el que tenía los restarts; el sidecar Kerberos tenía 0.
+
+Events mostró:
+
+Liveness probe failed:
+GET http://<pod>:8080/health/liveness
+context deadline exceeded
+(Client.Timeout exceeded while awaiting headers)
+
+y también, durante startup/restart:
+
+Startup probe failed:
+connection refused
+
+Esto confirmó:
+
+Kubernetes reinicia DocExtractVerify porque deja de responder a liveness.
+
+PERO NO demuestra que SSO sea la causa.
+
+============================================================
+15. BUG sessionid/sessionId EN DOCEXTRACTVERIFY
+   ***FUERA DEL OBJETIVO ACTUAL***
+============================================================
+
+Copilot encontró:
+
+CookieAuthenticationService.cs:
+
+new Claim("sessionid", userSession.SessionId)
+
+pero:
+
+SessionValidationMiddleware.cs:
+
+context.User.FindFirst("sessionId")?.Value
+
+Esto es un mismatch de case.
+
+Es un bug real en el código.
+
+Se buscaron en Elasticsearch:
+
+"session_expired"
+
+y:
+
+"/login?error=session_expired"
+
+entre 08:30 y 10:00.
+
+Ambas búsquedas dieron:
+
+0 hits
+
+Por tanto:
+
+HECHO:
+el mismatch existe en código.
+
+DESCONOCIDO:
+si participó en el incidente reportado.
+
+NO continúes esa línea para solucionar SSO token issue.
+
+============================================================
+16. OTROS HALLAZGOS EN DOCEXTRACTVERIFY
+   ***FUERA DEL OBJETIVO ACTUAL***
+============================================================
+
+En Datadog, alrededor de un liveness failure, aparecieron:
+
+Sequence contains no elements
+Microsoft.JSInterop.JSDisconnectedException
+Internal connection fatal error
+Invalid attempt to call MetaData when reader is closed
+
+Se abrió:
+
+Internal connection fatal error
+
+y el stack trace mostró:
+
+Microsoft.Data.SqlClient
+Dapper
+DS.UI.Web.DocExtractVerify.DAL.Fields.QueryRegexValidations.QueryDapperRegex()
+QueryRegexValidations.cs line 37
+y línea 22
+
+Copilot revisó QueryRegexValidations y encontró:
+
+- query Dapper síncrona
+- ConnectionProvider
+- lock(this)
+- conexión compartida en un singleton
+- conexión a DIExtract
+- consulta a DIGlobalSetting
+- varios patrones bloqueantes en DocExtractVerify
+- .Wait()
+- .Result
+- Thread.Sleep
+- HttpClient con timeouts largos
+- posibles escenarios de Thread Pool starvation
+
+También se encontró que /health/liveness en DocExtractVerify prácticamente no realiza checks externos.
+
+Todo esto puede ser importante para un INCIDENTE DE DOCEXTRACTVERIFY.
+
+PERO:
+
+NO EXISTE PRUEBA DE QUE SEA LA CAUSA DEL INCIDENTE DE TOKEN EN SSO.
+
+Por tanto:
+
+IGNORA TODO ESTE BLOQUE salvo que una trace real del token issue termine directamente en esta aplicación y necesites entender el caller.
+
+============================================================
+17. ORIGEN DE CREDENCIALES DE DOCEXTRACTVERIFY
+   ***TAMBIÉN FUERA DEL TOKEN ISSUE***
+============================================================
+
+Copilot verificó que en DocExtractVerify:
+
+LoginName y Password para /Authentication/Login vienen directamente del formulario del usuario final.
+
+No son:
+- service account
+- Vault secret
+- Kubernetes Secret
+- environment variable de credentials
+
+DocExtractVerify no cachea/reutiliza el password.
+
+Esto descartó una hipótesis que ChatGPT había perseguido sobre una service account con password stale.
+
+No vuelvas por ahí.
+
+============================================================
+18. QUÉ NO QUIERO QUE HAGAS
+============================================================
+
+NO quiero una auditoría completa de SSO.
+
+NO quiero 30 bugs potenciales.
+
+NO quiero recomendaciones genéricas como:
+
+- use IHttpClientFactory
+- add retry
+- improve logging
+- add timeout
+- use resilience policies
+- refactor to async
+- add circuit breaker
+
+a menos que ESA modificación corrija la causa demostrada del token rejected.
+
+NO quiero que me digas:
+
+"could be"
+"might be"
+"probably"
+"likely"
+
+y luego presentes eso como solución.
+
+NO quiero volver a investigar:
+
+- DocExtractVerify liveness
+- QueryRegexValidations
+- sessionId
+- DIExtract SQL
+- PW018
+- LDAP Invalid Credentials
+- I225461
+
+SALVO que una evidencia NUEVA del token issue conecte explícitamente con alguno de ellos.
+
+============================================================
+19. INVESTIGACIÓN QUE NECESITO AHORA
+============================================================
+
+Empieza desde el mensaje REAL:
+
+"Token was invalid or expired"
+
+y desde el código de SSO API.
+
+Tu primera responsabilidad es reconstruir EL FLUJO COMPLETO DEL TOKEN.
+
+Necesito saber, con archivo/clase/método/línea:
+
+A. ¿Quién crea el token?
+
+B. ¿Qué endpoint lo genera?
+
+C. ¿Qué método de servicio lo genera?
+
+D. ¿Dónde se persiste?
+   - SQL
+   - cache
+   - memoria
+   - otra API
+   - JWT self-contained
+   - etc.
+
+E. ¿Qué estructura contiene?
+   No muestres tokens reales.
+
+F. ¿Tiene expiration timestamp?
+
+G. ¿Cómo se calcula?
+
+H. ¿Dónde se valida?
+
+I. ¿Qué endpoint produce exactamente:
+   "Token was invalid or expired"?
+
+J. ¿Qué condiciones exactas producen ese mensaje?
+
+K. ¿Se elimina el token al consumirlo?
+
+L. ¿Se marca usado?
+
+M. ¿Un nuevo token invalida el anterior?
+
+N. ¿Solo puede existir uno por usuario?
+
+O. ¿Solo puede existir uno por ApplicationId?
+
+P. ¿Hay operaciones UPDATE/DELETE que puedan eliminar un token todavía válido?
+
+Q. ¿Hay transacciones SQL?
+
+R. ¿Existe ventana entre INSERT/UPDATE/SELECT?
+
+S. ¿Hay race condition reproducible?
+
+T. ¿Dos solicitudes simultáneas del mismo usuario pueden:
+   1. generar token A
+   2. generar token B
+   3. sobrescribir A
+   4. intentar validar A
+   5. recibir "invalid or expired"?
+
+NO digas que ese escenario existe hasta demostrarlo.
+
+============================================================
+20. STORED PROCEDURES / SQL
+============================================================
+
+Si el flujo del token depende de stored procedures:
+
+ENCUENTRA SUS NOMBRES EN EL CÓDIGO.
+
+Si su definición NO está en el repositorio:
+
+no inventes su comportamiento.
+
+Dime exactamente:
+
+"Necesito la definición de X porque ahí se decide Y."
+
+Y dame UNA query read-only para SQL Server para obtener:
+
+OBJECT_DEFINITION(OBJECT_ID(...))
+
+o el mecanismo equivalente.
+
+No me hagas buscar tablas manualmente si puedes deducir el objeto por el código.
+
+Si existen SP equivalentes a:
+
+SSOTokenCheck
+SSOTokenInsert
+
+verifícalos primero.
+
+No asumas que esos nombres son correctos solo porque ChatGPT los mencionó.
+
+============================================================
+21. CORRELACIÓN CON PRODUCCIÓN
+============================================================
+
+Después de entender el código, toma por lo menos UN caso real de:
+
+"Token was invalid or expired"
+
+y correlaciónalo.
+
+Necesitamos como mínimo:
+
+Timestamp UTC
+RequestAddress
+ResponseCode
+CorrelationId
+endpoint
+qué operación de token ejecutó
+
+Si es posible sin exponer secretos:
+
+usuario o UserId
+ApplicationId
+timestamps de creación/validación del token
+
+No necesito el valor completo del token.
+
+Busca si inmediatamente antes existen:
+
+- creación de token
+- segundo token para mismo usuario
+- retry
+- otra request concurrente
+- expiration
+- invalidación
+- DELETE
+- UPDATE
+- consumo exitoso previo
+
+Eso permitirá validar o refutar la hipótesis de race condition.
+
+============================================================
+22. DIFERENCIAR CORRELACIÓN DE CAUSALIDAD
+============================================================
+
+Para declarar ROOT CAUSE necesito una cadena del tipo:
+
+Request real
+    ↓
+método X
+    ↓
+token creado con estado A
+    ↓
+operación Y
+    ↓
+estado cambia a B
+    ↓
+validación ejecuta condición Z
+    ↓
+"Token was invalid or expired"
+
+Y demostrar por qué ocurre solamente en ciertos usuarios/intentos.
+
+Si no puedes producir esa cadena:
+
+NO declares root cause.
+
+============================================================
+23. CAMBIO QUE ESPERO
+============================================================
+
+Cuando la causa esté probada, quiero:
+
+1. archivo exacto;
+2. método exacto;
+3. código actual;
+4. defecto;
+5. cambio mínimo;
+6. por qué corrige la causa;
+7. qué riesgos introduce;
+8. pruebas unitarias;
+9. prueba de concurrencia si aplica;
+10. prueba de integración;
+11. cómo verificar en UAT;
+12. qué observar en producción;
+13. rollback.
+
+Si el problema está realmente en un stored procedure y NO en C#:
+
+dilo claramente.
+
+Mi jefa preguntó:
+
+"Is there a change we can do in SSO API that will help with this"
+
+No fuerces una modificación de SSO API si la causa real está en SQL/otro componente.
+
+Pero si un cambio de SSO API puede eliminar la race condition, quiero verlo exactamente.
+
+============================================================
+24. FORMA DE TRABAJAR CONMIGO
+============================================================
+
+No soy experto en todos estos componentes.
+
+Si necesitas que yo haga una acción externa:
+
+dime exactamente:
+
+- herramienta: SQL Server / Datadog / Elasticsearch / etc.
+- dónde entrar
+- query exacta
+- qué resultado necesitas
+
+UNA acción útil por vez.
+
+No me hagas repetir pasos.
+
+Antes de pedirme una acción, revisa este handoff para confirmar que no se hizo ya.
+
+Si puedes resolverlo leyendo código, NO me pongas a hacer trabajo manual.
+
+============================================================
+25. COMUNICACIÓN CON MI JEFA
+============================================================
+
+Mi jefa está esperando una solución, no una investigación eterna.
+
+No quiero mandarle hipótesis.
+
+Cuando tengas evidencia suficiente, dame un mensaje corto en inglés que pueda enviarle.
+
+Debe decir:
+
+- qué encontramos;
+- cuál es la causa;
+- qué cambio proponemos;
+- si el cambio es en SSO API;
+- riesgo/impacto;
+- cómo lo vamos a validar.
+
+No menciones Copilot ni ninguna IA.
+
+============================================================
+26. FORMATO DE TUS RESPUESTAS
+============================================================
+
+Durante la investigación usa:
+
+HECHO:
+...
+
+INFERENCIA:
+...
+
+DESCONOCIDO:
+...
+
+SIGUIENTE ACCIÓN:
+...
+
+Una sola siguiente acción cuando necesites algo de mí.
+
+Cuando cierres el diagnóstico usa:
+
+ROOT CAUSE PROBADA
+EVIDENCIA
+CAMBIO EXACTO
+POR QUÉ LO CORRIGE
+PRUEBAS
+RIESGO
+ROLLBACK
+MENSAJE PARA JAYATI
+
+============================================================
+27. PRIMERA TAREA
+============================================================
+
+NO MODIFIQUES CÓDIGO TODAVÍA.
+
+Haz una investigación profunda pero enfocada EXCLUSIVAMENTE en el lifecycle del token que puede producir:
+
+"Token was invalid or expired"
+
+Empieza buscando el literal y sus equivalentes en toda la solución.
+
+Después sigue callers/callees hasta:
+
+Controller
+→ Service
+→ Repository
+→ SQL/stored procedure/cache
+
+Verifica también los nombres que ChatGPT dijo haber visto:
+
+ValidateToken
+CheckLoginToken
+SSOAuthRepository
+SSOTokenCheck
+SSOTokenInsert
+
+pero NO confíes en ellos hasta encontrarlos.
+
+Tu objetivo inmediato NO es darme 20 posibles causas.
+
+Tu objetivo inmediato es responder:
+
+¿QUÉ CONDICIÓN EXACTA EN ESTE SISTEMA HACE QUE UN TOKEN RECIÉN EMITIDO O QUE EL USUARIO ESPERA QUE SEA VÁLIDO TERMINE RESPONDIENDO "TOKEN WAS INVALID OR EXPIRED", Y PUEDE ESA CONDICIÓN EXPLICAR EL ~1% DE INTENTOS Y LOS RETRIES DE USUARIOS ESPECÍFICOS?
+
+Si la respuesta requiere ver un stored procedure que no tienes:
+detente exactamente ahí y dame la única consulta read-only necesaria para obtenerlo.
+
+No te desvíes.
+No arregles otros bugs.
+No hagas cambios hasta demostrar la causa.
