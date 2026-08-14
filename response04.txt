@@ -1,0 +1,136 @@
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI)
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Controllers)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Authentication)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Domain/Login)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages)
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Controllers)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Pages/LoginScreen.razor#1-1), lines 1 to 100
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Authentication/LoginLogoutHandler.cs)
+
+Searched for regex `app.MapPost.*login|MapPost.*login|route.*login|/login` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 24 results
+
+Searched for text `IAuthenticate` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 9 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/SSOService.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Program.cs#220-220), lines 220 to 268
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Program.cs#1-1), lines 1 to 200
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Boot/Boot.cs#155-155), lines 155 to 200
+
+Searched for text `GetEDValue` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 15 results
+
+Searched for text `PW018` (`sso-error` · `DS.Web.SSOApi (2)/**`), 1 result
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Tools/EnvirmentDetectorConfiguration.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Controllers/AuthenticationController.cs#1-1), lines 1 to 100
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Models)
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Models/Constants/EPRR.cs#60-60), lines 60 to 70
+
+Searched for text `PASSWORD_INVALID_CREDENTIALS` (`sso-error` · `DS.Web.SSOApi (2)/**`), 11 results
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Models/AuthenticationModel.cs#1-1), lines 1 to 30
+
+Now let me look at the EnvironmentDetector to understand if this reads from Vault, K8s secrets, or env vars:  
+
+Searched for text `EnvironmentDetector` (`sso-error` · `DS.UI.Web.DocExtractVerify/**`), 19 results
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#80-80), lines 80 to 100
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/appsettings.json)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Domain/Login/Models.cs#1-1), lines 1 to 30
+
+Now I have enough information for a complete analysis. Let me check the BootLoggable.cs `BootSSOService` to see if it also hardcodes a URL:  
+
+Read [](file:///c%3A/doa/sso-error/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#1-1), lines 1 to 70
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Boot/BootLoggable.cs#328-328), lines 328 to 345
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/appsettings.Production.json)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Authentication/CookieAuthenticationService.cs)
+
+Tengo toda la evidencia necesaria.
+
+---
+
+## HECHOS CONFIRMADOS
+
+**Traza completa del flujo de credenciales:**
+
+**1. Punto de entrada — formulario HTML**
+LoginScreen.razor: El usuario teclea manualmente `UserName` y `Password` en un `<form method="post" action="/login">`. No hay pre-relleno, no hay valores por defecto.
+
+**2. Endpoint receptor**
+Program.cs, `app.MapPost("/login", ...)`: Lee `context.Request.Form["UserName"]` y `context.Request.Form["Password"]` y los mete en un objeto `LoginCredentials`.
+
+**3. Handler de autenticación**
+LoginLogoutHandler.cs, método `LoginUserAsync`: llama directamente a:
+```
+_authService.Authenticate(credentials.Username, credentials.Password, 117)
+```
+El `117` es el `ApplicationId`, hardcodeado.
+
+**4. Llamada HTTP a SSOApi**
+SSOService.cs, método `Authenticate`: construye el modelo:
+```
+authModel.LoginName = userName;   // viene del formulario
+authModel.Password  = password;   // viene del formulario
+authModel.ApplicationId = [117];
+```
+Serializa a JSON y ejecuta `POST Authentication/Login`.
+
+---
+
+## ORIGEN DE LAS CREDENCIALES
+
+**Opción 1 — Usuario final: CONFIRMADO.**
+
+`LoginName` y `Password` los introduce el usuario final en el formulario web. No existe ningún mecanismo de service account, HashiCorp Vault, Kubernetes Secret, variable de entorno ni configuración para las credenciales de autenticación de usuario.
+
+Lo único que sí pasa por `EnvironmentDetector` (servicio externo en `https://env-detector-api.appsprod.ngls.ngic.com/api/Environment/`) es la **URL del endpoint de SSOApi**, no las credenciales. La clave usada es `"SSOAPI"` ([appsettings.Production.json, sección `Authenticate`](DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/appsettings.Production.json#L52-L56)).
+
+**Modelo que se envía a SSO:**
+Clase `Authentication` (Models.cs) que mapea 1:1 con `AuthenticationModel` de SSOApi (SSOApi/Models/AuthenticationModel.cs/SSOApi/Models/AuthenticationModel.cs#L4-L9)): `LoginName`, `Password`, `ApplicationId`, `IpAddress`.
+
+**¿La contraseña se cachea o reutiliza?**
+No. LoginLogoutHandler.cs: `_memoryCache.Set(...)` guarda únicamente el `sessionId` (GUID) con TTL de 5 minutos, nunca la contraseña. No existe ningún mecanismo que preserve o reutilice una contraseña anterior/stale.
+
+---
+
+## QUÉ OCURRE CON PW018
+
+La cadena de manejo es la siguiente:
+
+| Capa | Archivo | Comportamiento |
+|---|---|---|
+| SSOApi | SSOApi/Services/SSOService.cs ~L94/SSOApi/Services/SSOService.cs#L94) | El hash de la contraseña no coincide → registra audit failure → devuelve `(false, "PW018", "User did not authenticate...", null)` |
+| SSOApi | SSOApi/Controllers/AuthenticationController.cs L37/SSOApi/Controllers/AuthenticationController.cs#L37) | Devuelve `BadRequest(new { ErrorCode = "PW018", ErrorMessage = "..." })` → HTTP 400 |
+| DocExtractVerify | SSOService.cs | `!result.IsSuccessStatusCode` → retorna `null`. **El código PW018 se descarta completamente.** |
+| DocExtractVerify | LoginLogoutHandler.cs | `authenticatedUser == null` → retorna `(false, "invalid")` |
+| DocExtractVerify | Program.cs | `Results.Redirect("/login?error=invalid")` |
+| DocExtractVerify | LoginScreen.razor | `case "invalid": loginError = "Username or password invalid"` — mensaje genérico al usuario |
+
+El código `PW018` no se loguea ni se propaga en DocExtractVerify. Solo SSOApi lo registra en su audit log.
+
+---
+
+## DESCONOCIDO
+
+- **Qué valor exacto devuelve `EnvironmentDetector.GetResource("SSOAPI")` en producción.** El código fuente del NuGet `EnvironmentDetector v0.1.19` no está en el workspace. Solo se sabe que llama a `https://env-detector-api.appsprod.ngls.ngic.com/api/Environment/`. Si esa URL devuelve un endpoint de SSOApi incorrecto, DocExtractVerify podría estar llegando a una instancia de SSO diferente a la esperada.
+- **Si el pod de producción tiene sobreescritura de `appsettings` vía ConfigMap o variable de entorno** que fuerce el uso de la URL hardcodeada `http://lwvdwesso100.ngls.ngic.com/ssoapi/` en lugar de la que devuelve EnvironmentDetector.
+- **El mecanismo interno de validación de contraseña en SSOApi** (si usa AD, base de datos interna, o ambos) — hay evidencia de ambas rutas en SSOApi/Services/SSOService.cs/SSOApi/Services/SSOService.cs) y SSOApi/Data/ADWrapper.cs/SSOApi/Data/ADWrapper.cs), pero el criterio de selección de ruta para un usuario específico no es visible sin saber si el prefijo interno aplica a ese usuario.
