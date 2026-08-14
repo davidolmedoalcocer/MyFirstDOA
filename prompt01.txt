@@ -1,0 +1,95 @@
+Necesito investigar un incidente de producción en SSOApi. NO modifiques código, NO propongas fixes todavía. Solo analiza el código existente y responde con hechos verificables, indicando archivo, clase, método y número de línea cuando sea posible.
+
+EVIDENCIA DE DATADOG:
+
+Service:
+ds-web-ssoapi-prod
+
+Container:
+ds-web-ssoapi
+
+Source:
+csharp
+
+Timestamp:
+Aug 14, 2026 09:17:32.997 AM
+
+Log exacto:
+[11:17:32 ERR] ValidateCredentials failed: Invalid Credentials|null
+
+Ya localizamos que este log se genera en:
+
+ADWrapper.cs
+aproximadamente línea 190
+
+con código similar a:
+
+_logger.LogError(
+    "ValidateCredentials failed: {Message}|{InnerException}",
+    ex.Message,
+    ex.InnerException);
+
+Necesito que investigues TODO el flujo relacionado con este error.
+
+Responde específicamente:
+
+1. Muéstrame el método completo ValidateCredentials de ADWrapper.cs y explica qué intenta hacer.
+
+2. Identifica exactamente qué instrucción dentro de ValidateCredentials puede producir la excepción cuyo Message es:
+   "Invalid Credentials"
+
+3. ¿Contra qué sistema se están validando esas credenciales?
+   Por ejemplo: Active Directory, LDAP, Kerberos, base de datos, API externa, etc.
+   No infieras: demuéstralo con el código/configuración.
+
+4. ¿Qué credenciales se están validando en ese punto?
+   - credenciales del usuario final
+   - service account
+   - credentials usadas por SSOApi
+   - token
+   - alguna otra
+   Indica de dónde vienen.
+
+5. Traza el call chain completo hasta ValidateCredentials:
+   Controller -> Service -> Repository/Wrapper -> dependencia externa.
+   Incluye métodos y archivos.
+
+6. Identifica qué endpoint HTTP termina ejecutando ValidateCredentials.
+
+7. Busca todos los lugares que llaman a ValidateCredentials.
+
+8. Determina si el fallo ocurre antes, durante o después de validar un token de sesión.
+
+9. Busca en esta solución mecanismos equivalentes a:
+   SSOAuthorizationFilter
+   aunque no tengan exactamente ese nombre.
+   Ya comprobamos que el texto literal "SSOAuthorizationFilter" NO existe en la solución.
+
+10. Busca cualquier código relacionado con:
+    authorization filter
+    authentication filter
+    session token
+    auth token
+    login token
+    ValidateToken
+    CheckLoginToken
+    ValidateCredentials
+
+11. Determina si existe evidencia EN EL CÓDIGO que permita relacionar:
+    "Invalid Credentials"
+    con un token expirado/stale.
+    Si no existe evidencia, dilo claramente.
+
+12. Indica qué otros mensajes de log genera este mismo flujo antes y después del fallo, porque quiero buscarlos en Datadog para reconstruir la transacción.
+
+13. No reveles passwords, tokens, secrets ni valores sensibles. Solo nombres de variables/configuraciones.
+
+Al final dame una conclusión separada en:
+
+HECHOS CONFIRMADOS
+INFERENCIAS
+AÚN DESCONOCIDO
+
+No hagas cambios en el código.
+No asumas que el análisis previo de Datadog es correcto.
+Quiero determinar primero la causa real del "ValidateCredentials failed: Invalid Credentials".
