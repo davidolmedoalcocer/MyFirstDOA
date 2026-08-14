@@ -1,0 +1,43 @@
+NO modifiques ningún archivo.
+
+Necesito encontrar una solución inmediata para un incidente de producción.
+
+Tenemos múltiples reinicios del pod ds-ui-web-docextractverify-prod.
+
+Investiga específicamente qué ocurre cuando las llamadas de DocExtractVerify hacia SSOApi fallan.
+
+Busca en toda la solución:
+
+1. "Sequence contains no elements"
+2. usos de .First() o .Single() en el flujo de autenticación/login
+3. NullReferenceException potenciales después de una respuesta null de SSO
+4. "A task was canceled" / TaskCanceledException
+5. timeouts en HttpClient hacia SSOApi
+6. qué hace LoginLogoutHandler cuando SSOService.Authenticate devuelve null
+7. cualquier llamada a SSO ejecutada durante inicialización de componentes, especialmente OnInitializedAsync
+8. qué excepción NO se maneja y podría propagarse hasta hacer que la aplicación quede no responsiva.
+
+Quiero específicamente determinar:
+
+A. ¿Una respuesta HTTP 400, null, timeout o excepción proveniente de SSO puede provocar "Sequence contains no elements"?
+
+B. ¿Puede posteriormente provocar NullReferenceException o TaskCanceledException?
+
+C. ¿Existe código que pueda bloquear threads, agotar el thread pool o dejar la aplicación sin responder?
+
+D. ¿Qué cambio mínimo y seguro en DocExtractVerify evitaría que una falla de SSO provoque una cascada que termine afectando la salud del pod?
+
+E. ¿Hay también algún cambio en SSOApi que reduzca o evite esa cascada?
+
+No propongas cambios especulativos.
+Cada conclusión debe incluir archivo, método y líneas.
+
+Separa la respuesta en:
+
+HECHOS CONFIRMADOS
+CAUSA DE LA CASCADA
+CAMBIO MÍNIMO EN DOCEXTRACTVERIFY
+CAMBIO POSIBLE EN SSO API
+DESCONOCIDO
+
+No modifiques código.
