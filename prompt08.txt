@@ -1,0 +1,78 @@
+NO modifiques ningún archivo.
+
+Estamos investigando EXCLUSIVAMENTE este incidente de producción de SSO API:
+
+"Backend SSO auth failure (~1% of attempts). The user's session token is rejected by the SSO provider before the OTP email is sent. This affects specific users."
+
+En TrackGuard ya encontramos múltiples respuestas de SSO API con:
+
+"Error: Token was invalid or expired"
+
+IMPORTANTE:
+- NO investigues PW018.
+- NO investigues LDAP / ValidateCredentials.
+- NO investigues DocExtractVerify.
+- NO investigues Kubernetes.
+- NO investigues SSOAuthorizationFilter como si existiera: ya se buscó ese nombre y no se encontró en esta solución.
+- NO modifiques código.
+
+Quiero encontrar la causa REAL del error:
+"Token was invalid or expired"
+
+Investiga el código completo de SSOApi y responde:
+
+1. Busca el literal exacto:
+   "Token was invalid or expired"
+   e identifica constante, archivo y línea.
+
+2. Encuentra TODOS los métodos/endpoints que pueden devolver ese mensaje.
+
+3. Traza la cadena completa desde cada endpoint HTTP hasta donde se decide que el token es inválido.
+
+4. Revisa específicamente:
+   - AuthenticationController.ValidateToken
+   - AuthenticationController.CheckLoginToken
+   - SSOService.ValidateToken
+   - SSOService.CheckLoginToken
+   - SSOAuthRepository.ValidateToken
+   - cualquier uso de SSOTokenCheck
+   - cualquier INSERT/UPDATE/DELETE del token.
+
+5. Explica exactamente:
+   - dónde se crea el token;
+   - dónde se guarda;
+   - cuánto dura;
+   - si se reemplaza al hacer otro login;
+   - si un segundo request puede invalidar/reemplazar el token del primero;
+   - si hay race condition;
+   - si dos solicitudes concurrentes del mismo usuario pueden provocar que un token recién generado sea rechazado;
+   - si existe lógica de one-time token o consumo del token.
+
+6. Encuentra el SQL/stored procedure usado para validar el token.
+   Si la definición del stored procedure NO está en el repositorio, dilo claramente y dime exactamente qué stored procedure necesito obtener de la base de datos.
+
+7. Determina si el diagnóstico que recibió el equipo:
+   "likely a stale/expired token race condition"
+   está soportado por el código o NO.
+
+8. Identifica el escenario exacto que produciría:
+   usuario A obtiene token
+   → poco después SSO responde "Token was invalid or expired"
+   sin que el token realmente haya vencido por tiempo.
+
+9. Busca problemas de concurrencia, sobrescritura, expiración, comparación, GUID, cache o transacciones relacionados con los tokens.
+
+10. PROPÓN el cambio mínimo en SSO API que solucionaría el problema, pero NO lo implementes.
+
+No quiero recomendaciones generales.
+No quiero hardening.
+No quiero otros bugs.
+
+Termina exactamente con:
+
+HECHOS CONFIRMADOS
+FLUJO EXACTO DEL TOKEN
+CAUSA DEL "TOKEN WAS INVALID OR EXPIRED"
+¿EXISTE RACE CONDITION?
+CAMBIO EXACTO PROPUESTO EN SSO API
+EVIDENCIA QUE FALTA
