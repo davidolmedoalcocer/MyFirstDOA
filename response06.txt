@@ -1,0 +1,262 @@
+Searched for regex `\.Result\b|\.Wait\(|Thread\.Sleep|\.GetAwaiter\(\)\.GetResult\(\)` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 19 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Program.cs#197-197), lines 197 to 268
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/FileExtractSemaphore.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Domain/Common/Retry.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/AddressZipValidation.cs#1-1), lines 1 to 45
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/DocumentInfoApi.cs#1-1), lines 1 to 45
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/DownloadStreamDocument.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/GenerateNewDTN.cs#1-1), lines 1 to 40
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/Auditor/AuditorSettings.cs#80-80), lines 80 to 645
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Domain/Common/AsyncManager.cs#1-1), lines 1 to 50
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/Auditor/AuditorSettings.cs#640-640), lines 640 to 730
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/NameMatchApi.cs)
+
+Searched for text `RetryTool.Retry` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 1 result
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Infrastructure/AddressMatchApi.cs)
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/LoadDocument.cs#25-25), lines 25 to 60
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.UI/Worker.cs)
+
+Searched for text `FileExtractSemaphore` (`sso-error` · `DS.UI.Web.DocExtractVerify/**/*.cs`), 2 results
+
+Read [](file:///c%3A/doa/sso-error/DS.UI.Web.DocExtractVerify/DS.UI.Web.DocExtractVerify.Engine/PromotionsQueue.cs)
+
+Tengo toda la evidencia necesaria.
+
+---
+
+## HECHOS CONFIRMADOS
+
+### 1. Configuración de los endpoints de health
+
+**Archivo:** Program.cs
+
+```csharp
+builder.Services.AddHealthChecks();   // sin ningún .AddCheck() registrado
+```
+
+```csharp
+app.MapHealthChecks("/health/liveness", new HealthCheckOptions()
+{
+    Predicate = (check) => { logger.Information("Health livness called"); return check.Tags.Contains("monitor"); }
+});
+app.MapHealthChecks("/health/startup", new HealthCheckOptions()
+{
+    Predicate = (check) => { logger.Information("Health startup called"); return check.Tags.Contains("Startup"); }
+});
+```
+
+**Lo que ejecuta cada endpoint:**
+No hay ningún `AddCheck(...)` registrado. El `Predicate` que filtra por tag `"monitor"` o `"Startup"` nunca encontrará ningún check. Ambos endpoints devuelven `200 Healthy` con lista de checks vacía. La **lógica** del endpoint es trivial: un log y una respuesta inmediata.
+
+**No consultan** SSOApi, SQL Server, Vault, Active Directory, filesystem, ni ninguna API externa. Son purely in-process.
+
+---
+
+### 2. Por qué un endpoint trivial deja de responder
+
+Un endpoint trivial no responde por una sola razón: **no hay thread disponible para procesarlo**.
+
+Kestrel es completamente async, pero en cuanto recibe una petición HTTP delega su procesamiento al Thread Pool de .NET. Si el Thread Pool está agotado (starvation), la petición queda encolada indefinidamente hasta que el Kubernetes probe supera su `deadline` → `context deadline exceeded`.
+
+El código de esta aplicación contiene múltiples mecanismos que agotan el Thread Pool.
+
+---
+
+### 3. Código que bloquea el Thread Pool
+
+#### A. `NameMatchService` — bloqueo sincrónico sobre HTTP con timeout de 2 minutos
+
+**Archivo:** NameMatchApi.cs
+
+```csharp
+this.httpClient.Timeout = new TimeSpan(0, 2, 0);  // 2 minutos
+...
+var t1 = httpClient.PostAsync(route, contentPost);
+t1.Wait();                                          // BLOQUEA el thread
+var result = JsonConvert.DeserializeObject<...>(t1.Result.Content.ReadAsStringAsync().Result); // .Result x2
+```
+
+Método `async Task<>` que internamente **no usa await** — usa `.Wait()` y `.Result`. Cada llamada ocupa un thread del pool durante hasta **2 minutos**.
+
+#### B. `AddressMatchService` — mismo patrón, mismo timeout
+
+**Archivo:** AddressMatchApi.cs
+
+```csharp
+this.httpClient.Timeout = new TimeSpan(0, 2, 0);  // 2 minutos
+...
+var t1 = httpClient.PostAsync(route, contentPost);
+t1.Wait();
+var result = JsonConvert.DeserializeObject<...>(t1.Result.Content.ReadAsStringAsync().Result);
+```
+
+Idéntico a `NameMatchService`. Cada llamada ocupa otro thread del pool hasta 2 minutos.
+
+#### C. `AuditorSettings.IsNameEqual()` / `IsAddressEqual()` — `.Wait()` y `.Result` sobre los métodos ya bloqueantes
+
+**Archivo:** AuditorSettings.cs
+
+```csharp
+var t1 = nameMatching.NameMatching(nameMatchBO, NameMatchRoute());
+t1.Wait();                                // espera sincrónica sobre ya-bloqueante
+t1.Result.OnSuccess(x => oNameMatchBO = x);
+```
+
+Esto suma un segundo nivel de bloqueo sobre métodos que ya son internamente bloqueantes.
+
+#### D. `DownloadStreamDocument`, `GenerateNewDTNApi`, `DocumentInfoApi`, `AddressZipValidation` — `.Result` sin timeout
+
+**Archivos:**  
+— DownloadStreamDocument.cs: `GetDocumentAsync(DocumentId).Result` — HttpClient sin timeout (default 100 s)  
+— GenerateNewDTN.cs: `GetNewDTNAsync(DocumentDTN).Result` — sin timeout  
+— DocumentInfoApi.cs: `DocumentInfoCall(DTN, FormFamily).Result` — sin timeout  
+— AddressZipValidation.cs: `GetValidZipAsync(ZipCode).Result` — sin timeout
+
+Cada uno bloquea un thread del pool durante hasta **100 segundos** (default HttpClient timeout).
+
+#### E. `RetryTool.Retry()` — `Thread.Sleep` bloqueante
+
+**Archivo:** Retry.cs
+
+```csharp
+Thread.Sleep(interval);   // interval = 300ms por defecto
+return Retry(f, eval, retries + 1, maxRetries, interval);
+```
+
+Usado desde LoadDocument.cs: `RetryTool.Retry(() => getDocument.GetDocument(x.Item1), ...)`. `GetDocument` ya usa `.Result`. Combina bloqueo HTTP con `Thread.Sleep`.
+
+#### F. `FileExtractSemaphore.RegisterFileAction()` — `.Result` sobre `SemaphoreSlim`
+
+**Archivo:** FileExtractSemaphore.cs
+
+```csharp
+public T RegisterFileAction<T>(Func<T> toApply)
+{
+    return RegisterAction(() => Task.FromResult(toApply())).Result;  // .Result sobre SemaphoreSlim(1)
+}
+```
+
+`Semaphore = new SemaphoreSlim(1)` — serializa todas las llamadas. Si el thread que tiene el semaphore está a su vez bloqueado en `.Result`, ningun otro thread puede avanzar. Deadlock potencial clásico cuando el SynchronizationContext está activo.
+
+---
+
+### 4. El Worker como detonante central
+
+**Archivo:** Worker.cs
+
+```csharp
+protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+{
+    while (!stoppingToken.IsCancellationRequested)
+    {
+        ...
+        queuePromotions.Start();   // ← SÍNCRONO, bloquea el thread del Worker
+        
+        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+    }
+}
+```
+
+**Archivo:** PromotionsQueue.cs
+
+```csharp
+public virtual void Start() {
+    started = true;
+    while (!Queue.IsEmpty && started && Queue.TryDequeue(out var document))
+    {
+        try
+        {
+            documentPromoter().SelectHandler(document).HandleDocumentTransform(document);
+        }
+        catch (Exception ex) { }
+    }
+}
+```
+
+`Start()` es síncrono y procesa TODOS los documentos de la queue en un bucle sin espera. `HandleDocumentTransform` invoca la cadena de auditoria que termina en `AuditorSettings.OcrAuditCompareP1P2()` → `IsNameEqual()` + `IsAddressEqual()` → `NameMatching.t1.Wait()` + `AddressMatching.t1.Wait()` con timeout de **2 minutos cada uno**.
+
+Cadena confirmada:
+```
+Worker.ExecuteAsync()
+  → queuePromotions.Start()              [síncrono, bucle completo]
+    → HandleDocumentTransform(document)
+      → AuditorSettings.OcrAuditCompareP1P2()
+        → IsNameEqual() → t1.Wait()      [bloquea 1 thread hasta 2 min]
+        → IsAddressEqual() → t1.Wait()   [bloquea otro thread hasta 2 min]
+```
+
+Por cada documento en la queue: **2 threads bloqueados hasta 2 minutos cada uno**.
+
+El Worker NO tiene `try-catch`. Si cualquier excepción no-`OperationCanceledException` escapa del bucle, en .NET 8 el host se detiene por defecto (`BackgroundServiceExceptionBehavior.StopHost`) → proceso sale → K8s reinicia el pod.
+
+---
+
+## CAUSA QUE PUEDE BLOQUEAR LIVENESS
+
+**Thread Pool Starvation** causada por la combinación de:
+
+| Código | Duración de bloqueo por thread |
+|---|---|
+| `NameMatchService.NameMatching()` — `.Wait()` | Hasta **2 minutos** |
+| `AddressMatchService.AddressMatching()` — `.Wait()` | Hasta **2 minutos** |
+| `DownloadStreamDocument.GetDocument()` — `.Result` | Hasta **100 segundos** |
+| `GenerateNewDTNApi.GetNewDTN()` — `.Result` | Hasta **100 segundos** |
+| `DocumentInfoApi.DocumentInfoApiCall()` — `.Result` | Hasta **100 segundos** |
+| `AddressZipValidation.ValidateZip()` — `.Result` | Hasta **100 segundos** |
+| `RetryTool.Retry()` — `Thread.Sleep(300)` | 300 ms × retries |
+
+Con N documentos en la queue de promociones y M usuarios concurrentes cargando documentos, el Thread Pool se satura. La petición GET `/health/liveness` ingresa pero no obtiene thread → Kestrel la mantiene abierta → el probe de K8s agota su deadline → `context deadline exceeded` → pod reiniciado.
+
+---
+
+## RELACIÓN CON SSO API
+
+**Directa: NINGUNA.**
+
+`SSOService.Authenticate()` SSOService.cs usa `await _httpClient.PostAsync(...)` correctamente. No bloquea ningún thread del pool. Una llamada a SSO lenta o caída **no puede, por sí sola, causar Thread Pool starvation**.
+
+**Indirecta:** SSO caído → usuarios no pueden logar → usuarios reintentando → más requests. Pero cada retry es async y no bloquea threads.
+
+---
+
+## RELACIÓN CON SQL/VAULT
+
+No hay consultas SQL en los endpoints `/health/liveness` ni `/health/startup`. No hay Vault. Las llamadas SQL en el pipeline de negocio (Dapper, EF) se hacen normalmente de forma síncrona-bloqueante también (patrones DAL), pero su timeout es el de SQL Server (`Connect Timeout=30` en connection string). Contribuyen a la presión del Thread Pool pero son secundarias frente a los 2-minute timeouts de SSA/NameMatch.
+
+---
+
+## CAMBIO MÍNIMO
+
+El cambio más pequeño que ataca directamente la causa: **reducir el timeout de `HttpClient` en `NameMatchService` y `AddressMatchService` de 2 minutos a un valor bajo** (por ejemplo, 10 segundos).
+
+**Archivos:**  
+— NameMatchApi.cs: `this.httpClient.Timeout = new TimeSpan(0, 2, 0);`  
+— AddressMatchApi.cs: `Timeout = new TimeSpan(0, 2, 0)`
+
+Esto no elimina el patrón bloqueante pero reduce la ventana de bloqueo de **120 segundos a ~10 segundos** por thread, reduciendo drásticamente la probabilidad de starvation con la misma carga.
+
+El siguiente cambio en orden de impacto: añadir `try-catch` en `Worker.ExecuteAsync` para que una excepción en la queue no detenga el host.
+
+---
+
+## DESCONOCIDO
+
+- **Qué API externa** reciben `NameMatchService` y `AddressMatchService` en producción (la URL viene de `loanMatchUrl` / EnvironmentDetector) y si esa API está actualmente lenta o caída, lo cual agravaría el starvation.
+- **Cuántos documentos** hay en la queue de promociones en el momento de los reinicios. Con cola vacía, `Start()` termina inmediatamente y el starvation no ocurre por ese camino.
+- **Si `HandleDocumentTransform` llama siempre a `OcrAuditCompareP1P2`** o si hay rutas que no involucran name/address matching (depende del tipo de documento procesado, código no visible completamente).
+- **Configuración exacta del Thread Pool** en el contenedor (CPU cores asignados, `ThreadPool.SetMinThreads`). Con 1 vCPU, el pool mínimo es de 1 thread y la starvation ocurre con muy poca concurrencia.
+- **Los límites de recursos del pod** en el Deployment YAML (el `.k8s.yml` en el workspace es el pipeline YAML, no el Deployment).
