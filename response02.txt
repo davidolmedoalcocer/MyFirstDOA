@@ -1,0 +1,322 @@
+Voy a leer los archivos clave con rangos precisos para tener números de línea exactos antes de responder.  
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Controllers/AuthenticationController.cs#1-1), lines 1 to 45
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Data/ADWrapper.cs#140-140), lines 140 to 195
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#50-50), lines 50 to 165
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#210-210), lines 210 to 380
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Models/AuthenticationModel.cs#1-1), lines 1 to 40
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Models/Constants/EPRR.cs#50-50), lines 50 to 85
+
+Tengo todos los datos. Ahora compongo la respuesta con líneas exactas.
+
+---
+
+## Análisis: POST /Authentication/Login → ValidateCredentials
+
+---
+
+### 1. Traza completa del flujo
+
+```
+AuthenticationController.Login(AuthenticationModel model)   [AuthenticationController.cs L24]
+  │
+  └─ _ssoService.AuthenticateUser(model.LoginName, model.Password)  [L27]
+       │
+       │  [SSOService.cs L51 — AuthenticateUser]
+       │
+       ├─ BIFURCACIÓN: GetUserPrefsAsync(InternalAccountPrefix + login).Count > 0
+       │    └─ SÍ → "BAL user": autenticación contra SSO DB únicamente. NO llega a LDAP.
+       │
+       └─ NO → VerifyInternalUser(login, password, null)   [SSOService.cs L135]
+                │
+                │  [SSOService.cs L211 — VerifyInternalUser]
+                │
+                ├─ BIFURCACIÓN: GetUserPrefsAsync(InternalAccountPrefix + login).Count > 0
+                │    └─ SÍ → "BAL user": autenticación contra SSO DB únicamente. NO llega a LDAP.
+                │
+                └─ NO → GetUserAsync(login)   [SSOService.cs L331]
+                          │
+                          ├─ Si null → return LOGIN_DOES_NOT_EXIST. NO llega a LDAP.
+                          │
+                          └─ Si existe:
+                               │
+                               ├─ LLAMADA #1 [SSOService.cs L338]
+                               │    _adWrapper.ValidateAgainstDomain(
+                               │        login, password,
+                               │        NglsDomain, NglsHostName)
+                               │         │
+                               │         └─ [ADWrapper.cs L143 — ValidateAgainstDomain]
+                               │              └─ ValidateCredentials(login,password,domain,hostName) [L146]
+                               │                    └─ ldapConnection.Bind(...)  [L184]
+                               │                        └─ catch(LdapException) → LogError [L190]
+                               │                        └─ return false
+                               │
+                               ├─ if (!success) [SSOService.cs L340]
+                               │
+                               └─ LLAMADA #2 [SSOService.cs L342]
+                                    _adWrapper.ValidateAgainstDomain(
+                                        login, password,
+                                        NgicDomain, NgicHostName)
+                                         │
+                                         └─ [ADWrapper.cs L143 — ValidateAgainstDomain]
+                                              └─ ValidateCredentials(login,password,domain,hostName) [L146]
+                                                    └─ ldapConnection.Bind(...)  [L184]
+                                                        └─ catch(LdapException) → LogError [L190]
+                                                        └─ return false
+```
+
+---
+
+### 2. Parámetros que recibe `/Authentication/Login`
+
+Modelo: `AuthenticationModel` — AuthenticationModel.cs
+
+| Propiedad | Tipo | Default |
+|---|---|---|
+| `LoginName` | `string` | `string.Empty` |
+| `Password` | `string` | `string.Empty` |
+| `ApplicationId` | `int[]` | `[]` |
+| `IpAddress` | `string?` | `null` |
+
+---
+
+### 3. De dónde salen `username` y `password` que llegan a `ValidateCredentials`
+
+Se originan en el body del HTTP request y se pasan **sin transformación** por todo el call chain hasta `ValidateCredentials`:
+
+```
+model.LoginName  →  AuthenticateUser(login, ...)  →  VerifyInternalUser(login, ...)
+                 →  ValidateAgainstDomain(login, ...)  →  ValidateCredentials(login, ...)
+```
+
+La única transformación ocurre **dentro** de `ValidateCredentials` [ADWrapper.cs L172-179] — ver pregunta 8.
+
+---
+
+### 4. Todas las llamadas a `ValidateCredentials` dentro del flujo
+
+`ValidateCredentials` tiene **un único caller** en todo el código: `ValidateAgainstDomain` en ADWrapper.cs.
+
+`ValidateAgainstDomain` es llamada **exactamente dos veces** en `VerifyInternalUser`:
+
+| # | Archivo | Línea | Argumentos domain / hostName |
+|---|---|---|---|
+| 1 | SSOService.cs | 338 | `NglsDomain` / `NglsHostName` |
+| 2 | SSOService.cs | 342 | `NgicDomain` / `NgicHostName` |
+
+Fuera de `VerifyInternalUser`, `ValidateAgainstDomain` no tiene otros callers en la solución (verificado con grep).
+
+---
+
+### 5. Por qué una sola petición a `/Authentication/Login` ejecuta `ValidateCredentials` dos veces
+
+SSOService.cs:
+
+```csharp
+// Llamada #1 — siempre se ejecuta
+var (success, statusCode, statusMessage, lastLogin) =
+    await _adWrapper.ValidateAgainstDomain(login, password,
+        _connectionManager.NglsDomain, _connectionManager.NglsHostName);
+
+if (!success)   // L340 — única condición de guarda
+{
+    // Llamada #2 — se ejecuta si y solo si la #1 devolvió success=false
+    (success, statusCode, statusMessage, lastLogin) =
+        await _adWrapper.ValidateAgainstDomain(login, password,
+            _connectionManager.NgicDomain, _connectionManager.NgicHostName);
+}
+```
+
+La condición `if (!success)` [L340] no distingue la causa del fallo. Cualquier retorno `false` de la primera llamada — incluyendo `LdapException` por credenciales inválidas — activa la segunda llamada de inmediato.
+
+---
+
+### 6. Active Directory configurados, dominios, hosts y condición de selección
+
+Hay **dos dominios AD** configurados. Sus valores provienen de SettingsService.cs (cargados en startup desde `ProcessMonitorService.GetSystemFunctionSettingData(SystemFunctionId=6745)`):
+
+| Variable en código | Clave en ProcessMonitor | Uso |
+|---|---|---|
+| `_connectionManager.NglsDomain` | `AppSettings_NglsUserDomain` | dominio de la llamada #1 |
+| `_connectionManager.NglsHostName` | `AppSettings_NglsHostName` | host LDAP de la llamada #1 |
+| `_connectionManager.NgicDomain` | `AppSettings_NgicUserDomain` | dominio de la llamada #2 |
+| `_connectionManager.NgicHostName` | `AppSettings_NgicHostName` | host LDAP de la llamada #2 |
+
+Asignación en ConnectionManager.cs:
+
+```csharp
+NglsDomain   = settings.AppSettings.NglsDomain;
+NgicDomain   = settings.AppSettings.NgicDomain;
+NglsHostName = settings.AppSettings.NglsHostName;
+NgicHostName = settings.AppSettings.NgicHostName;
+```
+
+Los valores reales **no están en el repositorio** — están en el servicio ProcessMonitor de producción.
+
+**Lógica de selección:** NGLS siempre se intenta primero. NGIC solo se intenta si NGLS devuelve `!success`. No hay ninguna condición basada en el tipo de error.
+
+---
+
+### 7. Hostname que se pasa a `ldapConnection.Connect(...)`
+
+ADWrapper.cs:
+
+```csharp
+ldapConnection.Connect(hostName, LdapConnection.DEFAULT_SSL_PORT);
+```
+
+- El parámetro `hostName` es el que recibe `ValidateCredentials` del caller `ValidateAgainstDomain`.
+- `LdapConnection.DEFAULT_SSL_PORT` = **636** (constante de la librería `Novell.Directory.Ldap`).
+- Primer intento: `NglsHostName` (clave `AppSettings_NglsHostName`).
+- Segundo intento: `NgicHostName` (clave `AppSettings_NgicHostName`).
+
+---
+
+### 8. Transformación del username antes del Bind
+
+ADWrapper.cs:
+
+```csharp
+string username = login;                          // L172: inicia con el login tal cual
+if (!string.IsNullOrWhiteSpace(domain))           // L173
+{
+    username = $"{domain}\\{login}";              // L175: formato "DOMINIO\loginName"
+}
+```
+
+- Si `domain` **no es vacío/whitespace**: se produce `domain\login` (backslash, formato NetBIOS). **No se usa `user@domain`**.
+- Si `domain` **es vacío o whitespace**: se usa `login` sin modificación.
+- La transformación ocurre **antes** de `ldapConnection.Bind(LdapConnection.Ldap_V3, username, password)` [L184].
+
+---
+
+### 9. Excepciones que captura el bloque Bind y comportamiento ante "Invalid Credentials"
+
+ADWrapper.cs:
+
+```csharp
+try
+{
+    using var ldapConnection = new LdapConnection { SecureSocketLayer = true };
+    ldapConnection.Connect(hostName, LdapConnection.DEFAULT_SSL_PORT);  // L183
+    ldapConnection.Bind(LdapConnection.Ldap_V3, username, password);    // L184
+    if (ldapConnection.Bound)
+    {
+        return true;
+    }
+}
+catch (LdapException ex)                          // L189 — ÚNICA excepción capturada aquí
+{
+    _logger.LogError(                             // L190
+        "ValidateCredentials failed: {Message}|{InnerException}",
+        ex.Message, ex.InnerException);
+}
+return false;                                     // L193
+```
+
+**Solo se captura `LdapException`.**
+
+Ante "Invalid Credentials":
+1. `LdapException.Message` = `"Invalid Credentials"` (error LDAP code 49).
+2. `LdapException.InnerException` = `null` (error de protocolo; de ahí el `|null` en el log).
+3. Se llama a `_logger.LogError(...)` [L190] — genera la entrada de Datadog.
+4. **No hay re-throw.**
+5. Cae en `return false` [L193].
+
+Excepciones **no capturadas** en este bloque (subirían al `catch (Exception e)` de `VerifyInternalUser` [SSOService.cs ~L373]):
+- `SocketException` / `IOException` — host inaccesible, timeout de red.
+- `AuthenticationException` — error SSL/TLS/certificado.
+- `Exception` genérica.
+
+Esas excepciones producirían `UNEXPECTED_EXCEPTION` en la respuesta, **no** `"Invalid Credentials"` en el log — confirma que el log del incidente es exclusivo de `LdapException`.
+
+---
+
+### 10. Qué devuelve SSOApi cuando ambos intentos fallan
+
+**Paso a paso:**
+
+`ValidateCredentials` × 2 → `false` → `ValidateAgainstDomain` × 2 → `(false, "PW018", ...)` → `VerifyInternalUser` [SSOService.cs L368]:
+
+```csharp
+await LogAuditEventToDb(CONST.C_LOGTYPE_FAILURE,
+    EPRRCDESC.GetDescription(EPRRC.PASSWORD_INVALID_CREDENTIALS), ...);  // L368
+return (true, EPRRC.PASSWORD_INVALID_CREDENTIALS,
+    EPRRCDESC.GetDescription(EPRRC.PASSWORD_INVALID_CREDENTIALS), null);  // L370
+//                ↑ success=true              ↑ user=null
+```
+
+Llega a `AuthenticateUser` [SSOService.cs L135-153] como `(success=true, statusCode="PW018", user=null)`:
+
+```csharp
+var (success, statusCode, statusMessage, user) = await VerifyInternalUser(...);
+if (success && user != null)  // false porque user==null → no entra
+...
+return (success, statusCode, statusMessage, null);  // devuelve (true, "PW018", ..., null)
+```
+
+Llega a `AuthenticationController.Login` [L27-39] como `(success=true, userInfo=null)`:
+
+```csharp
+if (success && userInfo != null)   // false → no entra
+...
+return BadRequest(new { ErrorCode = statusCode, ErrorMessage = statusDesc });
+```
+
+**Respuesta final al cliente:** `HTTP 400 Bad Request` con body:
+
+```json
+{ "ErrorCode": "PW018", "ErrorMessage": "<descripción de PASSWORD_INVALID_CREDENTIALS>" }
+```
+
+---
+
+### 11. Qué puede distinguir el código realmente
+
+#### Para usuarios AD (ruta LDAP — el flujo del incidente):
+
+| Condición | Código devuelto | Mecanismo |
+|---|---|---|
+| Login no existe en SSO DB (`GetUserAsync` = null) | `LOGIN_DOES_NOT_EXIST` | SSOService.cs — antes de llamar a LDAP |
+| LDAP bind falla + usuario **no existe** en Graph API | `LOGIN_DOES_NOT_EXIST` | ADWrapper.cs — `GetUserDetail` devuelve null |
+| LDAP bind falla + usuario **sí existe** en Graph API | `PASSWORD_INVALID_CREDENTIALS` | ADWrapper.cs — `GetUserDetail` devuelve el user |
+| LDAP bind tiene éxito + `AccountEnabled == false` en Graph | `LOGIN_INACTIVE` | ADWrapper.cs |
+| Host inaccesible / error SSL | `UNEXPECTED_EXCEPTION` | SSOService.cs — catch genérico |
+
+#### Lo que el código **no puede distinguir** dentro de un LDAP bind fallido:
+
+El `catch (LdapException ex)` [ADWrapper.cs L189] **no inspecciona `ex.ResultCode`**. Por tanto, a nivel de log, son indistinguibles:
+- Contraseña incorrecta (LDAP code 49)
+- Cuenta bloqueada en AD (LDAP code 49 con subcode, dependiendo del DC)
+- Contraseña expirada en AD (LDAP code 49 con subcode)
+
+Todos generan exactamente el mismo log `ValidateCredentials failed: {Message}|{InnerException}` y el mismo código de retorno `PASSWORD_INVALID_CREDENTIALS`.
+
+---
+
+## HECHOS CONFIRMADOS
+
+1. `ValidateCredentials` se llama **dos veces** para un único `POST /Authentication/Login` no-BAL: primera vez con NGLS, segunda si la primera devuelve `false` — SSOService.cs.
+2. La condición para la segunda llamada es exclusivamente `if (!success)` [L340]. No se evalúa la causa del fallo.
+3. Ambas llamadas usan los mismos `login` y `password` del request original, sin modificación entre ellas.
+4. El `username` enviado al LDAP bind tiene el formato `domain\login` si `domain` es no vacío [ADWrapper.cs L175].
+5. El puerto LDAP es siempre 636 (`DEFAULT_SSL_PORT`) [ADWrapper.cs L183].
+6. Solo se captura `LdapException` dentro de `ValidateCredentials` [ADWrapper.cs L189]. Otros errores (red, SSL) no generan ese log.
+7. La respuesta al cliente cuando ambos fallan es `HTTP 400 PW018` [AuthenticationController.cs L38].
+8. El código no lee `LdapException.ResultCode` — no distingue contraseña incorrecta, cuenta bloqueada o contraseña expirada dentro del bind.
+9. Los hostnames de los servidores LDAP no están en el repositorio — provienen de ProcessMonitor clave `AppSettings_NglsHostName` y `AppSettings_NgicHostName`.
+10. La ruta LDAP solo se activa si `GetUserPrefsAsync(InternalAccountPrefix + login)` devuelve vacío (usuario no-BAL) y `GetUserAsync(login)` devuelve no-null.
+
+## DESCONOCIDO
+
+1. Los valores reales de `NglsHostName`, `NgicHostName`, `NglsDomain`, `NgicDomain` en el entorno de producción — no están en el repositorio.
+2. Si el valor de `NglsDomain` o `NgicDomain` está vacío en producción (lo que cambiaría el formato del `username` enviado al bind).
+3. El `LdapException.ResultCode` concreto que llega al servidor — el código solo logea `ex.Message` sin el código numérico.
+4. Si el login específico del incidente pertenece a NGLS, NGIC, o si intentó ambos dominios (requiere correlacionar dos entradas con el mismo `CorrelationID` en Datadog).
+5. Si el segundo intento (NGIC) también falló con `LdapException` o con un error de red/SSL (que produciría `UNEXPECTED_EXCEPTION`, no el mismo log). 
+
