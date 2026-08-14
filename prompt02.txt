@@ -1,0 +1,57 @@
+Estoy investigando un error de producción. NO modifiques ningún archivo y NO propongas fixes.
+
+Ya está comprobado en producción que una petición:
+
+POST /Authentication/Login
+
+termina generando dos veces, dentro del mismo trace:
+
+ValidateCredentials failed: Invalid Credentials
+
+Necesito que revises exclusivamente el código y respondas con HECHOS comprobables, citando archivo, clase, método y líneas cuando sea posible.
+
+1. Traza exactamente AuthenticationController.Login desde que recibe el request hasta ADWrapper.ValidateCredentials.
+
+2. Indica cuáles son los parámetros que recibe /Authentication/Login.
+   No muestres valores sensibles.
+
+3. Determina exactamente de dónde salen username y password que llegan a ValidateCredentials.
+
+4. Revisa todas las llamadas a ValidateCredentials dentro de ese flujo.
+
+5. Explica por qué una sola petición a /Authentication/Login puede ejecutar ValidateCredentials más de una vez.
+
+6. Si existen varios Active Directory, dominios, hosts LDAP o intentos alternativos, enuméralos y muestra la condición exacta que decide cuál se utiliza.
+
+7. Indica qué hostname/configuration key se pasa a:
+   ldapConnection.Connect(...)
+
+8. Indica si el username se modifica antes del LDAP Bind:
+   dominio\usuario
+   usuario@dominio
+   prefijo/sufijo
+   u otra transformación.
+
+9. Para:
+   ldapConnection.Bind(...)
+   identifica cuáles excepciones puede capturar el código y qué hace específicamente cuando recibe "Invalid Credentials".
+
+10. Determina qué devuelve SSOApi a /Authentication/Login cuando ambos intentos de ValidateCredentials fallan.
+
+11. Busca si el código permite distinguir entre:
+    - contraseña incorrecta
+    - usuario inexistente
+    - cuenta bloqueada
+    - contraseña expirada
+    - servidor LDAP inaccesible
+    - certificado/SSL
+   Indica únicamente lo que el código realmente permite distinguir.
+
+12. No muestres passwords, tokens, connection strings ni secrets.
+
+Termina con:
+
+HECHOS CONFIRMADOS
+DESCONOCIDO
+
+No incluyas inferencias ni recomendaciones todavía.
