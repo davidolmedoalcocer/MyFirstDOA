@@ -1,0 +1,82 @@
+NO modifiques ningún archivo.
+
+Estoy investigando un incidente de producción y ahora tengo evidencia directa de Kubernetes.
+
+Pod:
+ds-ui-web-docextractverify-598949b884-znj45
+
+Kubernetes muestra repetidamente:
+
+Liveness probe failed:
+GET http://10.42.9.220:8080/health/liveness
+context deadline exceeded
+(Client.Timeout exceeded while awaiting headers)
+
+El contenedor principal tiene 25 restarts.
+
+También después de reinicios aparece:
+
+Startup probe failed:
+GET http://10.42.9.220:8080/health/startup
+connect: connection refused
+
+Necesito encontrar qué puede hacer que ESTA aplicación deje de responder al endpoint /health/liveness.
+
+NO investigues otros bugs que no estén relacionados con que el proceso deje de responder.
+NO propongas cambios todavía.
+
+Responde:
+
+1. Localiza exactamente dónde se configura:
+   /health/liveness
+   /health/startup
+
+2. Muestra qué código ejecuta cada endpoint.
+
+3. Determina si /health/liveness consulta:
+   - SSOApi
+   - SQL Server
+   - Vault
+   - Active Directory
+   - otra API
+   - filesystem
+   - o si solamente verifica que el proceso esté vivo.
+
+4. Revisa qué operaciones dentro de la aplicación podrían bloquear el servidor HTTP hasta provocar que /health/liveness no pueda responder.
+
+5. Busca específicamente:
+   - código síncrono bloqueando async
+   - .Result
+   - .Wait()
+   - Thread.Sleep
+   - locks
+   - Semaphore
+   - uso incorrecto de HttpClient
+   - thread pool starvation
+   - loops sin espera
+   - BackgroundService/Worker que pueda bloquear el host
+   - consumo excesivo de memoria
+   - llamadas externas sin timeout
+
+6. Determina si una llamada lenta o caída de SSOApi puede impedir que /health/liveness responda.
+   No infieras. Demuéstralo con el código.
+
+7. Determina si una falla de SQL/Vault puede impedir que /health/liveness responda.
+
+8. Revisa Worker.ExecuteAsync específicamente y determina si puede:
+   - bloquear threads,
+   - detener el host,
+   - o causar que el endpoint health deje de responder.
+
+9. Identifica el cambio mínimo que atacaría DIRECTAMENTE la causa de que /health/liveness deje de responder, pero NO lo implementes.
+
+Termina exclusivamente con:
+
+HECHOS CONFIRMADOS
+CAUSA QUE PUEDE BLOQUEAR LIVENESS
+RELACIÓN CON SSO API
+RELACIÓN CON SQL/VAULT
+CAMBIO MÍNIMO
+DESCONOCIDO
+
+No incluyas problemas de código que no estén relacionados directamente con los restarts/liveness.
