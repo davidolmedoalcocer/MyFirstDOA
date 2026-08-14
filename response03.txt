@@ -1,0 +1,301 @@
+Searched for text `LogAuditEventToDb` (`**/SSOApi/**/*.cs`), 45 results
+
+Searched for text `TrackGuard` (`**/SSOApi/**/*.cs`), 126 results
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Data/SSOAuthRepository.cs#180-180), lines 180 to 230
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#186-186), lines 186 to 200
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Logging/LoggingService.cs#1-1), lines 1 to 60
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Logging/LoggingService.cs#60-60), lines 60 to 72
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#330-330), lines 330 to 380
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Logging/ILoggingService.cs)
+
+Searched for text `LogEventInfo|LogEventError|LogEventComm` (`**/SSOApi/**/*.cs`), 151 results
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Middleware/RequestResponseLogging.cs#1-1), lines 1 to 90
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Headers/RequestHeaderAccessor.cs)
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Headers/IRequestHeaderAccessor.cs)
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Common/Filters/ApiExceptionFilter.cs)
+
+Searched for text `CorrelationId|CorrelationID|WithCorrelationId` (`**/SSOApi/**/*.cs`), 18 results
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Program.cs#19-19), lines 19 to 35
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#160-160), lines 160 to 375
+
+Searched for text `AuditEvent` (`**/SSOApi/**/*.cs`), 45 results
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Program.cs#60-60), lines 60 to 90
+
+Searched for text `EventLoggerFactory|CreateLogger_WebServiceType` (`**/SSOApi/**/*.cs`), 1 result
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Services/SSOService.cs#14-14), lines 14 to 30
+
+Read [](file:///c%3A/Temp/Chrome/DS.Web.SSOApi%20%282%29/SSOApi/Data/ADWrapper.cs#1-1), lines 1 to 25
+
+Tengo todos los datos necesarios. Redacto la respuesta.
+
+---
+
+## Investigación: estado actual del logging para fallos LDAP en SSOApi
+
+---
+
+### 1. Implementación completa de `LogAuditEventToDb`
+
+**Hay dos capas:**
+
+**Capa 1 — wrapper privado en SSOService** SSOService.cs:
+
+```csharp
+private async Task<bool> LogAuditEventToDb(string msgType, string msgText, string loginName, long appID)
+{
+    try
+    {
+        StackTrace stackTrace = new();
+        StackFrame stackFrame = stackTrace.GetFrame(1);
+        System.Reflection.MethodBase methodBase = stackFrame.GetMethod();
+        return await _ssoRepo.LogAuditEventToDb(
+            Guid.NewGuid().ToString(),   // msgGUID — generado en runtime
+            methodBase.Name,             // sender — nombre del método llamante vía reflection
+            msgType, msgText, loginName, appID,
+            false);                      // saveForReplay — siempre hardcoded false
+    }
+    catch (Exception)
+    {
+        return false;                    // cualquier excepción queda silenciada
+    }
+}
+```
+
+**Capa 2 — repositorio** SSOAuthRepository.cs:
+
+```csharp
+public async Task<bool> LogAuditEventToDb(
+    string msgGUID, string sender, string msgType, string msgText,
+    string loginName, long appID, bool saveForReplay)
+{
+    using SqlConnection db = new(_connectionString);
+    db.Open();
+    DynamicParameters dapperParams = new();
+    dapperParams.Add("@MessageGUID",   msgGUID);
+    dapperParams.Add("@Sender",        sender);
+    dapperParams.Add("@MessageType",   msgType);
+    dapperParams.Add("@MessageText",   msgText);
+    dapperParams.Add("@LoginName",     loginName);
+    dapperParams.Add("@StoreInReplay", saveForReplay);
+    dapperParams.Add("@AppID",         appID);
+    dapperParams.Add("@FoundInReplay", dbType: DbType.Int32,
+                     direction: ParameterDirection.Output);
+    var result = await db.ExecuteAsync("SSOInsertLogEvent", ...);
+    return !Convert.ToBoolean(dapperParams.Get<int>("@FoundInReplay"));
+    // excepción → return false (silenciada)
+}
+```
+
+---
+
+### 2. Destino de esa información
+
+| Elemento | Destino | Mecanismo |
+|---|---|---|
+| `LogAuditEventToDb` | **SQL Server (SSO DB)** | Stored procedure `SSOInsertLogEvent` vía Dapper |
+| `_logger.LogEventInfo / LogEventError` en SSOService | **API externa (CommonLoggingAPI)** | `EventLoggerInterface` de `DS.TrackGuard.Logging`; instanciada en Program.cs L70 con `EventLoggerFactory.CreateLogger_WebServiceType(..., environment.GetResource("CommonLoggingAPI"))` |
+| `_logger.LogError` en ADWrapper | **Console + Elasticsearch** | Serilog `ILogger<ADWrapper>` configurado en Program.cs L25-30 |
+| `RequestResponseLogging` middleware | **API externa (CommonLoggingAPI)** | `ILoggingService.LogRequestResponse` → `LoggingService.LogAsync` → `CommRecordModel` → `_logger.LogEventComm` |
+
+**Serilog** está configurado en Program.cs:
+```csharp
+var logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithCorrelationIdHeader("CorrelationID")   // ← enriquece todos los logs Serilog
+    .CreateLogger();
+```
+Destinos en appsettings: Console y Elasticsearch (`log-ngls-ssoapi-{date}`).
+
+---
+
+### 3. Referencias a TrackGuard / AuditEvent / LogAuditEventToDb en la solución
+
+| Símbolo | Archivos donde aparece |
+|---|---|
+| `DS.TrackGuard.Logging` (using) | SSOService.cs, UserService.cs, LoggingService.cs, AuthenticationController.cs, SSOAdminController.cs, NotificationController.cs, GenericService.cs, Program.cs |
+| `EventLoggerInterface _logger` | SSOService.cs, UserService.cs, GenericService.cs, SSOAdminService.cs, y los controladores citados |
+| `ILoggingService _trackguardLogger` | ApiExceptionFilter.cs, RequestResponseLogging.cs |
+| `LogAuditEventToDb` (privado, SSOService) | SSOService.cs — único punto de definición |
+| `LogAuditEventToDb` (público, repo) | SSOAuthRepository.cs — único punto de definición |
+| `SSOInsertLogEvent` (SP) | SSOAuthRepository.cs — único caller |
+| `AuditEvent` (literal) | No existe como clase ni método en la solución — solo aparece en los nombres `LogAuditEventToDb` |
+
+---
+
+### 4. Todos los logs/auditorías generados cuando `ValidateCredentials` falla (ruta AD — PW018)
+
+Secuencia ordenada para un usuario no-BAL que existe en SSO DB y cuyos dos intentos LDAP fallan:
+
+| # | Canal | Tipo | Archivo:Línea | Contenido del mensaje |
+|---|---|---|---|---|
+| 1 | **TrackGuard EventLogger** | INFO | SSOService.cs | `"VerifyUser login: {login} ipAddress: {ipAddress}"` |
+| 2 | **TrackGuard EventLogger** | INFO | SSOService.cs | `"VerifyUser - Authenticate this user against AD"` |
+| 3 | **Serilog** | ERROR | ADWrapper.cs | `"ValidateCredentials failed: Invalid Credentials\|null"` ← NGLS |
+| 4 | **Serilog** | ERROR | ADWrapper.cs | `"ValidateCredentials failed: Invalid Credentials\|null"` ← NGIC |
+| 5 | **SQL DB** (`SSOInsertLogEvent`) | AUDIT | SSOService.cs | msgType=FAILED, msgText=desc(PW018), loginName=`login`, sender="VerifyInternalUser", appID=91 |
+| 6 | **TrackGuard CommRecord** (middleware) | COMM | RequestResponseLogging.cs | URL + body (Password nullado) + CorrelationID + response body + HTTP 400 |
+
+Los eventos 3 y 4 son **dos entradas independientes** del mismo `LogError` — uno por cada intento LDAP fallido.
+
+---
+
+### 5. Datos específicos que cada fuente registra
+
+#### Serilog — `ILogger<ADWrapper>.LogError` ADWrapper.cs
+
+Los campos **explícitos en el template** del log:
+
+| Campo | Valor registrado |
+|---|---|
+| `{Message}` | `ex.Message` (p.ej. `"Invalid Credentials"`) |
+| `{InnerException}` | `ex.InnerException` (es `null` en el incidente) |
+
+Los campos **enriquecidos automáticamente por Serilog** (`.Enrich.WithCorrelationIdHeader("CorrelationID")`):
+
+| Campo | Fuente |
+|---|---|
+| `CorrelationID` | Del header HTTP, inyectado por `RequiredHeaderValidatorMiddleware` |
+| Timestamp | Serilog |
+| Level | ERROR |
+| MachineName | `Enrich.WithMachineName` (appsettings) |
+
+**No registrado en este log**: `login`, `domain`, `hostName`, `LDAP ResultCode`, `NglsDomain`, `NgicDomain`, `NglsHostName`, `NgicHostName`.
+
+#### SQL DB — `SSOInsertLogEvent`
+
+| Parámetro SP | Valor |
+|---|---|
+| `@MessageGUID` | `Guid.NewGuid()` |
+| `@Sender` | `"VerifyInternalUser"` (nombre del método llamante, vía StackTrace) |
+| `@MessageType` | `"FAILED"` (`CONST.C_LOGTYPE_FAILURE`) |
+| `@MessageText` | Descripción textual de PW018 |
+| `@LoginName` | `login` (el `model.LoginName` original del request) |
+| `@StoreInReplay` | `false` (hardcoded) |
+| `@AppID` | `91` (`CONST.C_CLIENTSOURCE_APPID`) |
+
+**No registrado**: `CorrelationID`, `TraceId`, `NglsDomain`, `NgicDomain`, `NglsHostName`, `NgicHostName`, `LDAP ResultCode`.
+
+#### TrackGuard EventLogger — `LogEventInfo` SSOService.cs
+
+El string concatenado que recibe el `EventLoggerInterface`:
+
+```
+"VerifyUser login: <valor de login> ipAddress: <valor de ipAddress>"
+```
+
+Contiene: `login`.  
+**No contiene**: dominio, hostname, LDAP ResultCode.
+
+El segundo `LogEventInfo` [SSOService.cs L336]: `"VerifyUser - Authenticate this user against AD"` — no contiene ningún dato específico del login ni del LDAP.
+
+#### RequestResponseLogging → TrackGuard `CommRecordModel` LoggingService.cs
+
+| Campo del modelo | Valor |
+|---|---|
+| `CorrelationId` | `requestHeaderAccessor.CorrelationID` |
+| `Request` | Body del request con `Password` nullado (`LoginName` presente) |
+| `RequestAddress` | URL completa (`/Authentication/Login`) |
+| `RequestTimestamp` | DateTime de inicio del request |
+| `Response` | Body completo de la respuesta (contiene `ErrorCode: PW018`, `ErrorMessage`) |
+| `ResponseCode` | `"400"` |
+| `ResponseTimestamp` | DateTime al finalizar |
+| `System` | `"SSOAPI"` |
+| `Server` | `Environment.MachineName` |
+
+**No contiene**: `NglsDomain`, `NgicDomain`, `NglsHostName`, `NgicHostName`, LDAP ResultCode.
+
+---
+
+### 6. Qué recibe TrackGuard para este flujo y exactamente qué campos
+
+TrackGuard recibe **dos tipos de llamadas** para el flujo LDAP-failure:
+
+**Tipo A — `EventLoggerInterface.LogEventInfo`** (SSOService.cs L215 y L336):  
+Recibe: `InfoTypeCodeEnum.INFO` + un `string` de mensaje.  
+La signatura del método `LogEventInfo(InfoTypeCodeEnum, string)` es la usada en la solución — el segundo parámetro es un string plano concatenado, no un modelo estructurado.  
+La implementación de `EventLoggerInterface` está en la librería externa `DS.TrackGuard.Logging` y **no está disponible en este repositorio**.
+
+**Tipo B — `ILoggingService.LogRequestResponse`** (middleware, LoggingService.cs L43):  
+Recibe los campos del `CommRecordModel` descritos en la tabla anterior.  
+Internamente llama a `_logger.LogEventComm(logModel)` — el objeto completo se pasa al `EventLoggerInterface`.
+
+---
+
+### 7. Campo `CorrelationID` — cómo se propaga
+
+| Canal | ¿Lleva CorrelationID? | Mecanismo |
+|---|---|---|
+| Serilog (ADWrapper LogError) | **Sí** — como propiedad enriched | `.Enrich.WithCorrelationIdHeader("CorrelationID")` en Program.cs L28 |
+| SQL DB (`SSOInsertLogEvent`) | **No** | No hay parámetro en el SP |
+| TrackGuard EventLogger (`LogEventInfo`) | **Desconocido** | La implementación es externa |
+| TrackGuard CommRecord (`LogRequestResponse`) | **Sí** — en campo `CorrelationId` | RequestResponseLogging.cs L59/63 pasa `requestHeaderAccessor.CorrelationID` |
+
+---
+
+## HECHOS CONFIRMADOS
+
+1. `LogAuditEventToDb` en SSOService es un wrapper privado que obtiene el nombre del método llamante via `StackTrace.GetFrame(1)` y lo pasa como `@Sender` al stored procedure `SSOInsertLogEvent` en SQL Server.
+2. El SP `SSOInsertLogEvent` recibe 7 parámetros: `@MessageGUID`, `@Sender`, `@MessageType`, `@MessageText`, `@LoginName`, `@StoreInReplay`, `@AppID`. `@StoreInReplay` es siempre `false`.
+3. El stored procedure devuelve `@FoundInReplay`; el código solo usa ese valor para el return bool del método, no para ninguna lógica de diagnóstico.
+4. Si `LogAuditEventToDb` lanza excepción, esta queda silenciada (`return false`) sin registro adicional.
+5. `ADWrapper._logger` es `ILogger<ADWrapper>` (Serilog), no `EventLoggerInterface` (TrackGuard).
+6. `SSOService._logger` es `EventLoggerInterface` (TrackGuard). `SSOService._log` es `ILogger<SSOService>` (Serilog).
+7. El `LogError` de ADWrapper L190 va a Serilog; Serilog está configurado con `.Enrich.WithCorrelationIdHeader("CorrelationID")`, por lo que `CorrelationID` se añade automáticamente a ese log.
+8. El TrackGuard `EventLoggerInterface` se inicializa con `EventLoggerFactory.CreateLogger_WebServiceType(true, ApplicationName, MachineName, CommonLoggingAPI_URL)` — recibe una URL de API externa.
+9. `RequestResponseLogging` middleware nula los campos `Password`, `NewPassword`, `OldPassword` del body antes de loguearlo, pero **no nula `LoginName`**.
+10. El `CorrelationID` llega al `RequestResponseLogging` middleware vía `IRequestHeaderAccessor`, que lo lee del header HTTP.
+11. El middleware `RequiredHeaderValidatorMiddleware` genera un nuevo GUID como `CorrelationID` si el request no trae uno en el header.
+
+## INFORMACIÓN QUE YA SE REGISTRA
+
+| Dato | Canal donde se registra |
+|---|---|
+| `login` (LoginName del request) | TrackGuard EventLogger INFO ("VerifyUser login: {login}"), SQL DB (@LoginName), RequestResponseLogging body |
+| `CorrelationID` | Serilog (enriquecido automáticamente en el LogError de ADWrapper), TrackGuard CommRecord |
+| HTTP status code (400) | TrackGuard CommRecord (ResponseCode) |
+| URL del endpoint (`/Authentication/Login`) | TrackGuard CommRecord (RequestAddress) |
+| `PW018` (descripción) | SQL DB (@MessageText), body de la respuesta HTTP (CommRecord.Response) |
+| Nombre del método (`"VerifyInternalUser"`) | SQL DB (@Sender) |
+| `ex.Message` del LdapException (`"Invalid Credentials"`) | Serilog (LogError en ADWrapper L190) |
+| `ex.InnerException` (null) | Serilog (LogError en ADWrapper L190) |
+| AppID (91) | SQL DB (@AppID) |
+| Timestamp del request y response | TrackGuard CommRecord |
+| MachineName | Serilog (enriquecido), TrackGuard CommRecord |
+
+## INFORMACIÓN QUE NO SE REGISTRA
+
+| Dato | Evidencia |
+|---|---|
+| `NglsDomain` | No se pasa como parámetro a ninguna llamada de log en todo el flujo |
+| `NgicDomain` | Ídem |
+| `NglsHostName` | Ídem |
+| `NgicHostName` | Ídem |
+| Cuál hostname LDAP se estaba usando cuando ocurrió el error | `ValidateCredentials` no lo incluye en el `LogError`; `VerifyInternalUser` tampoco |
+| `LdapException.ResultCode` (código numérico LDAP) | El `catch` en ADWrapper L189 solo accede a `ex.Message` y `ex.InnerException` — nunca a `ex.ResultCode` |
+| LDAP error subcode / diagnostic message | Ídem — no se accede ni se loguea |
+| `CorrelationID` en SQL DB | El SP `SSOInsertLogEvent` no tiene ese parámetro |
+| `TraceId` (ASP.NET Core Activity TraceId) | No aparece explícitamente en ninguna llamada de log del código fuente de este repositorio |
+| Cuántos intentos LDAP fallaron (NGLS vs NGIC) | No hay contador ni campo que distinga las dos ejecuciones de `ValidateCredentials` salvo contar entradas duplicadas por CorrelationID |
+
+## DESCONOCIDO
+
+1. El esquema completo de la tabla que persiste `SSOInsertLogEvent` — la definición del SP no está en este repositorio.
+2. La implementación interna de `DS.TrackGuard.Logging.Logger.EventLogger.EventLoggerInterface` — qué campos adicionales serializa `LogEventInfo(InfoTypeCodeEnum, string)` además del string de mensaje, y si incluye automáticamente CorrelationID u otro contexto de la request.
+3. Si el índice Elasticsearch (`log-ngls-ssoapi-{date}`) almacena campos adicionales inyectados por el sink de Serilog (p.ej. `TraceId` del Activity de ASP.NET Core) más allá de los enriquecedores visibles en el código.
+4. La URL real de `CommonLoggingAPI` en producción y qué campos acepta/persiste en su API. 
+
