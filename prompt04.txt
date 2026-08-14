@@ -1,0 +1,45 @@
+NO modifiques código. Estoy investigando un incidente de producción y necesito una respuesta rápida basada únicamente en el código.
+
+Tenemos comprobado que DS.UI.Web.DocExtractVerify llama a:
+
+POST /Authentication/Login
+
+de SSOApi y esa llamada termina con:
+
+HTTP 400
+PW018
+"User did not authenticate, either the account or password were incorrect."
+
+Necesito responder UNA pregunta principal:
+
+¿De dónde salen LoginName y Password que DocExtractVerify envía a SSOApi?
+
+Traza el código desde el endpoint /login de DocExtractVerify hasta la llamada HTTP a /Authentication/Login.
+
+Determina con evidencia si LoginName y Password:
+
+1. los introduce el usuario final,
+2. pertenecen a una service account,
+3. vienen de configuración,
+4. vienen de HashiCorp Vault,
+5. vienen de Kubernetes Secret/environment variable,
+6. o vienen de alguna otra fuente.
+
+Para cada conclusión indica archivo, clase, método y líneas.
+
+Además:
+
+- identifica el modelo/request que se manda a SSO;
+- identifica si la contraseña se guarda/cachea/reutiliza antes de llamar a SSO;
+- identifica si existe algún mecanismo que pueda conservar una contraseña anterior/stale;
+- identifica qué hace DocExtractVerify cuando SSO responde PW018/HTTP 400.
+
+NO muestres usernames, passwords, tokens, secrets ni valores de configuración.
+NO propongas cambios todavía.
+
+Termina únicamente con:
+
+HECHOS CONFIRMADOS
+ORIGEN DE LAS CREDENCIALES
+QUÉ OCURRE CON PW018
+DESCONOCIDO
