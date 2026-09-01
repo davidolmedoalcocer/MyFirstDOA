@@ -1,0 +1,22 @@
+Responde toda tu investigación en español.
+
+Find the implementation of SSOGetEntitiesForApp and trace the complete call path from GET /SSOAdmin/GetEntitiesForApp to the SQL Server call.
+
+Do not modify any code.
+
+I need you to report:
+
+1. The controller/action that handles GetEntitiesForApp.
+2. Every method called until SSOGetEntitiesForApp is executed.
+3. The exact SQL command or stored procedure being executed.
+4. How the SqlConnection is created, opened, reused, and disposed.
+5. How the SqlCommand is created and disposed.
+6. Whether using/await using/try-finally is used correctly for connections, commands, and readers.
+7. The CommandTimeout value.
+8. Whether a transaction is used.
+9. Whether any lock, semaphore, singleton, shared connection, or shared DbConnection is involved.
+10. Whether multiple concurrent requests could share or serialize on the same connection/object.
+
+Do not suggest fixes yet. Only show me the relevant code paths and explain what the current implementation does.
+
+Importante: responde todo en español, incluyendo las explicaciones y conclusiones.
