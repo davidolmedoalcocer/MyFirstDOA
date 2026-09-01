@@ -1,0 +1,29 @@
+Responde todo en español.
+
+No modifiques código ni ningún objeto de base de datos. Todas las consultas contra PRODUCCIÓN deben ser estrictamente de solo lectura.
+
+Ya comprobamos en Datadog que el 1 de septiembre de 2026, aproximadamente a las 2:07 AM y 2:13 AM (UTC-06:00), múltiples ejecuciones de dbo.SSOGetEntitiesForApp con @ApplicationID = 117 tardaron ~35-37 segundos y terminaron en Execution Timeout Expired.
+
+Quiero determinar si esas ejecuciones estuvieron bloqueadas en SQL Server.
+
+1. Primero obtén la hora actual del servidor SQL con GETDATE(), SYSUTCDATETIME() y SYSDATETIMEOFFSET() para establecer correctamente la diferencia horaria.
+
+2. Revisa si Query Store está habilitado en dbSSO.
+   - Si está habilitado, busca información histórica de dbo.SSOGetEntitiesForApp alrededor de 2026-09-01 08:05-08:15 UTC.
+   - Busca duración, waits, execution count y planes si están disponibles.
+   - No cambies ninguna configuración de Query Store.
+
+3. Revisa los Extended Events existentes para saber si hay información histórica de blocking, blocked_process_report o deadlocks alrededor de 08:05-08:15 UTC.
+   - No crees ni modifiques ninguna sesión de Extended Events.
+
+4. Identifica todos los stored procedures de dbSSO que hacen INSERT, UPDATE o DELETE sobre:
+   - UserEntitlement
+   - Entitlement
+   - Role
+   - User
+
+5. Si existe información suficiente, dime si podemos identificar qué sesión, procedimiento o proceso estaba bloqueando SSOGetEntitiesForApp durante el incidente.
+
+6. Si NO existe evidencia histórica suficiente para demostrar el bloqueo, dilo explícitamente. No concluyas que hubo blocking solamente porque sea posible.
+
+No propongas todavía cambios de índices, NOLOCK, RCSI, timeouts ni código. Primero quiero demostrar o descartar la causa del incidente.
