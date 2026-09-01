@@ -1,0 +1,271 @@
+
+
+Connecting using profile d586ee3b-9bb1-4346-9cfe-ce82840738f1
+Completed with input: {
+  "database": "dbSSO",
+  "profileId": "d586ee3b-9bb1-4346-9cfe-ce82840738f1",
+  "serverName": "LWVPDBSQLA020.ngls.ngic.com"
+}
+
+Ahora obtengo la hora del servidor y reviso el estado de Query Store en paralelo.   
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "SELECT GETDATE() AS GetDate_Local, SYSUTCDATETIME() AS Sys_UTC, SYSDATETIMEOFFSET() AS Sys_DateTimeOffset, @@SERVERNAME AS ServerName;",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "SELECT actual_state_desc, desired_state_desc, current_storage_size_mb, max_storage_size_mb, interval_length_minutes, stale_query_threshold_days, query_capture_mode_desc, max_plans_per_query, size_based_cleanup_mode_desc\nFROM sys.database_query_store_options;",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "SELECT name, blocked_process_threshold, is_query_store_enabled FROM sys.configurations WHERE name = 'blocked process threshold (s)';",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nSELECT qsq.query_id, qsqt.query_sql_text, qsp.plan_id, rsi.start_time, rsi.end_time,\n       rs.count_executions, rs.avg_duration/1000.0 AS avg_duration_ms, rs.max_duration/1000.0 AS max_duration_ms,\n       rs.avg_cpu_time/1000.0 AS avg_cpu_ms, rs.max_cpu_time/1000.0 AS max_cpu_ms,\n       rs.avg_logical_io_reads, rs.max_logical_io_reads,\n       rs.execution_type_desc\nFROM sys.query_store_query qsq\nJOIN sys.query_store_query_text qsqt ON qsqt.query_text_id = qsq.query_text_id\nJOIN sys.query_store_plan qsp ON qsp.query_id = qsq.query_id\nJOIN sys.query_store_runtime_stats rs ON rs.plan_id = qsp.plan_id\nJOIN sys.query_store_runtime_stats_interval rsi ON rsi.runtime_stats_interval_id = rs.runtime_stats_interval_id\nWHERE qsq.object_id = OBJECT_ID('dbo.SSOGetEntitiesForApp')\n  AND rsi.start_time <= '2026-09-01 08:20:00' AND rsi.end_time >= '2026-09-01 08:00:00'\nORDER BY rsi.start_time;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "SELECT name, value, value_in_use, description FROM sys.configurations WHERE name = 'blocked process threshold (s)';",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nSELECT s.name AS session_name, s.create_time, es.startup_state,\n       CAST(NULL AS sql_variant) AS placeholder\nFROM sys.server_event_sessions s\nLEFT JOIN sys.dm_xe_sessions es ON es.name = s.name\nORDER BY s.name;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nSELECT DISTINCT OBJECT_SCHEMA_NAME(sp.object_id) AS EsquemaSP, sp.name AS StoredProcedure,\n       CASE WHEN sm.definition LIKE '%UserEntitlement%' THEN 1 ELSE 0 END AS TocaUserEntitlement,\n       CASE WHEN sm.definition LIKE '%Entitlement%' THEN 1 ELSE 0 END AS TocaEntitlement,\n       CASE WHEN sm.definition LIKE '%[Role]%' OR sm.definition LIKE '% Role %' OR sm.definition LIKE '%.Role %' THEN 1 ELSE 0 END AS TocaRole,\n       CASE WHEN sm.definition LIKE '%[User]%' THEN 1 ELSE 0 END AS TocaUser\nFROM sys.procedures sp\nJOIN sys.sql_modules sm ON sm.object_id = sp.object_id\nWHERE (sm.definition LIKE '%INSERT%' OR sm.definition LIKE '%UPDATE%' OR sm.definition LIKE '%DELETE%' OR sm.definition LIKE '%MERGE%')\n  AND (sm.definition LIKE '%UserEntitlement%' OR sm.definition LIKE '%Entitlement%' OR sm.definition LIKE '%[Role]%' OR sm.definition LIKE '%[User]%')\nORDER BY sp.name;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read , lines 1 to 1
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nSELECT s.name AS SessionName, s.startup_state, es.create_time AS CorriendoDesde\nFROM sys.server_event_sessions s\nLEFT JOIN sys.dm_xe_sessions es ON es.name = s.name\nORDER BY s.name;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read , lines 1 to 400
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nDECLARE @tgt xml;\nSELECT @tgt = CAST(t.target_data AS xml)\nFROM sys.dm_xe_session_targets t\nJOIN sys.dm_xe_sessions s ON s.address = t.event_session_address\nWHERE s.name = 'system_health' AND t.target_name = 'ring_buffer';\n\nSELECT\n    ev.value('@name','varchar(100)') AS EventName,\n    ev.value('@timestamp','datetime2') AS EventTimeUTC,\n    ev.query('.') AS EventXml\nFROM @tgt.nodes('/RingBufferTarget/event') AS q(ev)\nWHERE ev.value('@timestamp','datetime2') BETWEEN '2026-09-01T07:55:00' AND '2026-09-01T08:25:00'\nORDER BY EventTimeUTC;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read , lines 550 to 649
+
+Read , lines 480 to 550
+
+Read , lines 1 to 700
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nSELECT rsi.start_time, rsi.end_time, rs.execution_type_desc, rs.count_executions,\n       rs.avg_duration/1000.0 AS avg_duration_ms, rs.max_duration/1000.0 AS max_duration_ms, rs.plan_id\nFROM sys.query_store_query qsq\nJOIN sys.query_store_plan qsp ON qsp.query_id = qsq.query_id\nJOIN sys.query_store_runtime_stats rs ON rs.plan_id = qsp.plan_id\nJOIN sys.query_store_runtime_stats_interval rsi ON rsi.runtime_stats_interval_id = rs.runtime_stats_interval_id\nWHERE qsq.object_id = OBJECT_ID('dbo.SSOGetEntitiesForApp')\n  AND rsi.start_time >= '2026-09-01T00:00:00' AND rsi.start_time < '2026-09-02T00:00:00'\nORDER BY rsi.start_time, rs.max_duration DESC;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\n;WITH Toca AS (\n  SELECT sp.name AS SP,\n    CASE WHEN sm.definition LIKE '%UserEntitlement%' THEN 1 ELSE 0 END AS UE,\n    CASE WHEN sm.definition LIKE '%Entitlement%' AND sm.definition NOT LIKE '%UserEntitlement%' THEN 1\n         WHEN sm.definition LIKE '%Entitlement%' THEN 1 ELSE 0 END AS ENT,\n    CASE WHEN sm.definition LIKE '%[Role]%' THEN 1 ELSE 0 END AS ROL,\n    CASE WHEN sm.definition LIKE '%[User]%' THEN 1 ELSE 0 END AS USR,\n    CASE WHEN sm.definition LIKE '%INSERT%' THEN 'I' ELSE '' END +\n    CASE WHEN sm.definition LIKE '%UPDATE%' THEN 'U' ELSE '' END +\n    CASE WHEN sm.definition LIKE '%DELETE%' THEN 'D' ELSE '' END +\n    CASE WHEN sm.definition LIKE '%MERGE%' THEN 'M' ELSE '' END AS Ops\n  FROM sys.procedures sp\n  JOIN sys.sql_modules sm ON sm.object_id = sp.object_id\n  WHERE (sm.definition LIKE '%INSERT%' OR sm.definition LIKE '%UPDATE%' OR sm.definition LIKE '%DELETE%' OR sm.definition LIKE '%MERGE%')\n    AND (sm.definition LIKE '%UserEntitlement%' OR sm.definition LIKE '%Entitlement%' OR sm.definition LIKE '%[Role]%' OR sm.definition LIKE '%[User]%')\n)\nSELECT STRING_AGG(CONCAT(SP,'|UE=',UE,',ENT=',ENT,',ROL=',ROL,',USR=',USR,',OPS=',Ops), ' ;; ') AS Resumen\nFROM Toca;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read , lines 200 to 320
+
+Read , lines 320 to 1200
+
+Read , lines 1 to 200
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nDECLARE @tgt xml;\nSELECT @tgt = CAST(t.target_data AS xml)\nFROM sys.dm_xe_session_targets t\nJOIN sys.dm_xe_sessions s ON s.address = t.event_session_address\nWHERE s.name = 'system_health' AND t.target_name = 'ring_buffer';\n\nSELECT ev.value('@name','varchar(100)') AS EventName, COUNT(*) AS Cantidad,\n       MIN(ev.value('@timestamp','datetime2')) AS Primero, MAX(ev.value('@timestamp','datetime2')) AS Ultimo\nFROM @tgt.nodes('/RingBufferTarget/event') AS q(ev)\nGROUP BY ev.value('@name','varchar(100)')\nORDER BY EventName;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nDECLARE @tgt xml;\nSELECT @tgt = CAST(t.target_data AS xml)\nFROM sys.dm_xe_session_targets t\nJOIN sys.dm_xe_sessions s ON s.address = t.event_session_address\nWHERE s.name = 'system_health' AND t.target_name = 'ring_buffer';\n\n;WITH Ev AS (\n  SELECT ev.value('@name','varchar(100)') AS EventName,\n         ev.value('@timestamp','datetime2') AS EventTimeUTC\n  FROM @tgt.nodes('/RingBufferTarget/event') AS q(ev)\n)\nSELECT EventName, COUNT(*) AS Cantidad, MIN(EventTimeUTC) AS Primero, MAX(EventTimeUTC) AS Ultimo\nFROM Ev\nGROUP BY EventName\nORDER BY EventName;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nDECLARE @tgt xml;\nSELECT @tgt = CAST(t.target_data AS xml)\nFROM sys.dm_xe_session_targets t\nJOIN sys.dm_xe_sessions s ON s.address = t.event_session_address\nWHERE s.name = 'system_health' AND t.target_name = 'ring_buffer';\n\nSELECT\n    ev.value('@timestamp','datetime2') AS EventTimeUTC,\n    ev.query('.') AS EventXml\nFROM @tgt.nodes('/RingBufferTarget/event') AS q(ev)\nWHERE ev.value('@name','varchar(100)') = 'xml_deadlock_report'\nORDER BY EventTimeUTC;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read 
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "\nSELECT sp.name AS SP, OBJECT_DEFINITION(sp.object_id) AS Definicion\nFROM sys.procedures sp\nWHERE sp.name IN ('SSOAssignUserToEntitlement','SSOAssignRoleToEntity','SSOChangeEntityAssignment','SSOAddUpdateApplication','SSOAddUpdateEntitlement','SSORemoveEntity','SSOAddRoleToApplication','SSOAssignUserToSubClient');\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read 
+
+Running query on connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75",
+  "query": "SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.SSOChangeEntityAssignment')) AS Def;",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Disconnecting from connection 'dbSSO-PROD' (ID: cfd6e9b0-b0a3-4618-9438-c413735ebd75)
+Completed with input: {
+  "connectionId": "cfd6e9b0-b0a3-4618-9438-c413735ebd75"
+}
+
+## Resultado de la investigación en `dbSSO-PROD`
+
+Todo lo ejecutado fue de solo lectura (`GETDATE`/`SYSUTCDATETIME`, catálogos `sys.query_store_*`, `sys.dm_xe_*`, `sys.server_event_sessions`, `sys.procedures`/`sys.sql_modules`, `OBJECT_DEFINITION`). No se modificó ninguna configuración, sesión de Extended Events ni objeto de base de datos.
+
+### 1. Hora del servidor y conversión horaria
+
+| Métrica | Valor |
+|---|---|
+| `GETDATE()` (hora local del servidor) | 2026-09-01 19:09:47.277 |
+| `SYSUTCDATETIME()` | 2026-09-01 23:09:47.2797204 |
+| `SYSDATETIMEOFFSET()` | 2026-09-01 19:09:47.2797204 **-04:00** |
+| Servidor | `LWVPDBSQLA020` (Eastern Time, actualmente en horario de verano, offset -04:00) |
+
+El incidente en Datadog fue **2:07–2:13 AM (UTC-06:00)** → en UTC eso es **08:07–08:13 UTC** el 2026-09-01. Ese es el rango que usé en todas las consultas siguientes (Query Store y Extended Events almacenan sus timestamps en UTC).
+
+### 2. Query Store en `dbSSO`
+
+**Está habilitado**: `actual_state_desc = READ_WRITE`, `query_capture_mode = AUTO`, intervalos de estadísticas de **30 minutos**.
+
+Encontré `SSOGetEntitiesForApp` como `query_id = 41422`, con un **único plan** (`plan_id = 3007`) durante todo el día — sin recompilaciones.
+
+**Intervalo que contiene el incidente (08:00–08:30 UTC):**
+
+| Ejecuciones | Duración prom. | Duración MÁX | CPU prom. | CPU MÁX | Tipo de ejecución |
+|---|---|---|---|---|---|
+| 401 | 10.97 ms | **64.9 ms** | 5.86 ms | 16.5 ms | Regular |
+
+**Intervalo anterior (07:30–08:00 UTC)**: 182 ejecuciones, duración máx. 29.8 ms, también `Regular`.
+
+**Revisé las 44 ventanas de 30 min de todo el día (00:00–23:00+ UTC)**: en **ninguna** aparece un `execution_type_desc = 'Aborted'`, y la duración máxima más alta de todo el día fue **242.8 ms** (03:00–03:30 UTC, con 752 ejecuciones). En ningún momento del día aparece algo cercano a 35,000 ms.
+
+Esto es relevante porque Query Store registra la duración real de cada ejecución **incluyendo el tiempo de espera por locks**, y también registra por separado las ejecuciones canceladas/abortadas por el cliente (`execution_type_desc = 'Aborted'`) con su duración real hasta la cancelación. No encontré ninguna de las dos cosas.
+
+### 3. Extended Events
+
+- `system_health` está corriendo de forma continua desde 2026-08-22 (cubre el incidente).
+- **`blocked process threshold (s) = 0`** (valor `value_in_use`). Esto significa que SQL Server **nunca genera el evento `blocked_process_report`**, sin importar si hay bloqueos o no — no es una configuración de la sesión, sino del motor completo. Confirmé además que ninguna de las 8 sesiones de Extended Events del servidor está dedicada a capturar bloqueos.
+- El ring buffer de `system_health` solo contiene 6 eventos `xml_deadlock_report` en todo el día 2026-09-01, en los siguientes momentos UTC: 02:55:36, 16:42:33, 20:59:54, 21:00:17, 22:24:24, 22:27:57. **Ninguno cae en la ventana 08:05–08:15 UTC**, y los 6 pertenecen a la base de datos **`WorkAdmin`** (no `dbSSO`), involucrando `ParticipantGetBySupervisorId` y `ParticipantWorkPriorityDelete` — nada relacionado con `SSOGetEntitiesForApp`, `UserEntitlement`, `Entitlement`, `Role` o `User`.
+- No hay eventos de error ni "high wait" relevantes cerca del incidente; el resto de eventos capturados son heartbeats rutinarios (`scheduler_monitor_system_health_ring_buffer_recorded`, `sp_server_diagnostics_component_result`, `connectivity_ring_buffer_recorded`).
+
+### 4. Stored procedures en `dbSSO` que escriben en `UserEntitlement`, `Entitlement`, `Role` o `User`
+
+Búsqueda por texto en `sys.sql_modules` + confirmación leyendo la definición real de cada uno. Los que escriben **directamente en `UserEntitlement`** (la tabla más sensible, según la investigación previa de índices) son:
+
+| Procedimiento | Operación | Transacción explícita |
+|---|---|---|
+| `SSOAssignUserToEntitlement` | `INSERT` en `UserEntitlement` | No (autocommit) |
+| `SSOAssignRoleToEntity` | `INSERT`/`DELETE` en `UserEntitlement` (o `GroupEntitlement`) | No (autocommit) |
+| `SSOChangeEntityAssignment` | `INSERT`/`DELETE` en `UserEntitlement` (rama "Users to Role" y "Users to Role-Subclient") | Sí, en la rama Role-Subclient (`BEGIN TRAN`…`COMMIT/ROLLBACK` inmediato, solo con `SELECT`/`INSERT`/`DELETE` simples en medio — nada que sugiera una transacción larga) |
+| `SSOAddUpdateApplication` | `INSERT` condicional en `UserEntitlement`, además `INSERT` en `Entitlement`/`Role`/`Application` | No (autocommit, sin `TRY/CATCH` ni rollback si falla a mitad) |
+
+Otros que escriben en **`Entitlement`** y/o **`Role`** (sin tocar `UserEntitlement`): `SSOAddRoleToApplication` (transacción explícita corta), `SSOAddUpdateEntitlement` (transacción explícita corta), `SSORemoveEntity` (`DELETE` simple, autocommit).
+
+Además hay ~35 procedimientos más que escriben en `[User]` (columnas de perfil/autenticación: `cAddOrUpdateUserToAuthStore`, `SSOTokenInsert`, `SSOSetUserAttr`, `SSOUpdateUser`, etc.) — la lista completa está disponible si la necesitas, pero ninguno modifica `UserEntitlement`, `Entitlement` o `Role`.
+
+**Ninguno de los procedimientos que escriben en las 4 tablas contiene bucles, `WAITFOR`, llamadas externas, cursores, ni transacciones que permanezcan abiertas más allá de un puñado de sentencias simples.**
+
+### 5. ¿Podemos identificar qué sesión/procedimiento bloqueaba `SSOGetEntitiesForApp` durante el incidente?
+
+**No.** No existe ninguna fuente de datos disponible que permita reconstruir, a esta distancia en el tiempo, qué sesión específica pudo haber bloqueado la ejecución el 2026-09-01 a las 08:07–08:13 UTC:
+- `sys.dm_exec_requests` / `sys.dm_tran_locks` solo reflejan el estado **actual** del servidor, no tienen retención histórica.
+- `blocked process threshold (s) = 0` significa que SQL Server **nunca capturó** ese evento, ni ese día ni ningún otro — no es que se haya perdido el dato, es que nunca se generó.
+- Query Store no registra qué sesión bloqueó a cuál; solo agrega duración/CPU/IO por consulta.
+
+### 6. Conclusión explícita
+
+**No hay evidencia histórica suficiente para demostrar que hubo bloqueo dentro de SQL Server durante el incidente — y, de hecho, la evidencia disponible apunta en contra de esa hipótesis, no a favor.** Concretamente:
+
+- Query Store muestra que, exactamente durante la ventana del incidente (08:00–08:30 UTC) y también en la ventana previa (07:30–08:00 UTC), las 583 ejecuciones registradas de `SSOGetEntitiesForApp` tardaron entre ~6 ms y ~65 ms, todas clasificadas como `Regular` (ninguna `Aborted`).
+- A lo largo de todo el día no aparece ninguna ejecución con duración cercana a los 35-37 segundos reportados por Datadog, ni ninguna ejecución cancelada/abortada.
+- Los 6 deadlocks capturados ese día son ajenos por completo (otra base de datos, otros procedimientos, otros horarios).
+
+**Importante — lo que esto NO descarta:** como `blocked process threshold = 0`, SQL Server nunca habría generado un `blocked_process_report` aunque el bloqueo hubiera ocurrido, así que esa ausencia específica no prueba nada por sí sola. Pero la ausencia de una duración elevada o de una ejecución `Aborted` en Query Store **sí es una señal más fuerte**, porque Query Store mide el tiempo real transcurrido de cada ejecución (incluyendo esperas de lock) independientemente de si esa función de auditoría de bloqueos está activada o no. Si `SSOGetEntitiesForApp` hubiera estado 35 segundos esperando un lock antes de completarse o ser cancelada, debería haber quedado reflejado ahí, y no aparece.
+
+Dado esto, no debe concluirse que el bloqueo en SQL Server fue la causa — la evidencia recolectada sugiere que hay que buscar la causa en otra capa (por ejemplo, en el tiempo transcurrido antes de que la consulta llegara al motor de SQL Server: apertura de conexión, pool de conexiones, red, etc., que quedó documentado en la investigación anterior del lado .NET), pero eso requeriría datos de APM/Datadog a nivel de traza (tiempo de apertura de conexión vs. tiempo de ejecución del comando) que no están disponibles desde SQL Server.
