@@ -1,0 +1,37 @@
+Responde todo en español.
+
+No modifiques ningún archivo.
+
+Tenemos una contradicción que quiero investigar:
+
+- Datadog muestra múltiples llamadas a SSOGetEntitiesForApp alrededor de las 2:07 y 2:13 AM tardando ~35-37 segundos y terminando con Microsoft.Data.SqlClient.SqlException: Execution Timeout Expired.
+- Query Store de dbSSO muestra que durante esa misma ventana las ejecuciones de SSOGetEntitiesForApp dentro de SQL Server tardaron como máximo ~65 ms y no aparecen ejecuciones Aborted.
+
+Por lo tanto, quiero investigar si el tiempo se está consumiendo en la adquisición/apertura/gestión de conexiones y especialmente en el connection pool de SqlClient.
+
+No hagas cambios. Investiga toda la solución DS.Web.SSOApi y reporta:
+
+1. Todas las ubicaciones donde se crea o recibe un SqlConnection relacionado con la conexión a dbSSO.
+2. Para cada ubicación, indica si SqlConnection, SqlCommand, SqlDataReader y SqlTransaction quedan garantizadamente disposed tanto en éxito como en excepción.
+3. Busca específicamente SqlConnection creadas sin using/await using/try-finally.
+4. Busca DataReader o Transaction que puedan mantener una conexión ocupada.
+5. Busca conexiones almacenadas en campos de instancia, static, Singleton o servicios de larga duración.
+6. Revisa ConnectionManager y todos sus consumidores.
+7. Obtén la configuración efectiva de la cadena SSODBConnectionString relacionada con pooling:
+   - Pooling
+   - Max Pool Size
+   - Min Pool Size
+   - Connect Timeout / Connection Timeout
+   No muestres usuario ni password.
+8. Revisa si existe SqlConnection.ClearPool/ClearAllPools o alguna configuración global de SqlClient/Dapper.
+9. Identifica cualquier patrón que pueda provocar pool exhaustion aunque GetEntitiesForApp individualmente utilice using correctamente.
+10. Busca si hay llamadas síncronas db.Open() dentro de métodos async y cuántas rutas utilizan ese patrón.
+
+No propongas correcciones todavía.
+
+Al final clasifica cada hallazgo como:
+- HECHO
+- POSIBLE RIESGO
+- SIN EVIDENCIA
+
+Quiero determinar primero si existe evidencia real que apoye la hipótesis de connection disposal / connection pool.
