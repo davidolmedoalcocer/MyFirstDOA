@@ -1,0 +1,22 @@
+Responde todo en español.
+
+No modifiques ningún archivo.
+
+Ya confirmamos que GET /SSOAdmin/GetEntitiesForApp?appID=117 termina ejecutando el stored procedure SSOGetEntitiesForApp y que el SqlConnection se crea dentro de un using, por lo que no hay una fuga obvia de conexión en ese método.
+
+Ahora quiero investigar específicamente el stored procedure SSOGetEntitiesForApp.
+
+1. Busca en toda la solución, incluyendo archivos .sql, scripts de deployment, proyectos de base de datos, migrations y cualquier otro archivo, la definición completa de SSOGetEntitiesForApp.
+2. Si encuentras la definición, muéstramela completa y explícame:
+   - tablas y vistas consultadas;
+   - JOINs;
+   - subqueries;
+   - funciones llamadas;
+   - otros stored procedures llamados;
+   - posibles operaciones que puedan bloquearse;
+   - filtros que utiliza @ApplicationID;
+   - si existen hints, cursores, tablas temporales o SQL dinámico.
+3. Busca también scripts que creen índices sobre las tablas utilizadas por ese stored procedure.
+4. Dime si existe alguna razón visible en el código SQL por la que varias ejecuciones concurrentes de SSOGetEntitiesForApp para @ApplicationID = 117 puedan quedar esperando durante aproximadamente 30 segundos.
+
+Si la definición de SSOGetEntitiesForApp NO existe en este repositorio, dímelo claramente y no inventes su contenido. En ese caso, indícame exactamente qué necesitaríamos consultar de SQL Server para continuar la investigación, únicamente con consultas de lectura.
