@@ -1,0 +1,193 @@
+Responde todo en español.
+
+Quiero que EJECUTES una prueba controlada para confirmar o descartar si el problema observado en producción puede deberse a presión/agostamiento del connection pool de SQL Server.
+
+IMPORTANTE:
+- NO TOQUES PRODUCCIÓN.
+- NO EJECUTES NINGUNA PRUEBA CONTRA PRODUCCIÓN.
+- NO MODIFIQUES NINGÚN ARCHIVO DE PRODUCCIÓN.
+- NO HAGAS COMMIT.
+- NO HAGAS PUSH.
+- Si detectas en cualquier momento que la aplicación, la connection string o algún recurso apunta a Production, DETENTE inmediatamente y repórtalo.
+- La prueba debe hacerse primero en LOCAL/Development.
+- Solo usa operaciones de lectura. No INSERT, UPDATE, DELETE, POST, PUT, envío de correo ni generación de tokens.
+
+Ya sabemos lo siguiente:
+
+1. En producción Datadog mostró que:
+   GET /SSOAdmin/GetEntitiesForApp?appID=117
+   tarda aproximadamente 35-37 segundos y termina en HTTP 500.
+
+2. El error observado fue:
+   Microsoft.Data.SqlClient.SqlException:
+   Execution Timeout Expired.
+
+3. Query Store de dbSSO mostró que SSOGetEntitiesForApp realmente se ejecutó dentro de SQL Server en milisegundos durante el incidente, no en 35-37 segundos.
+
+4. El código de GetEntitiesForApp usa:
+   using SqlConnection
+   db.Open()
+   QueryAsync
+   por lo que no hay una fuga obvia de Dispose en ese método.
+
+5. Toda SSOApi comparte el mismo SSODBConnectionString/pool.
+
+6. GetUserAsync mantiene una conexión abierta mientras dentro de un foreach ejecuta otras operaciones que adquieren conexiones adicionales.
+
+7. La mayoría de las aperturas SQL de la solución usan .Open() síncrono, incluso dentro de métodos async.
+
+OBJETIVO DE LA PRUEBA:
+
+Determinar si, bajo presión del pool, GetEntitiesForApp puede tardar segundos o decenas de segundos esperando en la apertura/adquisición de SqlConnection mientras SSOGetEntitiesForApp continúa ejecutándose rápidamente dentro de SQL Server.
+
+PROCEDIMIENTO:
+
+FASE 0 - VALIDACIÓN DE SEGURIDAD
+
+Antes de modificar o ejecutar cualquier cosa:
+
+1. Ejecuta la aplicación con ASPNETCORE_ENVIRONMENT=Development.
+2. Determina qué servidor y base de datos resuelve realmente SSODBConnectionString.
+3. NO muestres usuario ni password.
+4. Reporta únicamente:
+   - servidor
+   - base de datos
+   - ambiente
+5. Verifica explícitamente que NO sea:
+   LWVPDBSQLA020.ngls.ngic.com
+   ni ningún recurso de Production.
+6. Si apunta a Production, DETENTE. No continúes.
+
+FASE 1 - INSTRUMENTACIÓN TEMPORAL LOCAL
+
+En una rama/copia local de prueba, sin commit:
+
+Instrumenta únicamente lo necesario para medir GetEntitiesForApp:
+
+A. tiempo de db.Open/OpenAsync
+B. tiempo de QueryAsync de SSOGetEntitiesForApp
+C. tiempo total del método/request
+
+Usa Stopwatch o DiagnosticListener, el método más simple y confiable.
+
+Los logs deben incluir un CorrelationId y valores similares a:
+
+GetEntitiesForApp
+CorrelationId=...
+OpenMs=...
+QueryMs=...
+TotalMs=...
+
+No registres credenciales ni connection strings completas.
+
+FASE 2 - POOL CONTROLADO
+
+Solo en Development/local:
+
+Configura temporalmente el SSODBConnectionString usado por ESA ejecución con:
+
+Max Pool Size=5
+
+No modifiques ninguna configuración compartida ni de Production.
+
+Antes de continuar confirma en runtime que Max Pool Size=5 está siendo usado por el proceso local.
+
+FASE 3 - BASELINE
+
+Ejecuta varias llamadas:
+
+GET /SSOAdmin/GetEntitiesForApp?appID=117
+
+sin carga adicional.
+
+Registra:
+- cantidad de requests
+- HTTP status
+- OpenMs
+- QueryMs
+- TotalMs
+- p50/p95/max si es posible
+
+FASE 4 - GENERAR PRESIÓN
+
+Usa exclusivamente:
+
+GET /Users/GetUser?logonName=<USUARIO_DE_PRUEBA>
+
+con un usuario de prueba que exista únicamente en el ambiente no productivo.
+
+Genera concurrencia incremental, por ejemplo:
+5, 10, 20 requests concurrentes.
+
+Al mismo tiempo continúa enviando GetEntitiesForApp?appID=117 con baja concurrencia.
+
+No generes carga excesiva innecesaria. Detén la prueba en cuanto obtengas evidencia suficiente.
+
+FASE 5 - OBSERVAR EL POOL
+
+Mientras corre la prueba, intenta obtener contadores de Microsoft.Data.SqlClient.EventSource mediante dotnet-counters u otra herramienta local disponible.
+
+Quiero, si están disponibles:
+- conexiones activas
+- conexiones libres
+- conexiones pooled
+- pools activos
+
+Si dotnet-counters no puede obtenerlos, no bloquees toda la prueba por esto: continúa con las mediciones OpenMs/QueryMs/TotalMs.
+
+FASE 6 - RESULTADO
+
+Al terminar, NO propongas todavía correcciones.
+
+Entrégame únicamente este reporte:
+
+ENVIRONMENT_CHECK
+Environment=
+SQLServer=
+Database=
+PRODUCTION=false/true
+
+BASELINE
+Requests=
+OpenMs p50/p95/max=
+QueryMs p50/p95/max=
+TotalMs p50/p95/max=
+Errors=
+
+UNDER_POOL_PRESSURE
+Concurrency=
+OpenMs p50/p95/max=
+QueryMs p50/p95/max=
+TotalMs p50/p95/max=
+Errors=
+PoolActive=
+PoolFree=
+
+VERDICT=
+CONFIRMADA
+o
+DESCARTADA
+o
+INCONCLUSA
+
+CRITERIO:
+
+CONFIRMADA:
+- bajo presión las conexiones libres llegan aproximadamente a 0 o el pool muestra saturación,
+- Open tarda significativamente más,
+- GetEntitiesForApp sube a segundos/decenas de segundos,
+- QueryAsync sigue ejecutándose en milisegundos.
+
+DESCARTADA:
+- aun saturando controladamente el pool, Open no presenta una degradación significativa o el retraso real ocurre en otra fase.
+
+INCONCLUSA:
+- no hay información suficiente para demostrar ninguna de las dos.
+
+Finalmente:
+- revierte todos los cambios temporales de instrumentación/configuración local que hayas realizado.
+- confirma que no quedó ningún archivo modificado.
+- confirma que no hiciste commit ni push.
+
+No me des una propuesta de cómo hacer la prueba.
+EJECÚTALA y dame los resultados.
