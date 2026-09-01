@@ -1,0 +1,127 @@
+Searched for text `GetEntitiesForApp`, 8 results
+
+Searched for text `SSOGetEntitiesForApp`, 1 result
+
+Encontrado. Ahora reviso los archivos completos: el controlador, el servicio, el repositorio (incluyendo cómo se obtiene `db`/`SqlConnection`), y cualquier fábrica de conexión o configuración de Dapper.   
+
+Read , lines 1 to 120
+
+Read , lines 1 to 180
+
+Read , lines 1 to 100
+
+Ahora reviso el método específico `GetEntitiesForApp` del repositorio con más contexto (líneas 340-380), además de `ConnectionManager` para entender cómo se construye/gestiona el `SqlConnection`.  
+
+Searched for text `class ConnectionManager`, 1 result
+
+Read , lines 330 to 380
+
+Searched for regex `AddScoped|AddSingleton|AddTransient|SSOAdminRepository|ConnectionManager` (`**/DS.Web.SSOApi/SSOApi/Program.cs`), 22 results
+
+Read , lines 1 to 80
+
+Searched for regex `CommandTimeout|SqlMapper\.Settings|ConnectionTimeout`, 1 result
+
+Searched for text `EntityModel` (`**/DS.Web.SSOApi/SSOApi/Models/**`), 1 result
+
+Searched for regex `SSODBConnectionString|Command Timeout|Connect Timeout` (`**/DS.Web.SSOApi/**`), 21 results
+
+Read 
+
+## Resumen de la investigación
+
+He localizado el flujo completo desde el endpoint HTTP hasta el stored procedure. No he modificado ningún archivo.
+
+### 1. Controlador/acción que maneja `GetEntitiesForApp`
+
+`SSOAdminController.cs:142-166` — clase `SSOAdminController`, ruta `[Route("[controller]/[action]")]` → `GET /SSOAdmin/GetEntitiesForApp?appID=...`.
+
+```csharp
+[HttpGet]
+public async Task<IActionResult> GetEntitiesForApp(long appID)
+{
+    try
+    {
+        IEnumerable<EntityModel> result = await _ssoadminservice.GetEntitiesForApp(appID);
+        var groupedResult = from u in result group u by u.ADLogin into g select new { ... };
+        return Ok(groupedResult);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogEventError("GetEntitiesForApp", ex.Message);
+        return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+    }
+}
+```
+
+El controlador solo hace `await` y agrupa el resultado en memoria (LINQ `GroupBy`); toda excepción se captura y se responde 500.
+
+### 2. Cadena de métodos hasta `SSOGetEntitiesForApp`
+
+```mermaid
+graph LR
+A["SSOAdminController.GetEntitiesForApp(appID)"] --> B["SSOAdminService.GetEntitiesForApp(appID)"]
+B --> C["SSOAdminRepository.GetEntitiesForApp(appID)"]
+C --> D["Dapper: db.QueryAsync&lt;EntityModel&gt;('SSOGetEntitiesForApp', ...)"]
+D --> E["SQL Server: EXEC SSOGetEntitiesForApp @ApplicationID"]
+```
+
+- `SSOAdminService.cs:101-104`: pasa la llamada directamente al repositorio, sin lógica adicional.
+- `SSOAdminRepository.cs:362-369`: ejecuta el SP vía Dapper.
+
+### 3. Comando SQL exacto
+
+```csharp
+public async Task<IEnumerable<EntityModel>> GetEntitiesForApp(long appID)
+{
+    using SqlConnection db = new(_connectionString);
+    db.Open();
+    DynamicParameters dapperParams = new();
+    dapperParams.Add("@ApplicationID", appID);
+    return await db.QueryAsync<EntityModel>("SSOGetEntitiesForApp", param: dapperParams, commandType: CommandType.StoredProcedure);
+}
+```
+
+Es un **stored procedure**: `SSOGetEntitiesForApp`, invocado con `CommandType.StoredProcedure` y un único parámetro `@ApplicationID` (mapeado desde `appID`). No hay SQL dinámico ni texto de consulta inline. El cuerpo del SP no está en este repo (vive en la base de datos), no lo he podido inspeccionar.
+
+### 4. Ciclo de vida del `SqlConnection`
+
+- Se crea una instancia **nueva por cada llamada** con `using SqlConnection db = new(_connectionString);` (variable local con `using` declarativo de C# 8, sin bloque `{}`).
+- `_connectionString` proviene de `ConnectionManager.SSODBConnectionString()`, inyectado en el constructor del repositorio ([SSOAdminRepository.cs líneas 20-26](DS.Web.SSOApi/SSOApi/Data/SSOAdminRepository.cs#L20-L26)).
+- Se abre de forma **síncrona**: `db.Open();` (no `OpenAsync`), justo después de construir el objeto.
+- No se reutiliza entre llamadas: cada método del repositorio (incluido `GetEntitiesForApp`) crea su propia conexión local.
+- Se libera automáticamente al salir del método gracias al `using` declarativo (el `Dispose()` se invoca al final del método `GetEntitiesForApp`, después del `return`).
+
+### 5. Ciclo de vida del `SqlCommand`
+
+No hay un `SqlCommand` explícito: Dapper (`db.QueryAsync<EntityModel>(...)`) construye, ejecuta y libera internamente el `SqlCommand` y el `SqlDataReader` subyacentes como parte de su implementación. El código de la app no crea ni cierra el `SqlCommand`/`SqlDataReader` manualmente.
+
+### 6. Uso de `using` / `await using` / `try-finally`
+
+- `SqlConnection`: sí usa `using` (declarativo), correcto para asegurar `Dispose()`.
+- No usa `await using` (sería `IAsyncDisposable`), sino `using` síncrono sobre un objeto que se abrió de forma síncrona (`Open()` en vez de `OpenAsync()`), pero se consulta de forma asíncrona (`QueryAsync`). Es una mezcla sync/async: apertura de conexión bloqueante dentro de un método `async`.
+- No hay `try-finally` explícito en este método (no hace falta porque el `using` ya cubre la liberación); tampoco hay manejo de excepciones dentro del repositorio — cualquier excepción se propaga hacia el servicio y luego hacia el controlador, que la captura en su `catch`.
+- `SqlCommand`/`SqlDataReader`: gestionados internamente por Dapper, no hay control manual visible en este código.
+
+### 7. `CommandTimeout`
+
+No se especifica `commandTimeout` en la llamada `QueryAsync` (el parámetro no se pasa). Tampoco se configura `SqlMapper.Settings.CommandTimeout` global en ningún punto del código (búsqueda sin coincidencias) ni se define `Command Timeout=` en la cadena de conexión ([appsettings.json línea 54](DS.Web.SSOApi/SSOApi/appsettings.json#L54), que además está comentada). Por tanto, se usa el valor por defecto de `SqlCommand`: **30 segundos**.
+
+### 8. Uso de transacciones
+
+No se usa ninguna transacción (`SqlTransaction`, `TransactionScope`, ni parámetro `transaction:` en Dapper) en `GetEntitiesForApp`. Es una simple lectura (`QueryAsync` de un SP) sin `BEGIN TRAN`.
+
+### 9. Locks, semáforos, singletons o conexiones compartidas
+
+- `ConnectionManager` está registrado como **Singleton** (`builder.Services.AddSingleton<ConnectionManager>();` en `Program.cs:82`), pero **solo almacena el string de conexión** (`_ssoDBConnectionString`), no una instancia de `SqlConnection`. No hay conexión compartida a nivel de objeto.
+- `SSOAdminRepository` y `SSOAdminService` están registrados como **Transient** (líneas 88 y 98 de `Program.cs`), es decir, se crea una instancia nueva por cada resolución de DI (típicamente por request).
+- No encontré `lock`, `Monitor`, `SemaphoreSlim`, `Mutex`, campos `static` de `SqlConnection`/`SqlCommand`, ni ningún objeto de conexión compartido entre requests en toda la cadena de `GetEntitiesForApp`.
+
+### 10. ¿Podrían varias solicitudes concurrentes compartir/serializarse en la misma conexión?
+
+Con este diseño (conexión local `using` creada por llamada, repositorio/servicio Transient, sin campos estáticos ni singleton de conexión), **cada solicitud HTTP concurrente obtiene su propia `SqlConnection`** física (se apoya en el pool de conexiones ADO.NET subyacente, pero cada `SqlConnection` de aplicación es una instancia independiente). No hay puntos de serialización explícitos (locks/semáforos) en este código, por lo que las solicitudes a `GetEntitiesForApp` no deberían bloquearse entre sí a nivel de aplicación por este método en particular.
+
+### Notas adicionales observadas (sin relación directa con los 10 puntos, pero relevantes al contexto)
+
+- Este mismo patrón (`using SqlConnection db = new(...); db.Open();` seguido de `await db.QueryAsync/ExecuteAsync`) se repite en casi todos los métodos de `SSOAdminRepository.cs`, así como en `SSOAccountRepository.cs` y `AccountService.cs`.
+- El archivo actualmente abierto en el editor (`RequestResponseLogging.cs`) es un middleware de logging de request/response y no interviene en esta cadena de llamadas.
