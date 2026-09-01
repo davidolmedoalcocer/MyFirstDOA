@@ -1,0 +1,137 @@
+Searched for text `GetUserAsync` (`**/DS.Web.SSOApi/SSOApi/**`), 10 results
+
+Read 
+
+Searched for text `Environment` (`**/DS.Web.SSOApi/SSOApi/appsettings*.json`), 30 results
+
+Searched for text `public async Task|public Task|GetUserAsync` (`**/DS.Web.SSOApi/SSOApi/Services/UserService.cs`), 17 results
+
+Read , lines 1 to 120
+
+Read , lines 1 to 60
+
+Read , lines 1 to 45
+
+Con esto tengo confirmado el endpoint de refuerzo (`GET /Generic/GetCodeTranslations`, `GET /Generic/GetEntitlements`) además del principal (`GET /Users/GetUser`). Con esto ya no necesito más exploración; entrego la propuesta de arquitectura de prueba (sin código, sin ejecución, sin tocar producción).
+
+---
+
+## Propuesta de arquitectura de reproducción — presión sobre el pool de `SSODBConnectionString`
+
+### 1. Ambiente más seguro: LOCAL primero, UAT como confirmación
+
+**Recomendación: `LOCAL` (Development) para la primera iteración, y `Staging`/`QA` (equivalente a UAT) solo para confirmar con datos más realistas.**
+
+Verifiqué en el código que esto es seguro por diseño:
+- `appsettings.Development.json`, `appsettings.QA.json` y `appsettings.Staging.json` apuntan los tres a `EnvironmentDetectorAPIBaseUrl = https://env-detector-api-dev.appstest.ngls.ngic.com/...` (dominio de **test**).
+- Solo `appsettings.Production.json` apunta a `https://env-detector-api.appsprod.ngls.ngic.com/...` (dominio de **prod**).
+
+Es decir, mientras la prueba se ejecute con `ASPNETCORE_ENVIRONMENT=Development`, `QA` o `Staging` (nunca `Production`), estructuralmente **no hay forma de que `ConnectionManager`/`EnvironmentDetector` resuelvan el `SSODBConnectionString` de producción**, porque el resolver de recursos ya apunta a otro dominio.
+
+Reglas adicionales de seguridad para la ejecución:
+- Confirmar explícitamente qué instancia de `dbSSO` resuelve `LOCAL`/`QA`/`Staging` antes de empezar (pedir a alguien con acceso que lo verifique, o inspeccionar el valor ya resuelto en logs de arranque de un ambiente no productivo — sin exponerlo en texto plano si contiene credenciales).
+- Usar solo cuentas/`logonName` de prueba ya conocidas en esa base (no reutilizar logins reales de producción).
+- Si `UAT`/`Staging` es compartido por otros equipos, coordinar una ventana de prueba (la carga que generaremos es intencional y puede degradar el servicio para otros usuarios de ese ambiente mientras dure).
+- No usar `ClearAllPools`, no reiniciar el proceso a mitad de prueba, no tocar `appsettings.Production.json` en ningún momento.
+
+### 2. Métodos de solo lectura disponibles para generar presión sobre el mismo pool
+
+Todos estos comparten el mismo `SSODBConnectionString`/pool que `SSOGetEntitiesForApp`:
+
+| Endpoint HTTP | Método interno | Efectos secundarios |
+|---|---|---|
+| `GET /Users/GetUser?logonName=X` | `UserService.GetUser` → `SSOAuthRepository.GetUserAsync` | Ninguno (solo `SELECT`) — **candidato principal** |
+| `GET /Users/GetUserInfo?logonName=X` | `UserService.GetUserInfo` → `GetUserInfo` | Ninguno |
+| `GET /Generic/GetCodeTranslations` | `GenericService` → `GenericRepository.GetCodeTranslations` | Ninguno |
+| `GET /Generic/GetEntitlements?appID=&type=` | `GenericService` → `GenericRepository.GetEntitlements` | Ninguno |
+| `GET /Notification/...` (si existe GET) | `NotificationRepository.GetAllNotifications` | Ninguno |
+
+Explícitamente **excluidos** por tener efectos secundarios: `CreateUser`, `CreateUser2`, `CreateUserWithValidation`, `UpdateUser`, `UpdateUserStatus`, `Unlock`, `SetUserPrefs`, `Login`/`LoginShortToken` (generan tokens/registran eventos), y cualquier endpoint de `SSOAdminController` que no sea un `Get*`.
+
+### 3. Por qué priorizar `GetUserAsync`
+
+Ya documentado en la investigación anterior: `SSOAuthRepository.GetUserAsync` abre una conexión (`db`) que permanece viva durante **todo el método**, y dentro de un `foreach` sobre las aplicaciones del usuario abre **4 conexiones adicionales por cada aplicación** (`GetUserRolesAsync`, `GetUserOperationsAsync`, `GetUserTasksAsync`, `GetSSOLenderGroupsAsync`). Esto lo convierte en el **generador de presión más eficiente por request** — cada llamada a `GET /Users/GetUser` consume varias conexiones del mismo pool en rápida sucesión, más una retenida ociosamente. Usar un `logonName` de prueba con **varias aplicaciones asignadas** (mientras más aplicaciones, más conexiones por llamada) maximiza la presión generada con el menor número de requests concurrentes.
+
+### 4. Confirmación explícita
+
+No se usará `CreateUser` ni ningún método `POST`/`PUT` ni nada que envíe correo, inserte tokens o modifique datos. Todo el tráfico de la prueba será `GET` sobre operaciones de lectura pura.
+
+### 5. Cómo generar la concurrencia
+
+Arquitectura propuesta (herramienta externa al código de SSOApi, sin modificar el repo):
+
+```mermaid
+graph TB
+    A["Driver de carga externo\n(k6 / JMeter / script)"] -->|"N hilos concurrentes\nGET /Users/GetUser?logonName=..."| B["SSOApi (LOCAL/UAT)"]
+    A -->|"1-5 hilos\nGET /SSOAdmin/GetEntitiesForApp?appID=117"| B
+    B --> C["dbSSO (LOCAL/UAT, NO PROD)"]
+    D["dotnet-counters\n(Microsoft.Data.SqlClient.EventSource)"] -.observa proceso.-> B
+```
+
+- **Herramienta recomendada: k6** (script declarativo, VUs configurables, reporta percentiles p50/p90/p99/max nativamente, fácil de apuntar a una sola URL base). Alternativas equivalentes: JMeter, o un pequeño harness en C# con `HttpClient` + `Task.WhenAll` si se prefiere no introducir una herramienta nueva.
+- **Dos flujos de carga simultáneos**:
+  - Flujo A ("ruido"): `GetUser` con concurrencia creciente (ej. 10 → 20 → 50 → 100 VUs en rampas sucesivas) para saturar progresivamente el pool.
+  - Flujo B ("sonda"): `GetEntitiesForApp?appID=117` con concurrencia baja y constante (1-5 VUs), midiendo su latencia mientras el Flujo A escala. Esta es la variable que queremos observar degradarse (o no).
+- Ejecutar primero una corrida **baseline** (solo Flujo B, sin Flujo A) para tener el tiempo de referencia sin presión.
+
+### 6. Cómo separar las 4 métricas pedidas
+
+Aclaración técnica importante primero: en ADO.NET, **"esperar una conexión libre en el pool" y "abrir la conexión" son la misma llamada** (`Open()`/`OpenAsync()`) desde el punto de vista del código cliente — no hay una API pública que separe "tiempo en cola del pool" de "tiempo de negociación física" dentro de esa única llamada. Hay dos formas de aproximarnos:
+
+**Opción A (recomendada, no invasiva de código productivo):** suscribir un `DiagnosticListener` a los eventos que `Microsoft.Data.SqlClient` ya emite internamente (`Microsoft.Data.SqlClient.WriteConnectionOpenBefore/After/Error`, `Microsoft.Data.SqlClient.WriteCommandBefore/After/Error`). Esto se registra en un componente aparte (un `IObserver<DiagnosticListener>` agregado temporalmente solo en `Program.cs` de la build de prueba, o incluso en un proceso externo que se adjunte vía `DiagnosticSource`), sin tocar los repositorios existentes. Con esto se obtiene, por cada operación real: duración de `Open` y duración de `Command` (que incluye el `QueryAsync` de Dapper) por separado.
+
+**Opción B (más simple pero requiere una rama de prueba del código):** instrumentar temporalmente (solo en una build de prueba, nunca en el código que llega a producción) con `Stopwatch` alrededor de cada fase dentro de una copia de `GetUserAsync`/`GetEntitiesForApp`:
+```
+sw_open.Start(); await conn.OpenAsync(); sw_open.Stop();
+sw_query.Start(); await conn.QueryAsync(...); sw_query.Stop();
+```
+y loguear ambos valores + el timestamp, correlacionados con un `CorrelationId` por request.
+
+En ambos casos, la **duración total del request** se mide desde el lado del driver de carga (k6 registra el round-trip HTTP completo de forma nativa, sin instrumentación adicional) — esa es la métrica de "duración total".
+
+Resumen de las 4 métricas y su fuente:
+
+| Métrica pedida | Cómo se obtiene |
+|---|---|
+| Tiempo esperando/adquiriendo `SqlConnection` | Subsumido dentro de `Open`/`OpenAsync` (ver aclaración arriba); se infiere comparando la duración de `Open` con los contadores del pool (si el pool está saturado, ese tiempo alto = espera de pool, no negociación de red) |
+| Tiempo de `Open`/`OpenAsync` | Evento `WriteConnectionOpenAfter` menos `WriteConnectionOpenBefore` (Opción A) o `Stopwatch` (Opción B) |
+| Tiempo de `QueryAsync` | Evento `WriteCommandAfter` menos `WriteCommandBefore` (Opción A) o `Stopwatch` (Opción B) |
+| Duración total del request | Medido por el driver de carga (k6/JMeter) desde el cliente HTTP |
+
+### 7. Cómo observar el pool durante la prueba
+
+- **`dotnet-counters monitor -p <PID> Microsoft.Data.SqlClient.EventSource`** (herramienta oficial de .NET, no requiere cambios de código): expone en vivo, mientras corre la prueba, contadores como `numberOfActiveConnections`, `numberOfFreeConnections`, `numberOfPooledConnections`, `numberOfNonPooledConnections`, `numberOfActiveConnectionPools`, `numberOfStasisConnections`. Esto permite confirmar objetivamente si el pool está saturado (activas ≈ Max Pool Size, libres ≈ 0) en el mismo instante en que `GetEntitiesForApp` se vuelve lento.
+- Complementar con **Query Store en la instancia LOCAL/UAT** (igual que se hizo en producción) para confirmar que, durante la prueba, `SSOGetEntitiesForApp` sigue ejecutándose rápido dentro de SQL Server aunque el request completo tarde más — esa es la firma que buscamos reproducir.
+- Opcional/avanzado: captura ETW con `dotnet-trace collect --providers Microsoft.Data.SqlClient.EventSource` y análisis posterior en PerfView, si se necesita más detalle temporal que los contadores agregados.
+
+### 8. Reducir `Max Pool Size` temporalmente — solo en LOCAL/UAT
+
+**Sí, es recomendable** para hacer el escenario reproducible sin necesitar cientos de conexiones concurrentes reales. Propuesta:
+- Definir un `SSODBConnectionString` de prueba con `Max Pool Size=5` (o similar, un número pequeño) **únicamente** en la configuración local del desarrollador (`appsettings.Development.json` de una copia local no versionada, `dotnet user-secrets`, o una variable de entorno del proceso local) apuntando a la base de datos LOCAL/UAT — **nunca modificar `appsettings.Production.json` ni el recurso resuelto en `Production`**.
+- Con un pool pequeño, bastan ~10-20 VUs de `GetUser` concurrentes para saturarlo y observar el efecto, en vez de necesitar cientos de conexiones simultáneas para replicar una saturación equivalente al `Max Pool Size` real (probablemente 100 por defecto, según lo documentado antes como no confirmado).
+- Esto también acelera las iteraciones de la prueba y reduce la carga necesaria sobre la infraestructura de UAT compartida.
+
+### 9. Confirmación explícita de que no se ejecuta nada todavía
+
+No se realizó ningún cambio de código, no se generó ningún script de carga, y no se ejecutó ninguna prueba. Esto es únicamente el diseño de la reproducción.
+
+---
+
+## Criterio de éxito: CONFIRMADA vs. DESCARTADA
+
+**Hipótesis CONFIRMADA** si, durante la fase de saturación (contadores del pool mostrando `numberOfFreeConnections ≈ 0` y `numberOfActiveConnections ≈ Max Pool Size`):
+- La duración total de `GetEntitiesForApp(appID=117)` sube a segundos/decenas de segundos.
+- La fase `Open`/`OpenAsync` (medida por Opción A o B) concentra la gran mayoría de ese incremento.
+- La fase `QueryAsync` se mantiene en el orden de milisegundos, consistente con lo que Query Store también reporta en la instancia LOCAL/UAT.
+
+Esto reproduciría exactamente la firma observada en producción (Datadog: 35-37s totales / Query Store: ~65ms internos).
+
+**Hipótesis DESCARTADA (o insuficiente por sí sola)** si:
+- El pool se satura (confirmado por contadores) pero `GetEntitiesForApp` no muestra degradación relevante en su duración total, o la degradación aparece en `QueryAsync` en vez de en `Open`.
+- No se logra reproducir una degradación de decenas de segundos ni con `Max Pool Size` reducido y alta concurrencia — lo que apuntaría a que la causa real en producción está en otra capa (red, DNS, autenticación, un problema puntual de infraestructura, etc.) y no en presión de pool generada por el propio código de SSOApi.
+
+**Resultado intermedio/parcial** (probable y también informativo): si se observa degradación real pero moderada (segundos, no decenas de segundos) — indicaría que la presión de pool **es un factor contribuyente demostrado**, pero que el incidente de producción probablemente combinó esto con un volumen de concurrencia mayor o con otro factor no reproducido exactamente en el laboratorio. 
+
+
+
+Diseño de la prueba entregado, sin cambios de código ni ejecución, listo para revisión antes de implementarlo.
