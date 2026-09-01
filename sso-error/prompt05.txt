@@ -1,0 +1,35 @@
+Responde todo en español.
+
+No modifiques producción y no ejecutes nada contra producción.
+
+Quiero preparar una reproducción controlada del posible agotamiento/presión del connection pool de SSOApi.
+
+Objetivo:
+Reproducir fuera de producción una situación donde varias operaciones consuman el mismo pool de SSODBConnectionString y verificar si GetEntitiesForApp empieza a tardar decenas de segundos aunque SSOGetEntitiesForApp dentro de SQL Server siga ejecutándose rápidamente.
+
+Antes de escribir código:
+
+1. Determina cuál es la forma más segura de ejecutar esta prueba usando LOCAL o UAT.
+2. Identifica qué métodos de solo lectura podemos usar para generar presión sobre el mismo pool.
+3. Prioriza GetUserAsync, porque ya vimos que mantiene una conexión abierta mientras ejecuta varias operaciones que abren conexiones adicionales.
+4. NO uses CreateUser ni ningún método que escriba datos, envíe emails o genere efectos secundarios.
+5. Identifica cómo podemos llamar simultáneamente:
+   - varias ejecuciones de GetUserAsync
+   - GetEntitiesForApp con appID=117
+6. Quiero medir por separado:
+   - tiempo esperando/adquiriendo SqlConnection
+   - tiempo de Open/OpenAsync
+   - tiempo de ejecución de QueryAsync
+   - duración total del request
+7. Propón cómo observar el connection pool durante la prueba.
+8. Si conviene usar temporalmente un Max Pool Size pequeño SOLO en LOCAL/UAT para hacer reproducible el escenario, indícalo claramente.
+9. No hagas todavía ningún cambio ni ejecutes la prueba.
+
+Entrégame únicamente:
+- arquitectura de la prueba
+- qué ambiente usar
+- qué endpoints/métodos usar
+- qué métricas capturar
+- cómo sabremos si la hipótesis queda CONFIRMADA o DESCARTADA
+
+No propongas todavía la solución al problema.
