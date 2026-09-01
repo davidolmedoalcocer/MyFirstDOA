@@ -1,0 +1,201 @@
+Searched for regex `CREATE\s+(OR\s+ALTER\s+)?PROCEDURE|SSOGetEntitiesForApp`, 1 result
+
+Searched for files matching `**/*.sql`, no matches
+
+
+
+No hay archivos `.sql` ni proyecto de base de datos en el repo. Confirmo con una búsqueda más amplia y reviso los servidores MSSQL configurados en la extensión antes de conectar.   
+
+Searched for files matching `**/*.dacpac`, no matches
+
+Searched for files matching `**/migrations/**`, no matches
+
+Listing server connections
+Completed with input: {}
+
+
+
+Connecting using profile d586ee3b-9bb1-4346-9cfe-ce82840738f1
+Completed with input: {
+  "serverName": "LWVPDBSQLA020.ngls.ngic.com",
+  "database": "dbSSO",
+  "profileId": "d586ee3b-9bb1-4346-9cfe-ce82840738f1"
+}
+
+Conectado a `dbSSO-PROD`. Ahora obtengo la definición completa del stored procedure y metadatos de bloqueo/planes en ejecución (todo de solo lectura). 
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.SSOGetEntitiesForApp')) AS Definicion;",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "OTHER"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "\nSELECT t.name AS TableName, i.name AS IndexName, i.type_desc, i.is_unique, i.is_primary_key,\n       STRING_AGG(c.name, ', ') WITHIN GROUP (ORDER BY ic.key_ordinal) AS Columnas,\n       i.fill_factor, i.has_filter\nFROM sys.indexes i\nJOIN sys.tables t ON t.object_id = i.object_id\nJOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id AND ic.is_included_column = 0\nJOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id\nWHERE t.name IN ('UserEntitlement','User','Entitlement','Role')\nGROUP BY t.name, i.name, i.type_desc, i.is_unique, i.is_primary_key, i.fill_factor, i.has_filter\nORDER BY t.name, i.name;\n",
+  "queryIntent": "schema_exploration",
+  "queryTypes": [
+    "SELECT",
+    "INDEX"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "\nSELECT name, is_read_committed_snapshot_on, snapshot_isolation_state_desc\nFROM sys.databases WHERE name = 'dbSSO';\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "\nSELECT tr.name AS TriggerName, t.name AS TableName, tr.is_disabled\nFROM sys.triggers tr\nJOIN sys.tables t ON t.object_id = tr.parent_id\nWHERE t.name IN ('UserEntitlement','User','Entitlement','Role');\n",
+  "queryIntent": "schema_exploration",
+  "queryTypes": [
+    "SELECT",
+    "TRIGGER"
+  ]
+}
+
+Read , lines 1 to 200
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Read , lines 200 to 450
+
+Read , lines 450 to 554
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "\nSELECT t.name AS TableName, SUM(p.rows) AS FilasAprox, t.lock_escalation_desc\nFROM sys.tables t\nJOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0,1)\nWHERE t.name IN ('UserEntitlement','User','Entitlement','Role')\nGROUP BY t.name, t.lock_escalation_desc;\n",
+  "queryIntent": "performance_tuning",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "\nSELECT r.session_id, r.blocking_session_id, r.wait_type, r.wait_time, r.status, r.command,\n       SUBSTRING(st.text, 1, 300) AS QueryText\nFROM sys.dm_exec_requests r\nCROSS APPLY sys.dm_exec_sql_text(r.sql_handle) st\nWHERE r.blocking_session_id <> 0 OR st.text LIKE '%SSOGetEntitiesForApp%' OR st.text LIKE '%UserEntitlement%' OR st.text LIKE '%Entitlement%';\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Running query on connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200",
+  "query": "\nSELECT OBJECT_NAME(mid.object_id) AS TableName, mid.equality_columns, mid.inequality_columns, mid.included_columns,\n       migs.user_seeks, migs.user_scans, migs.avg_total_user_cost, migs.avg_user_impact\nFROM sys.dm_db_missing_index_details mid\nJOIN sys.dm_db_missing_index_groups mig ON mig.index_handle = mid.index_handle\nJOIN sys.dm_db_missing_index_group_stats migs ON migs.group_handle = mig.index_group_handle\nWHERE mid.database_id = DB_ID('dbSSO') AND OBJECT_NAME(mid.object_id) IN ('UserEntitlement','User','Entitlement','Role');\n",
+  "queryIntent": "performance_tuning",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Read , lines 1 to 200
+
+Read , lines 280 to 700
+
+Read , lines 700 to 754
+
+Disconnecting from connection 'dbSSO-PROD' (ID: 9718bf9b-01a0-48b2-9c2b-644436504200)
+Completed with input: {
+  "connectionId": "9718bf9b-01a0-48b2-9c2b-644436504200"
+}
+
+## Resultado de la investigación en `dbSSO-PROD`
+
+No he modificado ningún archivo ni objeto de base de datos; todas las consultas ejecutadas contra `LWVPDBSQLA020.ngls.ngic.com` (perfil `dbSSO-PROD`, base `dbSSO`) fueron de solo lectura (`OBJECT_DEFINITION`, DMVs `sys.dm_*`, catálogos `sys.indexes`/`sys.tables`).
+
+### 1. Definición completa de `SSOGetEntitiesForApp`
+
+No existe ningún `.sql`, proyecto de base de datos, script de despliegue ni carpeta de migrations en el repositorio (`file_search` sobre `**/*.sql`, `**/*.dacpac` y `**/migrations/**` no devolvió resultados). La definición **solo vive en SQL Server**, y la obtuve directamente de `dbSSO-PROD`:
+
+```sql
+CREATE PROCEDURE [dbo].[SSOGetEntitiesForApp]
+	@ApplicationID as BigInt
+AS
+	BEGIN
+		SELECT DISTINCT u.FullName , u.ADLogin , u.SiteID, e.[Name] AS [Role]
+		FROM UserEntitlement ue 
+		INNER JOIN [User] u ON ue.UserID = u.UserID	
+		INNER JOIN Entitlement e ON ue.EntitlementID = e.EntitlementID
+		INNER JOIN [Role] r ON r.EntitlementID = e.EntitlementID
+		WHERE e.ApplicationID = @ApplicationID
+	END
+```
+
+### 2. Análisis del cuerpo del SP
+
+- **Tablas consultadas**: `UserEntitlement` (alias `ue`), `[User]` (alias `u`), `Entitlement` (alias `e`), `[Role]` (alias `r`). No hay vistas.
+- **JOINs**: 3 `INNER JOIN` en cadena:
+  - `UserEntitlement.UserID = User.UserID`
+  - `UserEntitlement.EntitlementID = Entitlement.EntitlementID`
+  - `Role.EntitlementID = Entitlement.EntitlementID`
+- **Subqueries**: ninguna.
+- **Funciones llamadas**: ninguna (solo `SELECT DISTINCT` con columnas planas).
+- **Otros stored procedures llamados**: ninguno.
+- **Filtro `@ApplicationID`**: se aplica una sola vez, en `WHERE e.ApplicationID = @ApplicationID` (sobre la tabla `Entitlement`, no directamente sobre `UserEntitlement` ni `Role`).
+- **Hints, cursores, tablas temporales, SQL dinámico**: no hay nada de esto. Es un `SELECT` estático, sin `WITH (NOLOCK)`, sin `OPTION (RECOMPILE)`, sin `#temp`/`@table`, sin `sp_executesql`.
+- El `DISTINCT` obliga a un paso de eliminación de duplicados (sort/hash) sobre todo el conjunto intermedio antes de devolver filas.
+
+### 3. Índices existentes sobre las tablas usadas
+
+| Tabla | Índice | Tipo | Columnas | Filas aprox. |
+|---|---|---|---|---|
+| `Entitlement` | `PK_Entitlement` | CLUSTERED (PK) | `EntitlementID` | 336 |
+| `Role` | `PK_Role` | CLUSTERED (PK) | `RoleID` | 112 |
+| `User` | `PK_User` | CLUSTERED (PK) | `UserID` | 95,046 |
+| `User` | `IX_User` | NONCLUSTERED | `ADLogin` | — |
+| `UserEntitlement` | `PK_UserEntitlement` | CLUSTERED (PK) | `UserEntitlementID` (surrogate) | 13,725 |
+
+**Hallazgo clave**: ninguna de las columnas usadas en los `JOIN`/`WHERE` del SP (`Entitlement.ApplicationID`, `UserEntitlement.UserID`, `UserEntitlement.EntitlementID`, `Role.EntitlementID`) tiene un índice propio. Solo existen las claves primarias sobre columnas *surrogate* (`EntitlementID`, `RoleID`, `UserEntitlementID`) que no coinciden con los predicados de unión. Esto obliga al optimizador a hacer **escaneos completos del índice clúster** de `UserEntitlement`, `Role` y `Entitlement` en cada ejecución (aunque `Entitlement` y `Role` son pequeñas — 336 y 112 filas — el costo ahí es bajo; el problema real está en `UserEntitlement`, con ~13,725 filas).
+
+No se encontraron scripts en el repo que creen índices sobre estas tablas (no hay `.sql` en absoluto).
+
+Confirmado por SQL Server mismo vía `sys.dm_db_missing_index_details`: hay índices "faltantes" sugeridos sobre `UserEntitlement`, con estadísticas de uso muy altas:
+
+| Tabla sugerida | Columnas de igualdad | `user_seeks` (veces que se habría beneficiado) | `avg_user_impact` |
+|---|---|---|---|
+| `UserEntitlement` | `EntitlementID` | 1,349,659 | 34.86% |
+| `UserEntitlement` | `UserID` | 23,531,106 | 28.15% |
+| `UserEntitlement` | `UserID, EntitlementID` | 4,003,295 | 29.55% |
+| `UserEntitlement` | `UserID` | 44 | 36.23% |
+
+Esto confirma que `UserEntitlement` es escaneada masivamente (millones de accesos registrados) por consultas que filtran/unen por `UserID`/`EntitlementID` sin índice de soporte — patrón consistente con lo que hace `SSOGetEntitiesForApp` (y probablemente otros SPs del mismo módulo).
+
+### 4. ¿Por qué podrían quedarse ~30s esperando ejecuciones concurrentes con `@ApplicationID = 117`?
+
+Con la información disponible en el código SQL y en los metadatos del servidor, identifiqué las siguientes condiciones que **hacen plausible** un bloqueo cercano a 30 segundos (coincide con el `CommandTimeout` por defecto de 30s detectado en la investigación anterior del lado .NET), aunque no pude capturar un bloqueo en curso en este momento (no había sesiones bloqueadas al consultar `sys.dm_exec_requests`):
+
+- **`READ_COMMITTED_SNAPSHOT` está `OFF`** y el aislamiento de snapshot está `OFF` en `dbSSO`. Esto significa que la base usa el modelo de **bloqueo pesimista clásico** bajo `READ COMMITTED`: los lectores toman locks compartidos (S) fila/página al recorrer el índice, y **pueden quedar bloqueados** por locks exclusivos (X) de transacciones de escritura concurrentes sobre las mismas filas/páginas, y viceversa.
+- **Falta de índices de soporte en `UserEntitlement`** obliga a `SSOGetEntitiesForApp` a escanear el índice clúster completo de esa tabla en cada llamada. Un escaneo completo de tabla toma locks S sobre un número mucho mayor de filas/páginas de lo necesario, aumentando drásticamente la probabilidad de "cruzarse" con locks X de escrituras concurrentes (INSERT/UPDATE/DELETE sobre `UserEntitlement`, `User`, `Entitlement` o `Role`) mientras el escaneo avanza.
+- **Escalamiento de bloqueos configurado en `TABLE`** (`lock_escalation_desc = TABLE`, el valor por defecto) en las 4 tablas: si una transacción de escritura concurrente afecta muchas filas de `UserEntitlement` (o de cualquiera de las otras tablas), SQL Server puede escalar sus locks de fila/página a un **lock exclusivo de tabla completa**. Mientras esa transacción no confirme (commit/rollback), cualquier lectura de `SSOGetEntitiesForApp` que necesite escanear esa tabla quedaría bloqueada por completo hasta que se libere ese lock de tabla — y si la transacción de escritura tarda ~30s o más (o queda esperando otro recurso), el lector expira exactamente en el `CommandTimeout` de 30s.
+- El `SELECT DISTINCT` con 3 `JOIN`s sobre una tabla de ~13,725 filas sin índices adecuados también es, por sí mismo, más lento de lo necesario, lo que **amplía la ventana temporal** durante la cual una lectura puede coincidir con una escritura concurrente y quedar en cola de espera de lock.
+- No se encontraron triggers en ninguna de las 4 tablas, así que no hay lógica adicional oculta que prolongue las transacciones de escritura por ese lado.
+
+**Importante — lo que no pude confirmar con certeza:**
+- No hay ninguna sesión bloqueada en este momento (`sys.dm_exec_requests` no mostró `blocking_session_id <> 0` distinto de la propia consulta de diagnóstico), por lo que **no pude observar un bloqueo real en vivo** para `@ApplicationID = 117`; el análisis anterior es sobre la causa estructural plausible (falta de índices + bloqueo pesimista + escalamiento a nivel de tabla), no una prueba directa de un incidente concreto.
+- No identifiqué qué proceso(s) concretos escriben en `UserEntitlement`/`Entitlement`/`Role`/`User` (procesos de administración, importaciones batch, etc.) ni su frecuencia/duración típica — eso requeriría capturar el evento de bloqueo en el momento en que ocurre.
+
+### Próximos pasos de solo lectura recomendados para profundizar (sin modificar nada)
+
+Si se quiere capturar el incidente real la próxima vez que ocurra el retraso de ~30s, sería útil (todo de solo lectura):
+1. Ejecutar, durante el incidente, `sys.dm_exec_requests` + `sys.dm_exec_sql_text` + `sys.dm_tran_locks` para identificar la sesión bloqueadora y su consulta exacta.
+2. Revisar el **Extended Events**/`system_health` de SQL Server (`sys.dm_xe_session_targets` o el sistema de anillo de bloqueos) para ver eventos de `blocked_process_report` históricos relacionados con `UserEntitlement`, `Entitlement`, `Role` o `User`.
+3. Consultar `sys.dm_exec_procedure_stats` filtrando por `SSOGetEntitiesForApp` para ver tiempos de ejecución históricos (`total_elapsed_time`, `last_elapsed_time`, `execution_count`).
+4. Identificar qué otros procedimientos/procesos escriben en esas 4 tablas (por ejemplo buscando `INSERT`/`UPDATE`/`DELETE` en las definiciones de otros SPs de `dbSSO` que referencian `UserEntitlement`).
