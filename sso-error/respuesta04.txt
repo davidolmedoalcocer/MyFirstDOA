@@ -1,0 +1,244 @@
+Created 8 todos
+
+Read 
+
+Searched for regex `SqlConnection`, 187 results
+
+Searched for regex `SqlDataReader|SqlTransaction|BeginTransaction|ExecuteReader|SqlCommand\b` (`**/DS.Web.SSOApi/**`), 4 results
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Searched for regex `db\.Open\(\)|conn\.Open\(\)|connection\.Open\(\)|\.OpenAsync\(` (`**/DS.Web.SSOApi/**`), 64 results
+
+Searched for regex `AddSingleton|AddScoped|AddTransient` (`**/DS.Web.SSOApi/SSOApi/Program.cs`), 22 results
+
+Read 
+
+Read , lines 1 to 100
+
+Read , lines 1 to 160
+
+Read , lines 160 to 260
+
+Read 
+
+Read 
+
+Read 
+
+Read , lines 580 to 640
+
+Read , lines 700 to 763
+
+Read , lines 636 to 670
+
+Searched for text `ConnectionManager` (`**/DS.Web.SSOApi/**`), 32 results
+
+Searched for regex `ConnectionString|Pooling|Pool Size|Connect Timeout|Connection Timeout` (`**/DS.Web.SSOApi/**/appsettings*.json`), 3 results
+
+Read , lines 60 to 85
+
+Searched for text `SSODBResourceNm` (`**/DS.Web.SSOApi/**`), 12 results
+
+Searched for regex `class EnvironmentDetector|GetResource\(` (`**/DS.Web.SSOApi/**`), 6 results
+
+Read , lines 1 to 120
+
+Searched for text `SSODB` (`**/DS.Web.SSOApi/**`), 32 results
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Read , lines 1 to 40
+
+Searched for regex `\w+\.Open\(\)|\.OpenAsync\(` (`**/DS.Web.SSOApi/SSOApi/**`), 65 results
+
+Completed: *Inventariar todos los archivos .cs de DS.Web.SSOApi* (1/8)
+
+## Investigación: disposal de conexiones y pool de SqlClient en `DS.Web.SSOApi`
+
+No se modificó ningún archivo. Todo lo indicado abajo proviene de lectura directa del código en `SSOApi`.
+
+---
+
+### 1. Todas las ubicaciones donde se crea un `SqlConnection`
+
+| Archivo | Cadena usada | Nº de creaciones |
+|---|---|---|
+| `Data/ConnectionManager.cs` | (no crea conexiones, solo resuelve el string) | 0 |
+| `Data/GenericRepository.cs` | `SSODBConnectionString` | 2 |
+| `Data/NotificationRepository.cs` | `SSODBConnectionString` | 1 |
+| `Data/SSOAccountRepository.cs` | `SSODBConnectionString` | 4 |
+| `Data/SSOAdminRepository.cs` | `SSODBConnectionString` | 36 (incluye la única que usa `GetEntitiesForApp`) |
+| `Data/SSOAuthRepository.cs` | `SSODBConnectionString` | 17 |
+| `Data/CMSWrapper.cs` | `CMSDBConnectionString` (pool **distinto**) | 3 |
+| `Services/AccountService.cs` | `SSODBConnectionString` | 2 (dentro de `CreateUser`) |
+
+**HECHO** — Todas las creaciones de `SqlConnection` en la solución (excepto `CMSWrapper`, que usa otra cadena/pool) comparten la misma cadena `SSODBConnectionString` resuelta por `ConnectionManager`, es decir, **comparten el mismo pool de conexiones de `Microsoft.Data.SqlClient`** a nivel de proceso. Esto significa que `SSOGetEntitiesForApp` no tiene un pool dedicado: compite por el mismo pool que login, tokens, perfiles, notificaciones, etc.
+
+---
+
+### 2. ¿`SqlConnection`/`SqlCommand`/`SqlDataReader`/`SqlTransaction` quedan garantizadamente disposed en éxito y en excepción?
+
+**HECHO** — En **todas** las 63 ubicaciones que crean `SqlConnection`, se usa `using` (ya sea declaración `using SqlConnection x = new(...)` estilo C# 8, o bloque `using (...)  { }`). Una declaración `using` en C# garantiza `Dispose()` al salir del scope **tanto en éxito como por excepción** (el compilador genera un `try/finally` implícito), así que a nivel de `SqlConnection` no encontré ninguna fuga garantizada.
+
+Casos puntuales revisados:
+- `SSOAccountRepository.GetUserPrefs`: `SqlCommand` y `SqlDataReader` también están en `using` → disposal garantizado.
+- `SSOAdminRepository.ChangeEntityAssignments`: `SqlTransaction` en `using`, con `try { ... trans.Commit(); } catch { trans.Rollback(); throw; }` → correcto, hace rollback antes de relanzar y el `using` libera `trans`/`conn` igual.
+- `SSOAuthRepository.GetSSOUserData`: usa `SqlDataAdapter` con `using`, y no llama `Open()` explícito — el adapter abre/cierra la conexión automáticamente durante `Fill()` (comportamiento estándar de ADO.NET). Correcto.
+- `SSOAdminRepository.GetGroupDetails`: única ubicación con `await conn.OpenAsync()` + `QueryMultipleAsync` (patrón 100% async correcto), usando `using` también.
+
+**Conclusión de este punto: HECHO — no hay fugas de disposal por falta de `using`.** El disposal en sí **no es la causa** de los timeouts.
+
+---
+
+### 3. `SqlConnection` creadas sin `using`/`await using`/`try-finally`
+
+**SIN EVIDENCIA** — Búsqueda exhaustiva (`new SqlConnection`, `new(...)` asignado a variable) confirma que **las 63 creaciones usan `using`**. No encontré ninguna creada "a pelo" (sin `using` ni `try/finally`).
+
+---
+
+### 4. `SqlDataReader`/`SqlTransaction` que puedan mantener una conexión ocupada más de lo necesario
+
+**HECHO (hallazgo real, no hipotético)** — En `SSOAuthRepository.cs`, el método `GetUserAsync` mantiene la conexión `db` abierta durante **todo el método**, incluido un `foreach` sobre las aplicaciones del usuario que, en cada iteración, abre y cierra **4 conexiones adicionales** (`GetUserRolesAsync`, `GetUserOperationsAsync`, `GetUserTasksAsync`, `GetSSOLenderGroupsAsync`):
+
+```csharp
+using SqlConnection db = new(_connectionString);
+db.Open();
+...
+var userApps = await db.QueryAsync<ApplicationModel>(...);   // db ya no se necesita después de esta línea
+
+foreach (var a in userApps)
+{
+    var roles = await GetUserRolesAsync(loginName, a.ApplicationID);        // abre/cierra su propia conexión
+    var operations = await GetUserOperationsAsync(loginName, a.ApplicationID); // abre/cierra su propia conexión
+    var tasks = await GetUserTasksAsync(loginName, a.ApplicationID);          // abre/cierra su propia conexión
+    app.SSOLenderGroups = await GetSSOLenderGroupsAsync(loginName, a.ApplicationID); // abre/cierra su propia conexión
+    ...
+}
+// "db" sigue abierta aquí, sin usarse, hasta el "return" al final del método
+```
+
+`db` queda abierta (ocupando un slot del pool) durante todo ese bucle aunque ya no se use después del primer `QueryAsync`. Si un usuario tiene N aplicaciones, esto genera `1 + 4×N` conexiones adquiridas/cerradas por una sola llamada a `GetUserAsync`, más 1 conexión ociosa retenida innecesariamente todo ese tiempo.
+
+Además, en `AccountService.cs` (`CreateUser`), la conexión `dbResult` queda abierta mientras se ejecuta `SendMailNotice(...)` (llamada SMTP de red) y una llamada anidada a `SetUserPrefs` (que abre otra conexión más) — es decir, una conexión SQL se mantiene abierta durante una operación de red no relacionada con la base de datos.
+
+**Clasificación: HECHO** — patrón real de conexión retenida más tiempo del necesario. No hay `SqlDataReader` sin cerrar (todos están en `using`), el problema es de **alcance/scope de la conexión**, no de disposal.
+
+---
+
+### 5. Conexiones en campos de instancia, `static`, Singleton o servicios de larga duración
+
+**SIN EVIDENCIA de una `SqlConnection` compartida** — Búsqueda de campos `static`/`readonly SqlConnection` no encontró ninguno. Ninguna clase guarda una instancia de `SqlConnection` como campo; siempre se crean y liberan dentro del método.
+
+Sin embargo, revisando el ciclo de vida en `Program.cs`:
+
+| Servicio | Ciclo de vida |
+|---|---|
+| `ConnectionManager` | **Singleton** |
+| `SSOAdminRepository`, `SSOAuthRepository`, `SSOAccountRepository`, `GenericRepository`, `NotificationRepository`, `CMSWrapper`, `AccountService`, `SSOAdminService` | **Transient** |
+
+**HECHO** — `ConnectionManager` es Singleton, pero solo almacena el **string** de conexión (`_ssoDBConnectionString`), no un objeto `SqlConnection`; esto es un patrón correcto (cachear el string, no la conexión). No constituye una conexión compartida.
+
+---
+
+### 6. `ConnectionManager` y todos sus consumidores
+
+**HECHO** — `ConnectionManager` es consumido por: `GenericRepository`, `NotificationRepository`, `SSOAccountRepository`, `SSOAdminRepository`, `SSOAuthRepository`, `CMSWrapper`, `AccountService`, `ADWrapper` (solo para `GraphApiSettings`, sin SQL), `SSOService` (solo para `NglsDomain`/`NgicHostName`, sin SQL). Todos los que hacen SQL llaman a `connectionManager.SSODBConnectionString()` (o `CMSDBConnectionString()`), que:
+
+```csharp
+public string SSODBConnectionString()
+{
+    if (string.IsNullOrWhiteSpace(_ssoDBConnectionString))
+        _ssoDBConnectionString = GetResource(_environmentKeys.SSODBResourceNm);
+    return _ssoDBConnectionString;
+}
+```
+
+Solo cachea el **texto** del connection string; no crea, abre, ni retiene ninguna conexión. No es un punto de bloqueo ni de compartición de conexiones.
+
+---
+
+### 7. Configuración efectiva de `SSODBConnectionString` (pooling)
+
+**SIN EVIDENCIA de la configuración real, y HECHO respecto a lo que sí es visible:**
+
+- En `appsettings.json` (y todos los `appsettings.*.json`), el valor de `SSODBConnectionString` está **comentado**:
+  ```
+  //"SSODBConnectionString": "Server=LWVRDBSQLA020.ngls.ngic.com;database=dbSSO; Packet Size=4096; Integrated Security=SSPI;Persist Security Info=False;TrustServerCertificate=yes;"
+  ```
+  Ese string de ejemplo **no contiene ningún parámetro de pooling** (`Pooling=`, `Max Pool Size=`, `Min Pool Size=`, `Connect Timeout=`).
+- El valor real en producción se resuelve en cascada: `SettingsService.AppSettings.SSODBConnectionString` (viene de `ProcessMonitorService.GetSystemFunctionSettingData(...)`, un sistema de configuración externo tipo "DS.Cron.TaskScheduler", **no presente en este repositorio**) → si vacío, `appsettings.json` (vacío) → si vacío, `EnvironmentDetector.GetResource("SSODB")` (clase externa, tampoco presente en el repo).
+- **No tengo visibilidad del valor final real** que usa el pod en producción, porque se resuelve en tiempo de ejecución desde un sistema de configuración externo al código fuente de esta solución. No intenté consultarlo porque implicaría acceder a un almacén de secretos fuera del alcance de esta investigación de solo lectura de código.
+
+**Conclusión**: si el string real sigue el mismo patrón que el ejemplo comentado (sin parámetros de pooling explícitos), `Microsoft.Data.SqlClient` aplicaría sus valores por defecto:
+- `Pooling = true`
+- `Min Pool Size = 0`
+- `Max Pool Size = 100`
+- `Connect Timeout = 15` segundos
+
+Pero esto es una **inferencia**, no un hecho confirmado — lo marco como **SIN EVIDENCIA** porque no puedo verificar el string real.
+
+---
+
+### 8. `SqlConnection.ClearPool`/`ClearAllPools` o configuración global de SqlClient/Dapper
+
+**SIN EVIDENCIA** — Búsqueda de `ClearPool`, `ClearAllPools`, `SqlClientFactory`, `SqlMapper.Settings`, `DefaultTypeMap` no arrojó ningún resultado en `DS.Web.SSOApi`. No hay configuración global de Dapper ni manipulación manual del pool en ningún punto del código.
+
+---
+
+### 9. Patrones que podrían provocar *pool exhaustion* aunque `GetEntitiesForApp` use `using` correctamente
+
+**POSIBLE RIESGO** (no confirmado con telemetría de pool, pero sí demostrado en código):
+
+- **Todos los endpoints de SSOApi comparten el mismo pool** (`SSODBConnectionString`) — no hay aislamiento entre el tráfico de autenticación/login (`SSOAuthRepository`, probablemente de alto volumen) y el tráfico administrativo (`SSOAdminRepository.GetEntitiesForApp`). Un pico de tráfico en login/tokens puede agotar el pool y afectar a `GetEntitiesForApp` aunque esta última esté perfectamente escrita.
+- **`SSOAuthRepository.GetUserAsync`** (punto 4) multiplica el número de conexiones abiertas por cada llamada (`1 + 4×N` conexiones) y retiene una conexión más tiempo del necesario. Si este método se invoca en cada login/validación de token, bajo carga concurrente puede generar una **tasa de adquisición de conexiones muy alta** contra el mismo pool.
+- **64 de 65 aperturas de conexión en la solución son síncronas (`.Open()`)**, no `OpenAsync()` (ver punto 10). Una apertura síncrona bloquea el hilo del pool de ASP.NET Core mientras espera turno para una conexión física o para completar el handshake TCP/TLS — bajo presión de pool, ese hilo queda bloqueado en vez de liberarse, lo que puede agravar la contención de hilos además de la de conexiones.
+- No hay diferenciación de `Application Name` por repositorio/endpoint en la cadena de conexión (no se ve en el código un `Application Name=` distinto por servicio), lo que dificultaría diagnosticar en SQL Server *(vía `sys.dm_exec_sessions`)* qué componente concreto está consumiendo conexiones en un momento dado.
+
+**No until encontré evidencia directa (contadores de pool, `SqlClientEventSource`, logs de `System.InvalidOperationException: Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool`) de que el pool se haya agotado realmente el 2026-09-01 08:07-08:13 UTC** — eso requeriría telemetría del lado .NET (APM/Datadog) que no está disponible en el código fuente.
+
+---
+
+### 10. Llamadas síncronas `db.Open()` dentro de métodos `async` — conteo
+
+**HECHO** — Conteo exacto vía búsqueda de todas las variantes (`db.Open()`, `conn.Open()`, `dbResult.Open()`, `.OpenAsync()`):
+
+| Archivo | `.Open()` síncrono | `.OpenAsync()` | Dentro de método `async` |
+|---|---|---|---|
+| `Data/GenericRepository.cs` | 2 | 0 | 2/2 |
+| `Data/NotificationRepository.cs` | 1 | 0 | 1/1 |
+| `Data/SSOAccountRepository.cs` | 4 | 0 | 0/4 (métodos síncronos) |
+| `Data/SSOAdminRepository.cs` | 35 | 1 | 34/35 (incluye `GetEntitiesForApp`) |
+| `Data/SSOAuthRepository.cs` | 17 | 0 | 17/17 |
+| `Services/AccountService.cs` | 2 | 0 | 0/2 (método `CreateUser` es síncrono) |
+| `Data/CMSWrapper.cs` (otra cadena/pool) | 3 | 0 | 0/3 (métodos síncronos) |
+| **Total** | **64** | **1** | **54** |
+
+**De 65 aperturas de conexión en toda la solución, solo 1 (`SSOAdminRepository.GetGroupDetails`) usa el patrón async correcto (`await conn.OpenAsync()`). Las otras 64 son síncronas, y 54 de ellas ocurren dentro de métodos declarados `async Task<...>`** — incluyendo el propio `SSOAdminRepository.GetEntitiesForApp` que origina esta investigación.
+
+---
+
+## Síntesis: ¿hay evidencia real que apoye la hipótesis de disposal/pool?
+
+| Hipótesis | Veredicto |
+|---|---|
+| Fuga de disposal (conexión/comando/reader/transacción no liberados) | **DESCARTADA (HECHO)** — 100% de las creaciones usan `using`, con disposal garantizado incluso en excepción. |
+| Todo el tráfico SQL de SSOApi comparte un único pool de conexiones | **HECHO** |
+| Existen patrones de código que retienen conexiones más tiempo del necesario o multiplican aperturas por llamada (`GetUserAsync`, `CreateUser`) | **HECHO** (demostrado en código, no medido en producción) |
+| 54 rutas usan `.Open()` síncrono dentro de métodos `async`, incluyendo `GetEntitiesForApp` | **HECHO** |
+| Esto haya causado *pool exhaustion* específicamente el 2026-09-01 08:07-08:13 UTC | **POSIBLE RIESGO** — plausible y consistente con la duración interna de SQL (~65 ms según Query Store) vs. el tiempo total observado en Datadog (~35-37 s), pero no hay telemetría de pool (contadores `.NET`, excepción `Timeout expired... obtaining a connection from the pool`, logs de aplicación) que lo confirme directamente. |
+| Configuración explícita de `Max Pool Size`/`Min Pool Size` insuficiente | **SIN EVIDENCIA** — el valor real de `SSODBConnectionString` se resuelve en runtime desde un sistema externo no visible en este repositorio. |
+
+En conjunto, el código **no descarta** la hipótesis de agotamiento de pool/latencia en la apertura de conexión — de hecho, aporta varios mecanismos concretos por los cuales podría ocurrir (pool compartido + patrón `.Open()` síncrono generalizado + conexiones retenidas más de lo necesario en `GetUserAsync`/`CreateUser`) — pero **confirmar que eso fue lo que realmente pasó a las 08:07-08:13 UTC requeriría evidencia adicional fuera del código fuente** (contadores de `SqlClient` del proceso, logs de excepción específicos de timeout de pool, o trazas de APM que desglosen tiempo de apertura de conexión vs. tiempo de ejecución del comando). 
+
+
+
+Investigación completada y reportada en español, cubriendo los 10 puntos solicitados sin proponer correcciones, tal como se pidió.
