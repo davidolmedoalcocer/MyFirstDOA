@@ -1,0 +1,25 @@
+mkdir C:\MCP\TGLD-SQL -Force
+cd C:\MCP\TGLD-SQL
+
+$env:MSSQL_CONNECTION_STRING = "Server=LWDDBSQLA028;Database=db_LossDrafts;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
+
+dab init `
+  --database-type mssql `
+  --connection-string "@env('MSSQL_CONNECTION_STRING')" `
+  --host-mode Development `
+  --mcp.enabled true `
+  --rest.enabled false `
+  --graphql.enabled false `
+  --config dab-config.json
+
+
+  cd C:\MCP\TGLD-SQL
+
+dab init `
+  --database-type mssql `
+  --connection-string "Server=LWDDBSQLA028;Database=db_LossDrafts;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;" `
+  --host-mode Development `
+  --mcp.enabled true `
+  --rest.enabled false `
+  --graphql.enabled false `
+  --config dab-config.json
