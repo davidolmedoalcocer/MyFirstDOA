@@ -1,0 +1,413 @@
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "*"
+  ],
+  "from": "2026-09-01T08:00:00Z",
+  "limit": 50,
+  "max_tokens": 15000,
+  "query": "(service:*tgld* OR service:*TGLD*)",
+  "telemetry": {
+    "intent": "Search for TGLD service traces during the incident window to check if it called SSOAPI GetEntitiesForApp appID=117"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Starting: *Buscar en Datadog el LB/proxy anterior a rke2-ingress-nginx y servicio TGLD* (1/10)
+
+Searched for regex `appsettings\.Development|launchSettings|ASPNETCORE_ENVIRONMENT` (`**/DS.Web.SSOApi/**`), 3 results
+
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "*"
+  ],
+  "from": "2026-09-01T08:00:00Z",
+  "limit": 50,
+  "max_tokens": 15000,
+  "query": "@http.url:*sso-api.appsprod* -service:ds-web-ssoapi-prod",
+  "telemetry": {
+    "intent": "Find any client-side outbound spans in any instrumented service referencing the SSOAPI URL during the incident window, to identify the caller"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran Search Logs 
+Completed with input: {
+  "extra_fields": [
+    "*"
+  ],
+  "from": "2026-09-01T08:00:00Z",
+  "max_tokens": 15000,
+  "query": "tgld OR TGLD",
+  "telemetry": {
+    "intent": "Search across all logs for any mention of TGLD service around the incident window to see if it references SSOAPI or the GetEntitiesForApp endpoint"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran Search Logs 
+Completed with input: {
+  "extra_fields": [
+    "*"
+  ],
+  "from": "2026-09-01T08:00:00Z",
+  "max_tokens": 15000,
+  "query": "sso-api.appsprod.ngls.ngic.com -service:rke2-ingress-nginx -service:ds-web-ssoapi-prod",
+  "telemetry": {
+    "intent": "Find logs from any load balancer, proxy, or F5/haproxy component in front of the ingress that reference the SSOAPI hostname during the incident window"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Read , lines 1 to 100
+
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "*"
+  ],
+  "from": "2026-09-01T07:55:00Z",
+  "limit": 50,
+  "max_tokens": 18000,
+  "query": "@http.url:*GetEntitiesForApp* -service:ds-web-ssoapi-prod",
+  "telemetry": {
+    "intent": "Find client-side outbound spans from any instrumented service specifically calling the GetEntitiesForApp endpoint to identify the exact caller"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran terminal command: (Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_011CbUYcu2UbWFuugkpDten9__vscode-1788301448591\content.txt" -Pattern '^\s*service:\s*(\S+)').Matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object | Group-Object | Select-Object Count, Name
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_011CbUYcu2UbWFuugkpDten9__vscode-1788301448591\content.txt" -Pattern 'service: rke2-traefik' -Context 0,0 | ForEach-Object { $_.LineNumber }
+
+Read , lines 85 to 200
+
+Read , lines 445 to 560
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_011CbUYcu2UbWFuugkpDten9__vscode-1788301448591\content.txt" -Pattern 'service: aap-identity-prod' | ForEach-Object { $_.LineNumber }
+
+Read , lines 205 to 280
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_011CbUYcu2UbWFuugkpDten9__vscode-1788301448591\content.txt" -Pattern 'service: ds-ui-web-docextractverify-prod-http-client' | ForEach-Object { $_.LineNumber }
+
+Read , lines 1095 to 1180
+
+Ran Aggregate Spans 
+Completed with input: {
+  "computes": [
+    {
+      "aggregation": "COUNT",
+      "field": "*",
+      "output": "count"
+    },
+    {
+      "aggregation": "CARDINALITY",
+      "field": "span_id",
+      "output": "distinct"
+    }
+  ],
+  "from": "2026-09-01T07:00:00Z",
+  "group_by": {
+    "interval": 60000
+  },
+  "query": "service:ds-ui-web-docextractverify-prod-http-client @http.url:*GetEntitiesForApp*",
+  "telemetry": {
+    "intent": "Determine the real call rate per minute from the identified caller ds-ui-web-docextractverify-prod to GetEntitiesForApp before, during and after the incident window"
+  },
+  "to": "2026-09-01T08:30:00Z"
+}
+
+Ran Aggregate Spans 
+Completed with input: {
+  "computes": [
+    {
+      "aggregation": "COUNT",
+      "field": "*",
+      "output": "count"
+    }
+  ],
+  "from": "2026-09-01T08:06:00Z",
+  "group_by": {
+    "fields": [
+      "service"
+    ],
+    "interval": 60000
+  },
+  "query": "@http.url:*GetEntitiesForApp* env:prod -service:ds-web-ssoapi-prod",
+  "telemetry": {
+    "intent": "Confirm whether any production instrumented caller service shows requests to GetEntitiesForApp specifically during the 08:07-08:14 burst window"
+  },
+  "to": "2026-09-01T08:14:00Z"
+}
+
+Searched for files matching `**/DS.Web.SSOApi/**/appsettings*.json`, 5 matches
+
+Searched for text `EnvironmentDetector` (`**/DS.Web.SSOApi/**`), 41 results
+
+Read 
+
+Ran terminal command: Test-NetConnection -ComputerName env-detector-api-dev.appstest.ngls.ngic.com -Port 443 -WarningAction SilentlyContinue -InformationLevel Quiet
+
+Ran terminal command: sqllocaldb info 2>&1; Get-Service -Name "*SQL*" -ErrorAction SilentlyContinue | Select-Object Name, Status
+
+Read , lines 1 to 100
+
+Ran terminal command: cd C:\doa\sso-error\DS.Web.SSOApi\SSOApi; $env:ASPNETCORE_ENVIRONMENT="Development"; dotnet build -c Debug 2>&1 | Select-Object -Last 20
+
+Ran terminal command: $env:ASPNETCORE_ENVIRONMENT="Development"; dotnet bin\Debug\net8.0\SSOApi.dll
+
+Ran terminal command: $env:ASPNETCORE_ENVIRONMENT="Development"; dotnet ".\bin\Debug\net8.0\SSOApi.dll"
+
+Killed terminal
+
+Ran terminal command: $env:ASPNETCORE_ENVIRONMENT="Development"; dotnet "C:\doa\sso-error\DS.Web.SSOApi\SSOApi\bin\Debug\net8.0\SSOApi.dll"
+
+Killed terminal
+
+Read 
+
+Killed terminal
+
+Ran terminal command: sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "IF DB_ID('SSOReproDb') IS NULL CREATE DATABASE SSOReproDb;" 2>&1
+
+Ran terminal command: Get-Command sqlcmd -ErrorAction SilentlyContinue; where.exe sqlcmd 2>&1
+
+Ran terminal command: sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "SELECT name FROM sys.databases;"
+
+Bien, la base local existe. Ahora creo el stored procedure real que imita `dbo.SSOGetEntitiesForApp`: 
+
+Created 
+
+Searched for files matching `**/DS.Web.SSOApi/**/EntityModel.cs`, no matches
+
+Searched for text `class EntityModel` (`**/DS.Web.SSOApi/**`), 1 result
+
+Read 
+
+Replacing 7 lines with 7 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: sqlcmd -S "(localdb)\MSSQLLocalDB" -i "C:\doa\sso-error\ssoapi-incident-repro\sql\SetupLocalDb.sql"
+
+Ran terminal command: sqlcmd -S "(localdb)\MSSQLLocalDB" -d SSOReproDb -Q "EXEC dbo.SSOGetEntitiesForApp @ApplicationID=117;"
+
+Bien, funciona (25 filas devueltas). Ahora creo el proyecto "RealCodeRepro" que usa el código EXACTO (Dapper + Microsoft.Data.SqlClient) copiado literalmente de `SSOAdminRepository.GetEntitiesForApp`: 
+
+Created 
+
+Created 
+
+Ran terminal command: cd C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro; dotnet build -c Release 2>&1 | Select-Object -Last 40
+Completed with input: cd C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro; dotnet build -c Release 2>&1 | Select-Object -Last 40
+
+Read , lines 160 to 260
+
+Replacing 27 lines with 27 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: dotnet build -c Release 2>&1 | Select-Object -Last 20
+
+Compila. Ahora creo el script orquestador `Run-RealCode-Repro.ps1` reutilizando el patrón validado:  
+
+Created 
+
+Ahora capturo el bloqueo real de `dotnet run` (ya reproducido) en un log dentro de `results/`, y ejecuto la validación con código real: 
+
+Ran terminal command: Get-Process -Name RealCodeRepro,Repro -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; cd C:\doa\sso-error\ssoapi-incident-repro; .\Run-RealCode-Repro.ps1
+
+Read 
+
+Read 
+
+Read , lines 1 to 15
+
+Replacing 4 lines with 5 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: cd C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro; dotnet build -c Release | Out-Null; Start-Process -FilePath dotnet -ArgumentList "bin\Release\net8.0\RealCodeRepro.dll","serve","--mode","sync","--port","5099" -NoNewWindow -RedirectStandardOutput out.txt -RedirectStandardError err.txt -PassThru | Out-Null; Start-Sleep -Seconds 3; try { Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:5099/repro?appID=117" } catch { $_.Exception.Message }; Start-Sleep -Seconds 1; Get-Content err.txt
+
+Replacing 8 lines with 7 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: Get-Process -Name RealCodeRepro -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; cd C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro; Remove-Item out.txt,err.txt -ErrorAction SilentlyContinue; dotnet build -c Release | Out-Null; $p = Start-Process -FilePath dotnet -ArgumentList "bin\Release\net8.0\RealCodeRepro.dll","serve","--mode","sync","--port","5099" -NoNewWindow -RedirectStandardOutput out.txt -RedirectStandardError err.txt -PassThru; Start-Sleep -Seconds 3; try { (Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:5099/repro?appID=117").StatusCode } catch { $_.Exception.Message }; Start-Sleep -Seconds 1; Get-Content err.txt; taskkill /PID $p.Id /T /F 2>&1 | Out-Null
+Completed with input: Get-Process -Name RealCodeRepro -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; cd C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro; Remove-Item out.txt,err.txt -ErrorAction SilentlyContinue; dotnet build -c Release | Out-Null; $p = Start-Process -FilePath dotnet -ArgumentList "bin\Release\net8.0\RealCodeRepro.dll","serve","--mode","sync","--port","5099" -NoNewWindow -RedirectStandardOutput out.txt -RedirectStandardError err.txt -PassThru; Start-Sleep -Seconds 3; try { (Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:5099/repro?appID=117").StatusCode } catch { $_.Exception.Message }; Start-Sleep -Seconds 1; Get-Content err.txt; taskkill /PID $p.Id /T /F 2>&1 | Out-Null
+
+Ran terminal command: Get-Process | Where-Object { $_.ProcessName -eq 'dotnet' } | ForEach-Object { taskkill /PID $_.Id /T /F 2>&1 | Out-Null }; Start-Sleep -Seconds 1; cd C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro; $p = Start-Process -FilePath dotnet -ArgumentList "bin\Release\net8.0\RealCodeRepro.dll","serve","--mode","sync","--port","5199" -NoNewWindow -RedirectStandardOutput out2.txt -RedirectStandardError err2.txt -PassThru; Start-Sleep -Seconds 3; try { (Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:5199/repro?appID=117").StatusCode } catch { $_.Exception.Message }; Start-Sleep -Seconds 1; "---err---"; Get-Content err2.txt; taskkill /PID $p.Id /T /F 2>&1 | Out-Null
+
+Ran terminal command: Remove-Item C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro\out*.txt,C:\doa\sso-error\ssoapi-incident-repro\src\RealCodeRepro\err*.txt -ErrorAction SilentlyContinue; Get-Process -Name dotnet -ErrorAction SilentlyContinue | ForEach-Object { taskkill /PID $_.Id /T /F 2>&1 | Out-Null }; cd C:\doa\sso-error\ssoapi-incident-repro; .\Run-RealCode-Repro.ps1
+
+Autopilot extended tool call limit
+
+Ran terminal command: Get-Content "C:\doa\sso-error\ssoapi-incident-repro\results\20260901-212617-realcode\before-real-sync-bug\server.log.err.txt" | Group-Object | Select-Object Count, Name | Sort-Object Count -Descending | Select-Object -First 10
+
+Ran terminal command: Get-Process -Name dotnet,RealCodeRepro,Repro -ErrorAction SilentlyContinue | ForEach-Object { taskkill /PID $_.Id /T /F 2>&1 | Out-Null }; Start-Sleep -Seconds 1; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+Completed with input: Get-Process -Name dotnet,RealCodeRepro,Repro -ErrorAction SilentlyContinue | ForEach-Object { taskkill /PID $_.Id /T /F 2>&1 | Out-Null }; Start-Sleep -Seconds 1; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+
+Replacing 5 lines with 65 lines in 
+
+
+```
+
+```
+
+
+Updated memory file 
+
+Read memory
+
+Created memory file 
+
+Ahora entrego el reporte final en el formato exigido. 
+
+Completed: *Buscar en Datadog el LB/proxy anterior a rke2-ingress-nginx y servicio TGLD* (1/10)
+
+```
+TRIGGER=
+Burst real de ~600-742 intentos/min contra GET /SSOAdmin/GetEntitiesForApp?appID=117
+entre 08:07-08:13 UTC (vs 6-18/min en periodo sano), confirmado vía logs de
+rke2-ingress-nginx, independiente del trace_id.
+TRIGGER_STATUS=CONFIRMED
+
+CALLER=NOT_PROVABLE_WITH_AVAILABLE_TELEMETRY
+Busqué específicamente:
+- Todos los spans (cualquier servicio) referenciando @http.url:*GetEntitiesForApp*
+  o el host sso-api.appsprod.ngls.ngic.com durante 08:00-08:20 UTC.
+- El único caller prod instrumentado que ALGUNA VEZ llama a este endpoint exacto es
+  ds-ui-web-docextractverify-prod-http-client: 1 sola llamada, a las 08:01:55 UTC
+  (200 OK, 72ms) — ANTES del incidente. Verificado con aggregate_spans que durante
+  08:06-08:14 UTC hay 0 llamadas de CUALQUIER servicio prod instrumentado a este
+  endpoint (env:prod, -service:ds-web-ssoapi-prod → count=0).
+- rke2-traefik / aap-identity-prod / ds-web-ssoapi-stage que aparecieron en la
+  búsqueda son TODOS de un cluster/entorno distinto (rke2-test-cluster-da-04,
+  sso-api-staging.appstest.ngls.ngic.com, env=nonprod) — tráfico de stage que
+  coincide en usar el mismo appID=117 para pruebas, sin relación con el incidente
+  de producción.
+- TGLD: 0 resultados en APM (ningún servicio con ese nombre) y 0 resultados en
+  logs buscando "tgld"/"TGLD" en toda la ventana.
+- rke2-ingress-nginx (el ingress de prod) registra client.ip=127.0.0.1 y
+  useragent="-" en el 100% del tráfico (incluido el período sano), confirmando
+  que existe un proxy/LB anterior que no preserva la IP real ni X-Forwarded-For.
+  No encontré logs de ningún otro componente de LB/proxy (F5, HAProxy, etc.)
+  referenciando sso-api.appsprod.ngls.ngic.com.
+Fuente exacta que falta: captura de IP de cliente real / X-Forwarded-For en el
+dispositivo L4/L7 que está delante de rke2-ingress-nginx en el cluster
+rke2-prod-cluster-ws-04 (no está configurado para loguear en Datadog), y/o los
+logs o trazas propias del caller real si Charles puede obtenerlos directamente
+de esa aplicación (dado que no aparece instrumentada con Datadog APM).
+CALLER_STATUS=NOT_PROVABLE
+
+MECHANISM=
+ThreadPool starvation por bloqueo síncrono (`SqlConnection.Open()` dentro de un
+método `async`) bajo alta concurrencia, que retrasa todo el pipeline del proceso,
+incluido /health/liveness (sin dependencias).
+MECHANISM_STATUS=CONFIRMED
+Evidencia de producción (ya reportada): workers_count 4→49→60, requests.current
+hasta 148, connections.current hasta 234, threads.count hasta 93.
+Evidencia NUEVA de esta ronda (código real, ver abajo): reproducido con el código
+EXACTO de SSOAdminRepository.GetEntitiesForApp (Dapper 2.1.44 + Microsoft.Data.SqlClient
+5.2.2) contra un SQL Server real (localdb), no un simulador — los 187 errores del
+escenario "sync" fueron TODOS `InvalidOperationException: Timeout expired... obtaining
+a connection from the pool` (la misma firma que el equipo ya había reproducido en
+Development), con p95=34.7s y ThreadPool workers pico=108 (baseline ~2.5).
+
+ROOT_FIX=
+En SSOAdminRepository.GetEntitiesForApp (DS.Web.SSOApi/SSOApi/Data/SSOAdminRepository.cs):
+cambiar `db.Open()` por `await db.OpenAsync()`. Ningún otro cambio.
+FIX_STATUS=PROVEN
+Con Concurrency=200/Requests=3000 idénticos en ambos escenarios, usando el código
+real (no el harness sintético):
+
+BEFORE=
+db.Open() real (sync): 187/3000 requests con error (InvalidOperationException:
+"Timeout expired... obtaining a connection from the pool"), p50=128.9ms
+p95=34,678.9ms max=34,852.2ms. Liveness: 4/4 sondeos FALLARON (p50=5012.5ms,
+todos por encima del timeout de 5s). ThreadPool workers: baseline~2.5 → pico 108.
+Pending work items pico=185.
+
+AFTER=
+await db.OpenAsync() (fix): 0/3000 errores, p50=83.1ms p95=437.3ms max=589.1ms.
+Liveness: 92/92 sondeos exitosos, p95=27ms max=90.2ms. ThreadPool workers:
+baseline~2.8 → pico 11.
+(Resultados completos en results\20260901-212617-realcode\summary.txt)
+
+Nota sobre cómo se validó: no pude levantar DS.Web.SSOApi completo (`dotnet run`)
+porque falla en el arranque, ANTES de tocar SQL, al resolver
+`EnvironmentDetector.GetResource("CommonLoggingAPI")` con
+"An invalid request URI was provided..." — una dependencia externa de
+configuración no relacionada con el mecanismo del incidente (stack trace completo
+guardado). No intenté modificar Program.cs real para sortear esto. En su lugar
+validé el código de datos REAL (mismas líneas, mismas versiones de Dapper/SqlClient)
+contra un SQL Server real local (localdb, nunca Development ni Production), lo cual
+es una prueba más fuerte que el harness sintético inicial porque usa el stack real
+de ADO.NET/SqlClient, no una simulación TCP.
+No se modificó ningún archivo de DS.Web.SSOApi; el cambio "antes/después" se aplicó
+únicamente en el harness aislado (src\RealCodeRepro), que contiene una copia literal
+de esas dos líneas de código, no el archivo productivo.
+
+ROOT_CAUSE=
+Burst de tráfico contra GetEntitiesForApp?appID=117 (origen no identificable con la
+telemetría disponible) satura el ThreadPool de .NET del pod porque
+SSOAdminRepository.GetEntitiesForApp abre la conexión SQL de forma síncrona
+(`db.Open()`) dentro de un método async; eso retrasa todo el proceso — incluido
+/health/liveness — provocando 3 fallos consecutivos de liveness y el reinicio del
+pod por Kubernetes (dos veces, 08:07-08:08 y 08:12-08:14 UTC). SQL Server nunca
+fue el cuello de botella (Query Store: <65ms todo el tiempo).
+STATUS=PARTIALLY_CONFIRMED
+(TRIGGER, MECHANISM, FAILURE y CONSEQUENCE están confirmados con evidencia
+correlacionada y ahora también reproducidos con código real; lo único que impide
+declarar CONFIRMED al 100% es que el ORIGEN/IDENTIDAD del burst — quién lo generó
+y por qué — no pudo demostrarse con la telemetría disponible.)
+
+NOT_PROVEN=
+1. Identidad del caller que generó el burst real de producción (ver CALLER arriba).
+2. Confirmación con texto de excepción capturado en PRODUCCIÓN de que los 74/108
+   requests sin span SQL fallaron específicamente por "pool timeout" (es plausible
+   y ahora demostrado como mecanismo real posible, pero no confirmado con datos de
+   prod — los logs de aplicación de SSOAPI no están ingeridos en Datadog).
+3. Ejecución de DS.Web.SSOApi completo (proceso end-to-end con Program.cs real):
+   bloqueado por una dependencia externa (EnvironmentDetector/ProcessMonitorApi)
+   no relacionada con el incidente; validé en su lugar el código de datos real de
+   forma aislada (ver ROOT_FIX arriba).
+4. Límite real de CPU del pod de producción (necesario para calibrar MinThreads con
+   el valor exacto en vez de uno supuesto).
+
+MESSAGE_FOR_CHARLES=
+We closed out the two remaining items. Caller: we could not identify who generated
+the burst — our prod ingress masks client IP (always logs 127.0.0.1, meaning
+there's an L4 proxy/LB in front of it that doesn't forward the real IP), no
+instrumented service (including TGLD) shows any call to GetEntitiesForApp during
+the 08:06-08:14 UTC window, and app-level logs aren't ingested into Datadog. We'd
+need X-Forwarded-For enabled on that upstream proxy, or logs directly from the
+caller, to go further. Fix validation: we couldn't boot the full SSOAPI app locally
+(unrelated startup dependency on EnvironmentDetector fails outside the corporate
+network), so we validated the actual GetEntitiesForApp data-access code (same
+Dapper/SqlClient versions) against a real local SQL Server. Under the same burst,
+today's code (db.Open()) failed with the exact "Timeout expired obtaining a
+connection from the pool" error you saw in your own dev repro, hit p95 latency of
+34.7s (matching prod's 35-38s), and killed liveness (4/4 probes failed). Switching
+that one line to await db.OpenAsync() eliminated all errors, kept liveness at
+p95=27ms, and kept ThreadPool workers flat. Recommend shipping that one-line fix.
+```
+
+Made changes.
