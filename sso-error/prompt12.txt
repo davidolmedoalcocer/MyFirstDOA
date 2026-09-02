@@ -1,0 +1,270 @@
+NO hagas ningún cambio de código.
+NO modifiques producción.
+NO hagas commit ni push.
+NO continúes investigando nuevas hipótesis.
+
+Antes de corregir el incidente necesito un PAQUETE DE EVIDENCIA
+que yo pueda presentar a Charles y Jayati y que otra persona pueda
+VERIFICAR por sí misma.
+
+Quiero demostrar únicamente lo que realmente sabemos del incidente
+de SSOAPI del 2026-09-01 alrededor de 08:05-08:15 UTC.
+
+Crea esta carpeta:
+
+C:\doa\sso-error\ssoapi-incident-evidence\
+
+y genera:
+
+1. INCIDENT-REPORT.md
+2. datadog-queries.md
+3. sql-queries.sql
+4. evidence\
+   - ingress-traffic.csv
+   - runtime-metrics.csv
+   - kubernetes-events.txt
+   - apm-errors.txt
+   - query-store-results.csv
+
+====================================================
+1. TRÁFICO / INGRESS
+====================================================
+
+Necesito demostrar:
+
+- tráfico normal de GetEntitiesForApp?appID=117;
+- tráfico durante el incidente;
+- timestamps;
+- status 200/500/502/504.
+
+Usa los logs reales de rke2-ingress-nginx.
+
+Guarda:
+
+- query EXACTA de Datadog;
+- rango de fechas;
+- resultados por minuto;
+- total por status.
+
+Debe ser posible demostrar visualmente algo similar a:
+
+normal: ~6-18 requests/min
+incidente: ~600-742 attempts/min
+
+No uses APM trace_id para demostrar volumen.
+
+====================================================
+2. SQL SERVER
+====================================================
+
+Necesito demostrar que SQL Server NO estaba tardando 35-38 segundos.
+
+Guarda las queries EXACTAS ejecutadas contra dbSSO-PROD para:
+
+- Query Store runtime stats de dbo.SSOGetEntitiesForApp;
+- Query Store wait stats;
+- query_id;
+- plan_id.
+
+Incluye los resultados reales que demuestran:
+
+- avg duration;
+- max duration;
+- execution count;
+- CPU;
+- waits.
+
+No quiero un resumen solamente.
+Quiero SQL ejecutable para que otra persona pueda correrlo nuevamente.
+
+====================================================
+3. DATADOG APM
+====================================================
+
+Documenta al menos una de las requests reales que falló.
+
+Incluye:
+
+- trace_id;
+- timestamp;
+- endpoint;
+- HTTP status;
+- duración del request;
+- duración sql_server.query;
+- excepción exacta;
+- Error Number;
+- ClientConnectionId si existe.
+
+Incluye la query exacta de Datadog usada para encontrarla.
+
+====================================================
+4. RUNTIME .NET
+====================================================
+
+Guarda las queries EXACTAS de Datadog y sus resultados para:
+
+- runtime.dotnet.aspnetcore.requests.current
+- runtime.dotnet.aspnetcore.connections.current
+- runtime.dotnet.threads.workers_count
+- runtime.dotnet.threads.count
+
+para:
+
+pod:
+ds-web-ssoapi-864d7b6f79-jd4f8
+
+Compara:
+
+BASELINE sano
+vs
+INCIDENTE
+
+Quiero timestamps + valores numéricos.
+
+No escribas solamente "subió mucho".
+
+Ejemplo:
+
+08:06 workers=X
+08:07 workers=Y
+08:13 workers=Z
+
+Haz lo mismo para requests y connections.
+
+====================================================
+5. KUBERNETES
+====================================================
+
+Guarda los eventos reales que prueban el orden:
+
+problema
+→ liveness failure
+→ liveness failure
+→ liveness failure
+→ Killing
+→ Started
+
+Incluye timestamps exactos de ambos reinicios.
+
+Quiero demostrar que Kubernetes reinició SSOAPI DESPUÉS de que ya
+estaba degradado y no fue quien originó el problema.
+
+====================================================
+6. CÓDIGO
+====================================================
+
+Documenta SIN modificarlo:
+
+archivo:
+SSOAdminRepository.cs
+
+método:
+GetEntitiesForApp
+
+Incluye ruta, números de línea y el fragmento exacto donde aparece:
+
+db.Open();
+
+y la posterior llamada Dapper.
+
+También indica claramente:
+
+CODE_FINDING=
+La llamada es síncrona dentro de un método async.
+
+NO escribas todavía que esto es la causa definitiva.
+Solo documenta el hecho verificable del código.
+
+====================================================
+7. MATRIZ DE EVIDENCIA
+====================================================
+
+En INCIDENT-REPORT.md crea esta tabla:
+
+CLAIM | STATUS | EVIDENCE | HOW TO VERIFY
+
+Las afirmaciones mínimas:
+
+A. Hubo un aumento extraordinario de tráfico.
+B. SQL Server seguía ejecutando el SP en milisegundos.
+C. SSOAPI acumuló muchas requests concurrentes.
+D. Los workers/threads aumentaron durante el incidente.
+E. GetEntitiesForApp produjo HTTP 500 / Execution Timeout Expired.
+F. /health/liveness dejó de responder.
+G. Kubernetes reinició el pod después de los liveness failures.
+H. GetEntitiesForApp usa db.Open() síncrono.
+I. El caller original es desconocido.
+J. Connection pool exhaustion en producción NO está demostrado directamente.
+
+STATUS debe ser únicamente:
+
+PROVEN
+NOT_PROVEN
+INFERENCE
+
+No conviertas inferencias en hechos.
+
+====================================================
+8. CADENA CAUSAL
+====================================================
+
+Al final del reporte escribe:
+
+PROVEN:
+
+[hecho]
+→ [hecho]
+→ [hecho]
+
+y aparte:
+
+BEST_SUPPORTED_EXPLANATION:
+
+[explicación técnica]
+
+Quiero que quede CLARÍSIMO qué partes fueron observadas directamente
+y qué parte es nuestra explicación del mecanismo.
+
+====================================================
+9. CÓMO DEMOSTRARLO EN UNA REUNIÓN
+====================================================
+
+Agrega una sección:
+
+LIVE_VERIFICATION
+
+con instrucciones muy cortas para que yo pueda abrir Datadog/SQL
+delante de Charles o Jayati y verificar:
+
+1. burst de tráfico;
+2. SQL rápido;
+3. presión de SSOAPI;
+4. liveness/restart;
+5. trace con timeout.
+
+Si Datadog MCP proporciona URL/permalink de una vista, inclúyela.
+
+Si no existe permalink, dame:
+- producto de Datadog;
+- query exacta;
+- time range exacto;
+- filtros exactos.
+
+====================================================
+ENTREGA FINAL
+====================================================
+
+No quiero otro análisis largo.
+
+Dime solamente:
+
+EVIDENCE_PACKAGE=
+PROVEN_CLAIMS=
+NOT_PROVEN=
+FILES_CREATED=
+
+y la ruta:
+
+C:\doa\sso-error\ssoapi-incident-evidence\INCIDENT-REPORT.md
+
+NO HAGAS EL FIX TODAVÍA.
