@@ -1,0 +1,116 @@
+Responde en español.
+
+Quiero CERRAR el incidente. No quiero más hipótesis generales.
+
+Tienes código + Datadog MCP + acceso read-only a SQL.
+
+Ya está confirmado:
+- hubo un burst real de aproximadamente 600-700 intentos/min contra
+  GET /SSOAdmin/GetEntitiesForApp?appID=117
+  frente a ~6-18/min en periodo sano;
+- SSOAPI se degradó durante el burst;
+- SQL Server siguió ejecutando SSOGetEntitiesForApp en <65 ms;
+- liveness falló después de comenzar la degradación y Kubernetes reinició el pod.
+
+FALTAN SOLO DOS COSAS.
+
+1. IDENTIFICAR EL CALLER
+
+El ingress nginx ve client.ip=127.0.0.1, por lo que existe un proxy/LB anterior.
+
+Usa Datadog para buscar, en 2026-09-01 08:05-08:15 UTC:
+- logs/traces del proxy/load balancer anterior a rke2-ingress-nginx;
+- cualquier servicio que llame a sso-api.appsprod.ngls.ngic.com;
+- especialmente TGLD, porque Charles indicó que usa appID=117.
+
+Busca correlación por:
+- timestamp;
+- URL /SSOAdmin/GetEntitiesForApp?appID=117;
+- request-id;
+- trace headers;
+- host;
+- frecuencia;
+- retries.
+
+Si encuentras el caller, demuestra:
+CALLER=
+REQUEST_RATE_NORMAL=
+REQUEST_RATE_INCIDENT=
+POR_QUE_GENERO_EL_BURST=
+
+Si Datadog realmente no conserva esa información, escribe:
+CALLER=NOT_PROVABLE_WITH_AVAILABLE_TELEMETRY
+y explica exactamente qué fuente falta.
+No sigas buscando indefinidamente.
+
+2. VALIDAR EL MECANISMO/FIX EN LA SSOAPI REAL
+
+No uses únicamente el harness sintético.
+
+Levanta DS.Web.SSOApi REAL en Development, verificando antes que NO apunta a producción.
+
+Reproduce contra la aplicación real un patrón equivalente al observado:
+- baseline aproximado;
+- después burst concurrente sobre GetEntitiesForApp?appID=117;
+- solo lectura;
+- nunca producción.
+
+Primera corrida:
+código actual con db.Open().
+
+Mide:
+- HTTP errors;
+- request latency;
+- workers;
+- requests.current;
+- liveness;
+- Open duration si puede instrumentarse temporalmente;
+- QueryAsync duration.
+
+Segunda corrida:
+cambia TEMPORALMENTE SOLO EN DEVELOPMENT:
+db.Open()
+por
+await db.OpenAsync()
+
+Repite EXACTAMENTE la misma carga.
+
+Después revierte el cambio.
+
+Quiero saber si:
+
+ANTES:
+el burst degrada SSOAPI / aumenta workers / afecta liveness.
+
+DESPUES:
+con OpenAsync, bajo la MISMA carga, desaparece o disminuye significativamente la degradación.
+
+ENTREGA FINAL, SIN HISTORIAL DE BÚSQUEDAS:
+
+TRIGGER=
+TRIGGER_STATUS=CONFIRMED/NOT_CONFIRMED
+
+CALLER=
+CALLER_STATUS=CONFIRMED/NOT_PROVABLE
+
+MECHANISM=
+MECHANISM_STATUS=CONFIRMED/NOT_CONFIRMED
+
+ROOT_FIX=
+FIX_STATUS=PROVEN/NOT_PROVEN
+
+BEFORE=
+AFTER=
+
+ROOT_CAUSE=
+STATUS=CONFIRMED/PARTIALLY_CONFIRMED
+
+NOT_PROVEN=
+
+MESSAGE_FOR_CHARLES=
+mensaje corto en inglés.
+
+No modifiques producción.
+No commit.
+No push.
+No continúes abriendo nuevas hipótesis.
