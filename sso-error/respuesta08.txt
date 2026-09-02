@@ -1,0 +1,37 @@
+Connecting using profile d586ee3b-9bb1-4346-9cfe-ce82840738f1
+Completed with input: {
+  "database": "dbSSO",
+  "profileId": "d586ee3b-9bb1-4346-9cfe-ce82840738f1",
+  "serverName": "LWVPDBSQLA020.ngls.ngic.com"
+}
+
+Running query on connection 'dbSSO-PROD' (ID: 2245bf81-72bb-4397-b812-0edf5df92ad3)
+Completed with input: {
+  "connectionId": "2245bf81-72bb-4397-b812-0edf5df92ad3",
+  "query": "\nSELECT\n    CASE WHEN rsi.start_time >= '2026-09-01T08:00:00' THEN '08:00-08:30 (incidente)' ELSE '07:30-08:00 (previo)' END AS Ventana,\n    ws.wait_category_desc,\n    SUM(ws.total_query_wait_time_ms) AS total_query_wait_time_ms,\n    AVG(ws.avg_query_wait_time_ms) AS avg_query_wait_time_ms,\n    MAX(ws.max_query_wait_time_ms) AS max_query_wait_time_ms\nFROM sys.query_store_wait_stats ws\nJOIN sys.query_store_plan qsp ON qsp.plan_id = ws.plan_id\nJOIN sys.query_store_runtime_stats_interval rsi ON rsi.runtime_stats_interval_id = ws.runtime_stats_interval_id\nWHERE qsp.query_id = 41422 AND qsp.plan_id = 3007\n  AND rsi.start_time >= '2026-09-01T07:30:00' AND rsi.start_time < '2026-09-01T08:30:00'\nGROUP BY CASE WHEN rsi.start_time >= '2026-09-01T08:00:00' THEN '08:00-08:30 (incidente)' ELSE '07:30-08:00 (previo)' END,\n         ws.wait_category_desc\nORDER BY Ventana, total_query_wait_time_ms DESC;\n",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT"
+  ]
+}
+
+Disconnecting from connection 'dbSSO-PROD' (ID: 2245bf81-72bb-4397-b812-0edf5df92ad3)
+Completed with input: {
+  "connectionId": "2245bf81-72bb-4397-b812-0edf5df92ad3"
+}
+
+## Resultado — `sys.query_store_wait_stats` para `dbo.SSOGetEntitiesForApp` (query_id=41422, plan_id=3007)
+
+Query Store Wait Stats **está habilitado y contiene datos** para ambos intervalos.
+
+| Ventana | wait_category_desc | total_query_wait_time_ms | avg_query_wait_time_ms | max_query_wait_time_ms |
+|---|---|---|---|---|
+| 07:30–08:00 (previo) | CPU | 483 | 2.70 | 23 |
+| 07:30–08:00 (previo) | Memory | 24 | 0.13 | 4 |
+| 08:00–08:30 (incidente) | CPU | 2041 | 5.13 | 58 |
+| 08:00–08:30 (incidente) | Memory | 56 | 0.14 | 5 |
+
+No aparece ninguna otra categoría (no hay `Lock`, `Latch`, `Buffer IO`, `Network IO`, `Worker Thread`, etc.) en ninguno de los dos intervalos.
+
+### Conclusión (máx. 5 líneas)
+Las únicas categorías de espera registradas por Query Store para esta consulta son **CPU** y **Memory**, ambas con valores máximos triviales (`max_query_wait_time_ms` = 58 ms y 5 ms respectivamente durante el incidente). No existe ningún registro de esperas por `Lock`/`Latch`/IO en `sys.query_store_wait_stats` para este query/plan en ninguna de las dos ventanas. Esto confirma, desde una fuente adicional independiente de Query Store, que SQL Server no registró ningún tipo de espera compatible con bloqueo o contención de recursos para `SSOGetEntitiesForApp` durante el incidente.
