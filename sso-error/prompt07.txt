@@ -1,0 +1,124 @@
+Responde en español.
+
+NO quiero otra investigación ni otra hipótesis.
+
+La prueba de pool que acabas de ejecutar fue útil, pero eliminaste:
+- _tmp_pool_test.ps1
+- _tmp_pool_results.csv
+- _tmp_server.log
+- _tmp_counters.csv
+- _tmp_counters.log
+
+Eso hace que yo no pueda volver a ejecutar la prueba ni mostrarle a otra persona exactamente cómo se reprodujo el problema.
+
+Quiero convertir esa prueba en un harness de diagnóstico REPRODUCIBLE y que permanezca disponible localmente.
+
+NO hagas commit.
+NO hagas push.
+NO ejecutes nada contra producción.
+
+Crea esta estructura:
+
+C:\doa\sso-error\pool-repro\
+    Run-PoolRepro.ps1
+    README.md
+    results\
+
+REQUISITOS:
+
+1. Run-PoolRepro.ps1 debe reproducir la misma prueba que acabas de ejecutar.
+
+2. Antes de hacer cualquier prueba debe verificar obligatoriamente:
+   - ASPNETCORE_ENVIRONMENT=Development
+   - SQL Server resuelto
+   - Database resuelta
+   - que NO sea LWVPDBSQLA020.ngls.ngic.com
+   - que NO sea Production
+
+   Si detecta producción debe abortar.
+
+3. Debe ejecutar:
+   - baseline de GetEntitiesForApp?appID=117
+   - presión concurrente con GetUser
+   - sonda concurrente de GetEntitiesForApp?appID=117
+   - Max Pool Size=5 únicamente para esta ejecución Development
+   - captura de Microsoft.Data.SqlClient.EventSource con dotnet-counters
+
+4. Debe medir:
+   - OpenMs
+   - QueryMs
+   - TotalMs
+   - HTTP Status
+   - Active connections
+   - Pooled connections
+   - Free connections si es posible
+
+5. Si para medir OpenMs/QueryMs necesitas instrumentar temporalmente:
+   - Program.cs
+   - ConnectionManager.cs
+   - SSOAdminRepository.cs
+
+   hazlo automáticamente desde el script.
+
+6. Al finalizar, restaura automáticamente esos archivos a su estado original.
+
+7. MUY IMPORTANTE:
+   NO elimines el script ni los resultados.
+
+8. Cada ejecución debe crear una carpeta:
+
+results\YYYYMMDD-HHmmss\
+
+y guardar dentro como mínimo:
+
+summary.txt
+requests.csv
+counters.csv
+server.log
+
+9. summary.txt debe incluir:
+
+Environment
+SQLServer
+Database
+Baseline
+UnderPoolPressure
+OpenMs
+QueryMs
+TotalMs
+PoolActive
+PoolFree
+Errors
+VERDICT
+
+10. README.md debe explicarme como si yo nunca hubiera visto esta prueba:
+
+- qué problema intenta reproducir;
+- por qué se usa Max Pool Size=5;
+- qué hace GetUser para generar presión;
+- qué hace GetEntitiesForApp como sonda;
+- qué significa OpenMs;
+- qué significa QueryMs;
+- qué significa PoolActive/PoolFree;
+- cómo interpretar CONFIRMADA/DESCARTADA;
+- qué archivos genera;
+- cómo limpiar únicamente los resultados si algún día quiero hacerlo.
+
+11. Al terminar de crear el harness, ejecútalo UNA vez para validar que funciona.
+
+12. NO borres los resultados de esa ejecución.
+
+13. Al finalizar dime únicamente:
+
+HARNESS_PATH=
+COMMAND_TO_RUN=
+LAST_RESULT_PATH=
+ENVIRONMENT=
+SQL_SERVER=
+DATABASE=
+VERDICT=
+APPLICATION_REPO_STATUS=
+COMMIT_CREATED=false
+PUSH_PERFORMED=false
+
+Quiero poder cerrar Copilot, abrir una terminal mañana y volver a ejecutar exactamente la misma prueba utilizando un solo comando.
