@@ -1,0 +1,415 @@
+Responde todo en español.
+
+Quiero CERRAR este incidente, no otra ronda de hipótesis.
+
+Tienes acceso a:
+- código fuente de DS.Web.SSOApi;
+- MCP de Datadog;
+- dbSSO-PROD únicamente de solo lectura.
+
+NO modifiques producción.
+NO ejecutes carga contra producción.
+NO hagas commit ni push.
+
+====================================================
+OBJETIVO
+====================================================
+
+Determinar de forma VERIFICABLE qué causó el outage de SSOAPI del
+2026-09-01 aproximadamente 02:05–02:15 AM UTC-06,
+proponer el fix exacto y demostrar en Development que el fix elimina
+el mismo mecanismo de fallo.
+
+No declares "ROOT CAUSE CONFIRMED" por correlación.
+
+====================================================
+IMPORTANTE: CORRIGE DOS CONCLUSIONES DEL REPORTE ANTERIOR
+====================================================
+
+En tu reporte anterior afirmaste:
+
+1. ThreadPool starvation = CONFIRMADA
+2. Caller retry sin backoff = causa raíz confirmada
+
+Eso todavía NO está suficientemente demostrado.
+
+NO uses como prueba suficiente:
+- que workers_count haya subido de 4 a 49/60;
+- que 216 requests compartan el mismo trace_id.
+
+Ambos son indicios fuertes, pero necesito demostrar el mecanismo.
+
+====================================================
+PASO 1 — IDENTIFICAR EL CALLER REAL
+====================================================
+
+Tenemos:
+
+service:ds-web-ssoapi-prod
+endpoint:
+GET /SSOAdmin/GetEntitiesForApp?appID=117
+
+trace_id:
+6a96872b00000000ba19be8491a518f0
+
+Ventana:
+2026-09-01 08:05–08:15 UTC
+
+Haz lo siguiente:
+
+A. Recupera TODOS los spans del trace_id, de TODOS los services, no solo SSOAPI.
+
+Para cada span relevante obtén:
+- service
+- operation
+- resource
+- span_id
+- parent_id
+- start time
+- duration
+- status
+- http.url
+- peer.service
+- network destination
+- cualquier atributo de caller/origin disponible.
+
+Reconstruye el árbol padre→hijo.
+
+Quiero saber cuál fue el ROOT SPAN y qué aplicación originó la operación.
+
+B. Revisa específicamente los logs de:
+service:rke2-ingress-nginx
+
+para:
+host = sso-api.appsprod.ngls.ngic.com
+path contiene GetEntitiesForApp
+appID=117
+08:05–08:15 UTC
+
+Obtén, si existen:
+- remote_addr / client IP
+- forwarded-for
+- user-agent
+- request-id
+- trace-id headers
+- upstream address
+- request time
+- upstream response time/status
+
+Agrupa por client IP/user-agent/request-id si existen.
+
+C. Determina si las 216 llamadas fueron:
+- 216 requests HTTP reales;
+- retries;
+- fan-out de una operación;
+- duplicación de tracing/instrumentación;
+- o alguna combinación.
+
+NO uses "mismo trace_id = retries" como prueba.
+
+Si identificas TGLD u otro caller:
+continúa investigando SUS traces/logs en Datadog alrededor de la misma ventana.
+
+====================================================
+PASO 2 — DEMOSTRAR O DESCARTAR THREADPOOL STARVATION
+====================================================
+
+El aumento de workers_count NO es suficiente por sí solo.
+
+Consulta todas las métricas .NET disponibles para el pod:
+
+ds-web-ssoapi-864d7b6f79-jd4f8
+
+y compara:
+01:30–02:00 sano
+02:05–02:15 incidente
+periodo posterior sano
+
+Descubre los nombres reales disponibles en Datadog; no inventes métricas.
+
+Busca específicamente evidencia equivalente a:
+
+- ThreadPool worker count
+- ThreadPool work queue / queue length
+- completed work item count/rate
+- thread contention count/time
+- process thread count
+- CPU
+- CPU throttling si existe
+- GC pause
+- memory
+- exceptions
+
+Si Continuous Profiler está disponible para esa ventana:
+úsalo.
+
+Busca stacks/threads bloqueados en:
+- SqlConnection.Open
+- Microsoft.Data.SqlClient
+- socket/network reads
+- Monitor/locks
+- Task.Wait/.Result
+- cualquier operación síncrona.
+
+THREADPOOL STARVATION solo puede quedar CONFIRMADA si existe evidencia
+de que había trabajo pendiente que no podía ejecutarse oportunamente
+porque los workers estaban ocupados/bloqueados.
+
+Si solo vemos crecimiento de workers_count:
+clasifica como INDICIO FUERTE, no CONFIRMADA.
+
+====================================================
+PASO 3 — CONNECTION POOL EN PRODUCCIÓN
+====================================================
+
+Investiga si Datadog capturó en PRODUCCIÓN métricas/eventos de SqlClient:
+
+- active connections
+- free connections
+- pooled connections
+- hard/soft connects
+- connection open duration
+- pool timeout
+- exact exception:
+  "Timeout expired... obtaining a connection from the pool"
+
+Busca específicamente alrededor de 02:07 y 02:13.
+
+El defecto de pool reproducido en Development NO prueba que haya ocurrido
+en producción.
+
+Connection pool exhaustion solo será CONFIRMADA con evidencia de producción.
+
+====================================================
+PASO 4 — EXPLICAR LOS 35–37 SEGUNDOS
+====================================================
+
+Tenemos esta contradicción:
+
+Datadog client span:
+SSOGetEntitiesForApp ≈35–37 segundos
+
+SQL Query Store:
+ejecución dentro de SQL <65 ms
+
+Necesito explicar CON EVIDENCIA dónde estuvieron los otros ~35 segundos.
+
+Determina qué mide exactamente el span sql_server.query de
+Microsoft.Data.SqlClient/APM en esta versión.
+
+Busca evidencia para separar:
+
+- Open/acquire connection
+- envío del comando
+- espera de respuesta
+- lectura de resultados
+- scheduling de continuations
+- timeout timer
+- red/socket
+- procesamiento posterior
+
+No acepto:
+"probablemente fue scheduling"
+sin evidencia.
+
+Si la telemetría histórica no permite separar esas fases,
+dilo explícitamente.
+
+====================================================
+PASO 5 — RECONSTRUIR LA CADENA CAUSAL
+====================================================
+
+Construye una timeline de segundos con:
+
+caller
+→ ingress
+→ SSOAPI
+→ SqlClient
+→ SQL Server
+→ runtime .NET
+→ health/liveness
+→ Kubernetes restart
+
+Para cada flecha necesito:
+HECHO comprobado
+o
+NO DEMOSTRADO
+
+Distingue claramente:
+
+TRIGGER
+MECHANISM
+FAILURE
+CONSEQUENCE
+
+Ejemplo conceptual:
+
+TRIGGER:
+burst de X caller
+
+MECHANISM:
+ThreadPool starvation / pool / otro
+
+FAILURE:
+GetEntitiesForApp timeout + HTTP 500
+
+CONSEQUENCE:
+liveness falla → Kubernetes restart
+
+====================================================
+PASO 6 — CORRELACIONAR CON CÓDIGO
+====================================================
+
+Solo después de demostrar el mecanismo, revisa el código correspondiente.
+
+Si es ThreadPool:
+identifica EXACTAMENTE qué llamadas síncronas/bloqueantes participan.
+
+Si es pool:
+identifica EXACTAMENTE qué caminos retienen/adquieren las conexiones.
+
+Si es caller:
+identifica qué debe cambiar el caller:
+- retry policy
+- concurrency
+- backoff
+- fan-out
+etc.
+
+No incluyas code smells que no participaron en el incidente.
+
+====================================================
+PASO 7 — FIX
+====================================================
+
+Una vez confirmada la causa:
+
+Define:
+
+A. ROOT FIX
+Lo mínimo que elimina la causa real.
+
+B. HARDENING
+Cambios secundarios para que SSOAPI resista mejor futuros bursts.
+
+No mezcles ambos.
+
+NO apliques ningún cambio a producción.
+
+Puedes implementar temporalmente el fix en Development/local para validarlo.
+
+====================================================
+PASO 8 — PRUEBA REPRODUCIBLE
+====================================================
+
+Quiero poder demostrar el problema y el fix yo mismo.
+
+Crea un harness persistente fuera del repo productivo:
+
+C:\doa\sso-error\ssoapi-incident-repro\
+
+Debe contener:
+
+Run-Repro.ps1
+README.md
+results\
+
+Run-Repro.ps1 debe:
+
+1. verificar que NO apunta a Production;
+2. reproducir el mecanismo confirmado;
+3. capturar las mismas métricas que demostraron la causa;
+4. guardar baseline;
+5. ejecutar escenario de fallo;
+6. guardar resultados;
+7. después permitir ejecutar el mismo escenario con el fix.
+
+Cada ejecución:
+
+results\YYYYMMDD-HHmmss\
+
+Debe guardar al menos:
+
+summary.txt
+requests.csv
+runtime-metrics.csv
+server.log
+
+NO borres el harness ni los resultados.
+
+README.md debe explicar:
+- qué reproduce;
+- por qué reproduce el incidente;
+- comando exacto;
+- qué métricas observa;
+- cómo reconocer el fallo;
+- cómo reconocer que el fix funcionó.
+
+====================================================
+CRITERIO DE CIERRE
+====================================================
+
+Solo declara ROOT_CAUSE=CONFIRMED si puedes demostrar:
+
+TRIGGER
+→ MECANISMO
+→ FALLO
+→ RESTART
+
+con evidencia correlacionada.
+
+Y el fix debe pasar esta prueba:
+
+ANTES:
+reproduce el mecanismo/fallo.
+
+DESPUÉS:
+mismo escenario
+→ mecanismo eliminado o controlado
+→ 0 HTTP 500
+→ liveness sano
+→ SQL sigue rápido.
+
+====================================================
+ENTREGA
+====================================================
+
+No me entregues el historial de búsquedas.
+
+Entrégame:
+
+ROOT_CAUSE=
+STATUS=CONFIRMED / NOT_CONFIRMED
+
+TRIGGER=
+MECHANISM=
+FAILURE=
+CONSEQUENCE=
+
+EVIDENCE=
+máximo 10 puntos, cada uno con timestamp/fuente/dato.
+
+CALLER=
+CALLER_EVIDENCE=
+
+WHY_35_SECONDS=
+
+ROOT_FIX=
+
+HARDENING=
+
+BEFORE_TEST=
+AFTER_TEST=
+
+HARNESS_PATH=
+COMMAND_TO_REPRODUCE=
+RESULT_PATH=
+
+MESSAGE_FOR_CHARLES=
+mensaje corto en inglés.
+
+Si NO puedes demostrar algún punto, escribe exactamente:
+NOT_PROVEN=
+y el dato que falta.
+
+No rellenes huecos con hipótesis.
