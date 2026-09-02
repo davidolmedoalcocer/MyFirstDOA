@@ -1,0 +1,28 @@
+Responde en español. No modifiques nada.
+
+Conéctate de solo lectura a dbSSO-PROD.
+
+Necesito UNA sola investigación:
+
+Consulta sys.query_store_wait_stats para el query/plan de dbo.SSOGetEntitiesForApp (query_id 41422, plan_id 3007) durante el intervalo que contiene el incidente:
+
+2026-09-01 08:00:00 UTC a 08:30:00 UTC.
+
+Muéstrame todas las categorías de espera:
+- wait_category_desc
+- total_query_wait_time_ms
+- avg_query_wait_time_ms
+- max_query_wait_time_ms
+
+y compáralas con el intervalo anterior 07:30–08:00 UTC.
+
+No investigues código.
+No propongas soluciones.
+No ejecutes pruebas.
+No cambies configuración.
+
+Quiero únicamente saber QUÉ tipo de espera registró SQL Server para SSOGetEntitiesForApp durante el incidente.
+
+Si Query Store Wait Stats no está habilitado o no contiene información, indícalo claramente.
+
+Entrégame solamente los resultados y una conclusión de máximo 5 líneas.
