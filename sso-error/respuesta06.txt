@@ -1,0 +1,93 @@
+Read , lines 1 to 5
+
+Searched for regex `Connection|ThreadPool|Queue Length|Thread Count` (`**/_tmp_counters.csv`), 338 results
+
+Searched for regex `free|Free|pooled connections|managed by the connection pool|active connections currently made` (`**/_tmp_counters.csv`), 162 results
+
+Confirmación objetiva del pool obtenida (Active=Managed=5=Max Pool Size durante la carga). Ahora detengo todo y reviero los cambios temporales.  
+
+Killed terminal
+
+Killed terminal
+
+Ahora reviero todos los cambios de código y elimino los archivos temporales.  
+
+Ran terminal command: cd C:\doa\sso-error; git status
+Completed with input: cd C:\doa\sso-error; git status
+
+Ran terminal command: cd C:\doa\sso-error\DS.Web.SSOApi; git status 2>&1
+
+Es un repositorio git. Reviero los tres archivos modificados con `git restore` (sin commit, sin push). 
+
+Ran terminal command: git restore SSOApi/ConnectionManager.cs SSOApi/Data/SSOAdminRepository.cs SSOApi/Program.cs; git status
+
+Working tree limpio. Ahora elimino los archivos temporales fuera del repo y rebuild para confirmar el estado original.  
+
+Ran terminal command: Remove-Item -Path "C:\doa\sso-error\_tmp_pool_test.ps1","C:\doa\sso-error\_tmp_pool_results.csv","C:\doa\sso-error\_tmp_server.log","C:\doa\sso-error\_tmp_counters.csv","C:\doa\sso-error\_tmp_counters.log" -ErrorAction SilentlyContinue -Force; Get-ChildItem "C:\doa\sso-error\_tmp_*" -ErrorAction SilentlyContinue; Get-Process dotnet -ErrorAction SilentlyContinue | Where-Object { (Get-NetTCPConnection -OwningProcess $_.Id -ErrorAction SilentlyContinue | Where-Object LocalPort -eq 62995) } 
+
+Ran terminal command: Get-Process -Id 8796 -ErrorAction SilentlyContinue; Get-NetTCPConnection -LocalPort 62995 -ErrorAction SilentlyContinue
+Completed with input: Get-Process -Id 8796 -ErrorAction SilentlyContinue; Get-NetTCPConnection -LocalPort 62995 -ErrorAction SilentlyContinue
+
+Confirmado: el proceso de prueba y el puerto ya no existen. Todo el entorno quedó limpio. 
+
+Ran terminal command: git log --oneline -3; git status
+
+He ejecutado la prueba completa (Fases 0-6) contra el ambiente Development real (NO producción), con instrumentación temporal ya revertida. Aquí está el reporte solicitado:
+
+```
+ENVIRONMENT_CHECK
+Environment=Development
+SQLServer=LWVDDBSQLA020.ngls.ngic.com
+Database=dbSSO
+PRODUCTION=false
+
+BASELINE
+Requests=20 (sin carga concurrente adicional; 1 excluido del cálculo de percentiles por ser cold-start de la 1ª conexión física: OpenMs=325.9/QueryMs=83.7/TotalMs=448.3)
+OpenMs p50/p95/max=0.10 / 0.16 / 0.47 ms
+QueryMs p50/p95/max=17.6 / 34.0 / 34.6 ms
+TotalMs p50/p95/max=17.7 / 34.1 / 34.8 ms
+ClientMs (extremo a extremo, medido en el cliente)=p50≈33 ms, max=115.5 ms
+Errors=0/20
+
+UNDER_POOL_PRESSURE
+Concurrency=20 GetUser concurrentes + 5 GetEntitiesForApp?appID=117 concurrentes (Max Pool Size=5 forzado solo en esta ejecución local)
+OpenMs p50/p95/max= 0.05 ms / ~12.7 ms / 14998.35 ms   (evento más severo capturado en el propio GetEntitiesForApp: OpenMs=14998.3495, QueryMs=18.1801, TotalMs=15016.5366)
+QueryMs p50/p95/max= 16 ms / 18 ms / 18.4 ms   (se mantuvo estable en milisegundos incluso cuando OpenMs se disparó a ~15s)
+TotalMs / ClientMs p50/p95/max (GetEntitiesForApp, n=5)= 2959 ms / ~17800 ms / 18015.4 ms (este último terminó en HTTP 500)
+GetUser ClientMs (n=20, carga)= min=1206 ms, varias entre 17800-35818 ms, max=35818.1 ms
+Errors=
+  - GetEntitiesForApp: 1/5 (20%) → System.InvalidOperationException: "Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool..."
+  - GetUser: 10/20 (50%) → misma excepción, en distintos puntos de SSOAuthRepository (GetUserPrefsAsync, GetUserRolesAsync, GetUserOperationsAsync, GetUserAsync)
+PoolActive=5 (confirmado en vivo con dotnet-counters, Microsoft.Data.SqlClient.EventSource: "Actual active connections currently made to servers"=5 y "Number of connections managed by the connection pool"=5, sostenido durante toda la ráfaga de carga)
+PoolFree=0 (Active=Managed=Max Pool Size=5 de forma sostenida → sin conexiones libres)
+
+VERDICT=CONFIRMADA
+```
+
+### Evidencia clave que sustenta el veredicto
+
+La captura más concluyente (log real del servidor, sin editar):
+```
+[17:52:20 WRN] GetEntitiesForApp CorrelationId=c27a1966-... OpenMs=14998.3495 QueryMs=18.1801 TotalMs=15016.5366
+```
+`SqlConnection.Open()` tardó **~15 segundos** esperando un slot del pool, mientras `SSOGetEntitiesForApp` dentro de SQL Server se ejecutó en **18 milisegundos** una vez obtenida la conexión — exactamente el patrón buscado (SQL rápido, total lento por espera de conexión). Además, bajo la misma presión, `GetEntitiesForApp` llegó a fallar directamente con HTTP 500 por la misma excepción de pool.
+
+### Criterio cumplido
+- Conexiones libres del pool ≈ 0 durante la presión (confirmado objetivamente con `dotnet-counters`: Active=Managed=5=Max Pool Size). ✓
+- `Open` tardó significativamente más (de ~0.1 ms basal a hasta ~15,000 ms). ✓
+- `GetEntitiesForApp` subió a segundos/decenas de segundos (hasta ~18 s, incluyendo un fallo). ✓
+- `QueryAsync`/`SSOGetEntitiesForApp` se mantuvo en milisegundos todo el tiempo (16-34 ms). ✓
+
+### Nota honesta sobre una diferencia con producción
+La excepción reproducida aquí es `System.InvalidOperationException: "Timeout expired... obtaining a connection from the pool"` (falla al **adquirir** conexión), mientras que producción registró `Microsoft.Data.SqlClient.SqlException: "Execution Timeout Expired"` (falla durante la **ejecución** del comando ya con conexión abierta). Ambas comparten la misma causa raíz de fondo (contención sobre el mismo pool/recursos bajo carga concurrente con `.Open()` síncrono dentro de métodos `async`), pero no son literalmente la misma excepción — con `Max Pool Size` mucho más grande en producción (no reducido artificialmente como aquí), el mecanismo dominante podría ser más una combinación de espera de pool + saturación del ThreadPool de .NET (observada también en corridas de concurrencia=5-10, donde el retraso ocurría *antes* de llegar al código instrumentado) que agotamiento puro del pool. Esto no invalida la hipótesis confirmada, pero es un matiz que documento con honestidad y que no debe interpretarse como una reproducción byte-a-byte del incidente exacto.
+
+### Limpieza final
+- `git status` en `DS.Web.SSOApi` → **"nothing to commit, working tree clean"** (se usó `git restore` sobre los 3 archivos temporalmente instrumentados: `Program.cs`, `ConnectionManager.cs`, `SSOAdminRepository.cs`).
+- Todos los archivos temporales fuera del repo (`_tmp_pool_test.ps1`, `_tmp_pool_results.csv`, `_tmp_server.log`, `_tmp_counters.csv`, `_tmp_counters.log`) fueron eliminados.
+- El proceso del servidor de prueba (puerto 62995) fue detenido; no queda ningún proceso ni puerto abierto.
+- **No se hizo ningún commit ni push** en ningún momento.
+- No se tocó ni se ejecutó nada contra `LWVPDBSQLA020.ngls.ngic.com` (producción); todo corrió contra `LWVDDBSQLA020.ngls.ngic.com` (Development), verificado explícitamente en Fase 0 antes de continuar. 
+
+
+
+Prueba de reproducción ejecutada con éxito en Development, hipótesis **CONFIRMADA** con evidencia directa (OpenMs=14998ms vs QueryMs=18ms, y pool saturado confirmado con dotnet-counters), y entorno completamente revertido y verificado limpio.
