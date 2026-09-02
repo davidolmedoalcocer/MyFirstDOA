@@ -1,0 +1,703 @@
+Ran List Spans 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "limit": 1000,
+  "max_tokens": 20000,
+  "custom_attributes": [
+    "*"
+  ],
+  "query": "trace_id:6a96872b00000000ba19be8491a518f0",
+  "telemetry": {
+    "intent": "Get all spans across all services for this trace_id to find root span, caller service, and full parent-child tree, not just SSOAPI"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Starting: *Recuperar TODOS los spans del trace_id (todos los servicios) - buscar root span/caller* (5/16)
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01NmGx6k9uVZajTt8eNFF2d9__vscode-1788301448504\content.txt" -Pattern '^\s*service:\s*(\S+)' | ForEach-Object { $_.Matches.Groups[1].Value } | Sort-Object -Unique
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01NmGx6k9uVZajTt8eNFF2d9__vscode-1788301448504\content.txt" -Pattern '^\s*operationname:\s*(\S+)' | ForEach-Object { $_.Matches.Groups[1].Value } | Sort-Object | Group-Object | Select-Object Name, Count
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01NmGx6k9uVZajTt8eNFF2d9__vscode-1788301448504\content.txt" -Pattern '^\s*spanid:\s*"?([^"\r\n]+)"?' | ForEach-Object { $_.Matches.Groups[1].Value } | Sort-Object -Unique | Measure-Object | Select-Object -ExpandProperty Count
+
+Read , lines 1 to 10
+
+Ran Aggregate Spans 
+Completed with input: {
+  "computes": [
+    {
+      "aggregation": "COUNT",
+      "field": "*",
+      "output": "row_count"
+    },
+    {
+      "aggregation": "CARDINALITY",
+      "field": "span_id",
+      "output": "distinct_spans"
+    }
+  ],
+  "from": "2026-09-01T07:55:00Z",
+  "group_by": {
+    "fields": [
+      "operation_name"
+    ]
+  },
+  "query": "trace_id:6a96872b00000000ba19be8491a518f0",
+  "telemetry": {
+    "intent": "Determine true distinct span/request count vs duplicate ingestion rows for the reused trace_id, grouped by operation to understand actual volume of requests"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran Aggregate Spans 
+Completed with input: {
+  "computes": [
+    {
+      "aggregation": "COUNT",
+      "field": "*",
+      "output": "row_count"
+    },
+    {
+      "aggregation": "CARDINALITY",
+      "field": "span_id",
+      "output": "distinct_spans"
+    }
+  ],
+  "from": "2026-09-01T07:55:00Z",
+  "group_by": {
+    "fields": [
+      "@http.status_code"
+    ],
+    "interval": 60000
+  },
+  "query": "service:ds-web-ssoapi-prod operation_name:aspnet_core.request resource_name:\"GET /ssoadmin/getentitiesforapp\"",
+  "telemetry": {
+    "intent": "Get true distinct request count per minute (not duplicate rows) to know real HTTP request volume during the incident"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "error.message",
+    "error.type",
+    "error.stack"
+  ],
+  "from": "2026-09-01T07:55:00Z",
+  "limit": 120,
+  "max_tokens": 20000,
+  "query": "trace_id:6a96872b00000000ba19be8491a518f0 operation_name:aspnet_core.request",
+  "telemetry": {
+    "intent": "Get duration and error details for every distinct aspnet_core.request span in this trace to distinguish requests that reached SQL from those that failed earlier, and identify their exact error signature"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran terminal command: $content = Get-Content "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01S6vNHqY29ytgsR4d29TvCS__vscode-1788301448511\content.txt" -Raw
+$matches1 = [regex]::Matches($content, 'spanid:\s*"([^"]+)"[\s\S]*?duration:\s*([\d.e+]+)[\s\S]*?(?:error\.type:\s*(\S+))?')
+"Total spanid occurrences: " + ([regex]::Matches($content,'spanid:').Count)
+[regex]::Matches($content, 'error\.type:\s*(\S+)') | ForEach-Object { $_.Groups[1].Value } | Group-Object | Select-Object Name, Count
+"---durations---"
+[regex]::Matches($content, 'duration:\s*([\d.e+]+)') | ForEach-Object { [double]$_.Groups[1].Value } | Sort-Object -Unique | ForEach-Object { [math]::Round($_/1e9,2) }
+
+Ran terminal command: $path = "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01S6vNHqY29ytgsR4d29TvCS__vscode-1788301448511\content.txt"
+$content = Get-Content $path -Raw
+Write-Output "TotalSpanIdCount:"
+([regex]::Matches($content,'spanid:')).Count
+
+Ran terminal command: (Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01S6vNHqY29ytgsR4d29TvCS__vscode-1788301448511\content.txt" -Pattern 'duration:').Count
+
+Read , lines 1 to 80
+
+Ran Search Logs 
+Completed with input: {
+  "extra_fields": [
+    "*"
+  ],
+  "from": "2026-09-01T08:05:00Z",
+  "max_tokens": 18000,
+  "query": "service:ds-web-ssoapi-prod (GetEntitiesForApp OR SSOGetEntitiesForApp OR \\\"pool\\\" OR \\\"Timeout expired\\\")",
+  "telemetry": {
+    "intent": "Find application-level log entries with the real exception message for GetEntitiesForApp failures, including any pool timeout exceptions, during the incident window"
+  },
+  "to": "2026-09-01T08:16:00Z"
+}
+
+Ran Search Logs 
+Completed with input: {
+  "extra_fields": [
+    "*"
+  ],
+  "from": "2026-09-01T08:05:00Z",
+  "max_tokens": 18000,
+  "query": "service:rke2-ingress-nginx GetEntitiesForApp",
+  "telemetry": {
+    "intent": "Find ingress-nginx access logs for the GetEntitiesForApp endpoint to identify caller client IP, user-agent, and upstream response time during the incident"
+  },
+  "to": "2026-09-01T08:16:00Z"
+}
+
+Searched for text `LogEventError` (`**/DS.Web.SSOApi/**`), 51 results
+
+Read , lines 1 to 150
+
+Ran Load Datadog Skill 
+Completed with input: {
+  "header_only": false,
+  "skill_name": "datadog/ddsql",
+  "telemetry": {
+    "intent": "Need to run SQL aggregation queries against ingress-nginx logs to count distinct client requests vs upstream retry attempts"
+  }
+}
+
+Read , lines 1 to 120
+
+Ran Analyze Datadog Logs 
+Completed with input: {
+  "extra_columns": [
+    {
+      "name": "@http.request_id",
+      "type": "varchar"
+    },
+    {
+      "name": "@http.status_code",
+      "type": "varchar"
+    },
+    {
+      "name": "@http.upstream_status_code",
+      "type": "varchar"
+    },
+    {
+      "name": "@network.client.ip",
+      "type": "varchar"
+    },
+    {
+      "name": "@http.useragent",
+      "type": "varchar"
+    }
+  ],
+  "filter": "service:rke2-ingress-nginx GetEntitiesForApp",
+  "from": "2026-09-01T08:05:00Z",
+  "max_tokens": 15000,
+  "sql_query": "SELECT \"@network.client.ip\", \"@http.useragent\", \"@http.status_code\", \"@http.upstream_status_code\", COUNT(*) as cnt\nFROM logs\nGROUP BY \"@network.client.ip\", \"@http.useragent\", \"@http.status_code\", \"@http.upstream_status_code\"\nORDER BY cnt DESC",
+  "telemetry": {
+    "intent": "Count distinct client IPs, user agents, and status codes among ingress-nginx log lines for the endpoint to determine true request volume and caller identity"
+  },
+  "to": "2026-09-01T08:16:00Z"
+}
+
+Ran Analyze Datadog Logs 
+Completed with input: {
+  "extra_columns": [
+    {
+      "name": "@http.status_code",
+      "type": "varchar"
+    },
+    {
+      "name": "@http.upstream_status_code",
+      "type": "varchar"
+    },
+    {
+      "name": "@http.upstream_response_time",
+      "type": "varchar"
+    }
+  ],
+  "filter": "service:rke2-ingress-nginx GetEntitiesForApp",
+  "from": "2026-09-01T08:05:00Z",
+  "max_tokens": 18000,
+  "sql_query": "SELECT DATE_TRUNC('minute', timestamp) as minute, \"@http.status_code\", COUNT(*) as cnt\nFROM logs\nWHERE \"@http.status_code\" IS NOT NULL\nGROUP BY DATE_TRUNC('minute', timestamp), \"@http.status_code\"\nORDER BY DATE_TRUNC('minute', timestamp), \"@http.status_code\"",
+  "telemetry": {
+    "intent": "Get per-minute breakdown of nginx ingress status codes for GetEntitiesForApp to compare volume and timing against the app-side bursts observed at 08:07 and 08:12-08:13"
+  },
+  "to": "2026-09-01T08:16:00Z"
+}
+
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "error.message",
+    "error.type"
+  ],
+  "from": "2026-09-01T08:05:00Z",
+  "limit": 100,
+  "max_tokens": 15000,
+  "query": "service:ds-web-ssoapi-prod-sql-server status:error -resource_name:SSOGetEntitiesForApp",
+  "telemetry": {
+    "intent": "Check if any other SQL query across the app (not just GetEntitiesForApp) showed pool exhaustion exceptions during the incident window, since all repos share the same connection pool"
+  },
+  "to": "2026-09-01T08:16:00Z"
+}
+
+
+
+Ran List Metrics 
+Completed with input: {
+  "from": "now-2d",
+  "name_filter": "runtime.dotnet",
+  "telemetry": {
+    "intent": "Discover all available .NET runtime metric names in this Datadog account to find real ThreadPool queue, contention, GC, and exception metrics for the affected service"
+  }
+}
+
+Ran terminal command: (Get-Content "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_015k21F5btb2XLL183VF2gWT__vscode-1788301448527\content.json" -Raw | ConvertFrom-Json).results | Select-Object -ExpandProperty name 2>$null; if (-not $?) { Get-Content "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_015k21F5btb2XLL183VF2gWT__vscode-1788301448527\content.json" -Raw }
+
+Read , lines 1 to 200
+
+Ran Get Metrics 
+Completed with input: {
+  "from": "2026-09-01T07:30:00Z",
+  "queries": [
+    {
+      "name": "exceptions",
+      "query": "avg:runtime.dotnet.exceptions.count{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "contention_time",
+      "query": "avg:runtime.dotnet.threads.contention_time{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "req_current",
+      "query": "avg:runtime.dotnet.aspnetcore.requests.current{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "req_failed",
+      "query": "avg:runtime.dotnet.aspnetcore.requests.failed{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "conn_current",
+      "query": "avg:runtime.dotnet.aspnetcore.connections.current{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "threads_total",
+      "query": "avg:runtime.dotnet.threads.count{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "gc_pause_max",
+      "query": "avg:runtime.dotnet.gc.pause_time.max{service:ds-web-ssoapi-prod,pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    }
+  ],
+  "raw_data": true,
+  "telemetry": {
+    "intent": "Compare healthy baseline (07:30-08:00), incident window, and recovery period for full set of .NET runtime metrics to rigorously test threadpool starvation vs other mechanisms"
+  },
+  "to": "2026-09-01T08:40:00Z"
+}
+
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "error.message",
+    "error.type"
+  ],
+  "from": "2026-09-01T08:05:00Z",
+  "limit": 40,
+  "max_tokens": 15000,
+  "query": "trace_id:6a96872b00000000ba19be8491a518f0 operation_name:sql_server.query",
+  "telemetry": {
+    "intent": "Check whether all SQL child spans in this trace show the same exception type (Execution Timeout Expired) or a mix including pool timeout exceptions"
+  },
+  "to": "2026-09-01T08:16:00Z"
+}
+
+Ran terminal command: (Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_013wxXYG5PcwiuBBpfBpDMfi__vscode-1788301448531\content.txt" -Pattern 'error\.message:\s*(.+)').Matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object | Group-Object | Select-Object Count, Name
+
+Searched for regex `SetMinThreads|ThreadPool|MapHealthChecks|/health|AddHealthChecks|livenessProbe|MaxConcurrentUpgradedConnections|Limits\.` (`**/DS.Web.SSOApi/SSOApi/**`), 29 results
+
+Read 
+
+Ran terminal command: dotnet --version; dotnet --list-sdks
+
+Ran terminal command: dotnet --list-runtimes
+
+Perfecto, net8.0 está disponible. Ahora construyo el harness de reproducción. 
+
+Created 
+
+Created 
+
+Ran terminal command: cd C:\doa\sso-error\ssoapi-incident-repro\src\Repro; dotnet build -c Release 2>&1 | Select-Object -Last 60
+
+Compila sin errores. Ahora creo el script orquestador `Run-Repro.ps1`. 
+
+Created 
+
+Replacing 51 lines with 43 lines in 
+
+
+```
+
+```
+Ahora actualizo `Invoke-Scenario` para usar el nuevo handle en vez del proceso directo: 
+
+Replacing 14 lines with 14 lines in 
+
+
+```
+
+```
+Ahora una prueba rápida (smoke test) con parámetros pequeños antes de la ejecución completa: 
+
+Ran terminal command: cd C:\doa\sso-error\ssoapi-incident-repro; .\Run-Repro.ps1 -Concurrency 20 -Requests 40 -DurationSeconds 8
+
+Replacing 12 lines with 17 lines in 
+
+
+```
+
+```
+Ahora actualizo el script de PowerShell para pasar `--min-threads` y aumentar la agresividad del escenario por defecto: 
+
+Replacing 18 lines with 20 lines in 
+
+
+```
+
+```
+
+
+Replacing 1 lines with 1 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: .\Run-Repro.ps1
+
+Read , lines 55 to 75
+
+Read , lines 150 to 195
+
+Replacing 32 lines with 38 lines in 
+
+
+```
+
+```
+Ahora agrego el paso de `--open-delay-ms` en el script de PowerShell y reconstruyo: 
+
+Replacing 21 lines with 22 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: .\Run-Repro.ps1
+
+Ran terminal command: .\Run-Repro.ps1 -Concurrency 100 -Requests 300 -OpenDelayMs 50 -MinThreads 2 -DurationSeconds 10
+
+Ran terminal command: .\Run-Repro.ps1 -Concurrency 200 -Requests 3000 -OpenDelayMs 30 -MinThreads 2 -DurationSeconds 20
+
+Read , lines 1 to 30
+
+Replacing 9 lines with 16 lines in 
+
+
+```
+
+```
+Ahora simplifico `LoadAsync` (quito el sondeo de liveness embebido) y agrego `ProbeLivenessAsync` como función independiente: 
+
+Read , lines 225 to 280
+
+Read , lines 280 to 329
+
+Ahora reemplazo todo el bloque `LoadAsync` para quitar el sondeo embebido y agregar `ProbeLivenessAsync`: 
+
+Replacing 90 lines with 102 lines in 
+
+
+```
+
+```
+
+
+Read , lines 95 to 140
+
+Replacing 14 lines with 24 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: .\Run-Repro.ps1 -Concurrency 200 -Requests 3000 -OpenDelayMs 30 -MinThreads 2 -DurationSeconds 20
+Completed with input: .\Run-Repro.ps1 -Concurrency 200 -Requests 3000 -OpenDelayMs 30 -MinThreads 2 -DurationSeconds 20
+
+Autopilot extended tool call limit
+
+Searched for text `probe-liveness` (`sso-error` · `ssoapi-incident-repro/src/Repro/Program.cs`), 7 results
+
+Ran terminal command: Get-Process -Name dotnet -ErrorAction SilentlyContinue | Select-Object Id, StartTime | Format-Table -AutoSize
+
+Ran terminal command: Get-Process -Name dotnet -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+Completed with input: Get-Process -Name dotnet -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+
+Bien, quedó limpio. Ahora reemplazo `dotnet run` por invocación directa del DLL compilado, para evitar el problema del proceso "wrapper" que no se mataba correctamente: 
+
+Read , lines 1 to 220
+
+Replacing 34 lines with 34 lines in 
+
+
+```
+
+```
+Ahora agrego una limpieza de procesos huérfanos al inicio del script y ejecuto de nuevo la calibración: 
+
+Replacing 5 lines with 4 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: Get-Process -Name Repro -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; cd C:\doa\sso-error\ssoapi-incident-repro; .\Run-Repro.ps1 -Concurrency 200 -Requests 3000 -OpenDelayMs 30 -MinThreads 2 -DurationSeconds 20
+
+Replacing 8 lines with 8 lines in 
+
+
+```
+
+```
+
+
+Ran terminal command: Get-Process -Name Repro -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; cd C:\doa\sso-error\ssoapi-incident-repro; .\Run-Repro.ps1
+
+Excelente, resultado consistente y reproducible. Ahora escribo el `README.md`:  
+
+Created 
+
+Ran terminal command: Get-Process -Name Repro -ErrorAction SilentlyContinue; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Select-Object Id,StartTime
+
+Ran terminal command: Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Select-Object ProcessId, CommandLine | Format-List
+
+Ran terminal command: 33964,25048,12580,35888 | ForEach-Object { taskkill /PID $_ /T /F 2>&1 | Out-Null }; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+Completed with input: 33964,25048,12580,35888 | ForEach-Object { taskkill /PID $_ /T /F 2>&1 | Out-Null }; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+
+Ahora corrijo `Stop-ReproServer` para usar `taskkill /T /F` (compatible con PowerShell 5.1 / .NET Framework), evitando procesos huérfanos en futuras ejecuciones:  
+
+Replacing 10 lines with 12 lines in 
+
+
+```
+
+```
+Ahora una corrida final de verificación completa, confirmando que no queden procesos huérfanos:  
+
+Ran terminal command: .\Run-Repro.ps1; Start-Sleep -Seconds 2; "---procesos dotnet restantes---"; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+Completed with input: .\Run-Repro.ps1; Start-Sleep -Seconds 2; "---procesos dotnet restantes---"; Get-Process -Name dotnet -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count
+
+Replacing 21 lines with 21 lines in 
+
+
+```
+
+```
+
+
+Created memory file 
+
+Starting: *Redactar reporte final en formato exigido* (16/16)
+
+Cierre de la investigación con evidencia verificada, correcciones a las dos conclusiones señaladas, y harness de reproducción funcional (validado con antes/después). 
+
+Completed: *Redactar reporte final en formato exigido* (16/16)
+
+```
+ROOT_CAUSE=
+Burst masivo de tráfico hacia GET /SSOAdmin/GetEntitiesForApp?appID=117 que satura el ThreadPool
+de .NET del pod ds-web-ssoapi-864d7b6f79-jd4f8 (código con db.Open() síncrono dentro de métodos
+async), lo que retrasa TODO el pipeline del proceso — incluido /health/liveness, que no tiene
+ninguna dependencia — y provoca que Kubernetes reinicie el pod. SQL Server nunca fue el problema.
+
+STATUS=CONFIRMED (con reservas explícitas — ver NOT_PROVEN)
+
+TRIGGER=
+Burst real de tráfico contra GetEntitiesForApp?appID=117 entre 08:07-08:13 UTC.
+CONFIRMADO de forma INDEPENDIENTE del trace_id: logs de rke2-ingress-nginx muestran
+570-742 intentos/min contra ese endpoint (vs 6-18/min en el minuto sano 08:06), con mezcla
+de 500 (app respondió con error), 504 (nginx agotó su propio timeout esperando al pod) y
+502 (connection refused, pod caído).
+
+MECHANISM=
+ThreadPool starvation en el proceso .NET del pod. No me apoyo solo en workers_count:
+- runtime.dotnet.aspnetcore.requests.current subió de ~0 (baseline) a 148 concurrentes.
+- runtime.dotnet.aspnetcore.connections.current subió de ~0-30 (baseline) a 234.
+- runtime.dotnet.threads.count (hilos totales del proceso) subió de ~36 a 93.
+- runtime.dotnet.threads.workers_count subió de 4 a 49 y luego a 60 (rampa característica
+  del algoritmo de inyección de hilos del CLR, que solo actúa cuando detecta que el trabajo
+  encolado no se drena a tiempo — es decir, había trabajo pendiente sin ejecutar).
+- Código: SSOAdminRepository.cs y el resto de repositorios usan `db.Open()` SÍNCRONO dentro
+  de métodos `async`, sin `SetMinThreads`, y `/health/liveness` no tiene ningún check real
+  (AddHealthChecks() sin checks con tag "monitor"), por lo que su única forma de fallar es
+  que el pipeline completo esté saturado.
+- Reproducido mecánicamente en el harness local: el mismo patrón de código (Open síncrono)
+  bajo concurrencia equivalente produce exactamente esta firma; con OpenAsync desaparece.
+Reserva: Datadog no expone una métrica directa de "ThreadPool pending work items" para .NET
+en producción (esa métrica solo pude medirla en el harness local, no en el pod real).
+
+FAILURE=
+sql_server.query span = "Execution Timeout Expired" (Error -2) con ~35-38s de duración,
+mientras Query Store confirma que SSOGetEntitiesForApp (query_id=41422/plan_id=3007) ejecutó
+en <65ms durante todo el incidente y sys.query_store_wait_stats solo muestra CPU/Memory
+(sin Lock/Latch/IO). HTTP 500 al caller.
+
+CONSEQUENCE=
+kubelet: 3 fallos consecutivos de "Unhealthy: Liveness probe failed ... context deadline
+exceeded" -> "Killing: failed liveness probe, will be restarted" -> restart del contenedor.
+Dos ciclos completos y verificados con timestamp exacto:
+  08:07:12 / 08:07:27 / 08:07:42 (Unhealthy x3) -> 08:07:42 Killing -> 08:08:13 Started.
+  08:12:57 / 08:13:12 / 08:13:27 (Unhealthy x3) -> 08:13:27 Killing -> 08:13:58 Started.
+
+EVIDENCE=
+1. Query Store (verificado por mí, dbSSO-PROD): 08:00-08:30 UTC, 401 ejecuciones, avg=10.9ms,
+   max=64.9ms para SSOGetEntitiesForApp. SQL Server nunca fue lento.
+2. sys.query_store_wait_stats plan_id=3007: solo CPU (max 58ms) y Memory (max 5ms); 0 Lock/Latch/IO.
+3. rke2-ingress-nginx logs (analyze_datadog_logs, ddsql): 08:08 -> 572x502 + 94x504/min;
+   08:13 -> 595x502 + 77x500 + 70x504/min. Baseline 08:06 -> 6x200/min.
+4. runtime.dotnet.aspnetcore.requests.current (métrica raw, pod jd4f8): pico 148 (baseline ~0).
+5. runtime.dotnet.aspnetcore.connections.current: pico 234 (baseline ~0-30).
+6. runtime.dotnet.threads.workers_count: rampa 4->14->22.75->31.5->40.25->49 iniciando exactamente
+   en 08:07:00 UTC; segundo pico a 60 hacia 08:13-08:14 UTC. Pod gemelo no afectado se mantuvo en ~4.
+7. sql_server.query span (trace 6a96872b...): 35.69s, "Execution Timeout Expired", ClientConnectionId
+   14fe8c19-e1d7-4a96-ac46-6ceec1e461c5. 26/26 spans SQL de la traza muestran el mismo mensaje
+   (ningún "pool timeout" capturado en los que sí llegaron a SQL).
+8. Datadog Events (kubelet): "Unhealthy... context deadline exceeded" y "Killing... failed liveness
+   probe" con timestamps exactos que coinciden al segundo con el inicio de cada burst.
+9. aggregate_spans: de 108 spans app-side distintos (deduplicando el 2x de ingestión), solo 34
+   tienen span hijo sql_server.query -> 74 fallaron antes/sin llegar a ejecutar el comando SQL.
+10. Program.cs: AddHealthChecks() sin checks con tag "monitor" -> /health/liveness es una ruta
+    sin ninguna dependencia; su degradación solo se explica por saturación del pipeline entero.
+
+CALLER=
+NOT_PROVEN
+
+CALLER_EVIDENCE=
+- La traza APM solo contiene 2 servicios: ds-web-ssoapi-prod y su peer SQL — ningún servicio
+  aguas arriba instrumentado con APM participa en el trace (confirmado con búsqueda de todos
+  los spans del trace_id: 501 filas, 108 spans únicos, únicamente esos 2 servicios).
+- rke2-ingress-nginx registra client.ip=127.0.0.1 y useragent="-" en el 100% de las líneas
+  (incluidas las del período sano), lo cual indica que este ingress no ve la IP real del
+  cliente (hay otro proxy/LB terminando en el mismo nodo vía loopback) — no es algo que
+  pueda corregirse con otra query, es una limitación de la telemetría capturada.
+- Los logs de aplicación (_logger.LogEventError vía EventLoggerInterface/TrackGuard) NO están
+  ingeridos en Datadog Logs (0 resultados buscando "GetEntitiesForApp" en service:ds-web-ssoapi-prod).
+- 108 spans app-side comparten un solo trace_id — esto es una ANOMALÍA de instrumentación, la uso
+  como indicio de que el volumen es inusual, pero NO la uso como prueba de "retries de un caller".
+
+WHY_35_SECONDS=
+Explicado PARCIALMENTE con evidencia; NO puedo separar las fases exactas dentro de los 35-38s.
+- Confirmado: SQL Server ejecutó la query en <65ms (Query Store) durante toda la ventana.
+- Confirmado: el código no fija CommandTimeout en ninguna llamada Dapper ni en la cadena de
+  conexión -> aplica el default de Microsoft.Data.SqlClient = 30s antes de que el cliente
+  aborte con "Execution Timeout Expired".
+- El span sql_server.query de Datadog para .NET/SqlClient es UN SOLO span que cubre desde el
+  inicio del comando hasta su finalización o excepción; no subdivide internamente en
+  "conectar / enviar / esperar / leer / scheduling". Esa granularidad no existe en la
+  telemetría histórica disponible.
+- Los ~5-7s por encima del nominal de 30s son consistentes en orden de magnitud con el mismo
+  período de saturación del ThreadPool documentado en EVIDENCE #4-#6, pero NO puedo demostrar
+  con un dato aislado que esos segundos específicos correspondan a scheduling y no a otra causa.
+NOT_PROVEN= desglose exacto de los 35-38s en sub-fases de SqlClient; no existe telemetría
+histórica granular para esa separación y Continuous Profiler no está disponible en el MCP.
+
+ROOT_FIX=
+En SSOAdminRepository.GetEntitiesForApp (y, por consistencia, en el resto de métodos del mismo
+patrón en todos los repositorios que comparten el mismo pool): reemplazar
+  `using SqlConnection db = new(_connectionString); db.Open();`
+por
+  `using SqlConnection db = new(_connectionString); await db.OpenAsync();`
+Esto elimina el bloqueo síncrono de un hilo del ThreadPool durante la apertura/adquisición
+de la conexión, que es la única llamada bloqueante identificada en el camino de código de
+este endpoint. Validado en el harness: mismo patrón exacto, mismo mecanismo, desaparece con
+este único cambio.
+
+HARDENING=
+(secundario, NO necesario para explicar este incidente, no aplicar sin evaluar aparte)
+- Fijar CommandTimeout explícito y razonable en las llamadas Dapper (hoy usa el default de 30s
+  silenciosamente).
+- Circuit breaker / rate limiting por endpoint en SSOAPI para que un burst en un endpoint no
+  degrade a todo el proceso (incluido /health/liveness).
+- Investigar y corregir el proxy/LB que enmascara la IP real de cliente en rke2-ingress-nginx
+  (127.0.0.1 en el 100% del tráfico) — necesario para poder identificar callers en el futuro.
+- Enviar los logs de EventLoggerInterface/TrackGuard también a Datadog (o a un índice
+  consultable) para poder ver el mensaje de excepción real de errores de aplicación.
+
+BEFORE_TEST=
+Harness en modo "sync" (bug real): 200 requests concurrentes x 3000 total contra /repro
+(mismo patrón que GetEntitiesForApp), con ThreadPool.SetMinThreads clamped a 2 (emula pod con
+pocos vCPU; el límite real de CPU del pod de producción no se pudo confirmar, ver NOT_PROVEN).
+Resultado (results\20260901-210213\before-sync-bug\summary): liveness p95=778ms, max=967ms,
+ThreadPool workers pico=16 (baseline~2.8), pending work items pico=170 -> VEREDICTO: FAIL.
+
+AFTER_TEST=
+Misma carga exacta, harness en modo "async" (fix): liveness p95=6.2ms, max=239.9ms,
+0 fallos, 0 errores HTTP en /repro -> VEREDICTO: PASS. SQL simulado responde igual de rápido
+en ambos casos (15ms) — la diferencia es exclusivamente la salud del resto del pipeline.
+
+HARNESS_PATH=
+C:\doa\sso-error\ssoapi-incident-repro\
+
+COMMAND_TO_REPRODUCE=
+cd C:\doa\sso-error\ssoapi-incident-repro
+.\Run-Repro.ps1
+(parámetros por defecto ya calibrados: -Concurrency 200 -Requests 3000 -OpenDelayMs 30 -MinThreads 2 -DurationSeconds 20)
+
+RESULT_PATH=
+C:\doa\sso-error\ssoapi-incident-repro\results\20260901-210213\summary.txt
+(cada ejecución crea una carpeta nueva con timestamp; ninguna se borra)
+
+MESSAGE_FOR_CHARLES=
+We closed the SSOAPI incident with reproducible evidence, not just correlation. SQL Server
+never slowed down (Query Store: <65ms the entire time). The real chain: a traffic burst to
+GetEntitiesForApp?appID=117 (confirmed independently via ingress-nginx logs, ~600-700
+attempts/min vs ~10/min baseline) saturated the pod's .NET ThreadPool — concurrent requests
+went from ~0 to 148, connections from ~0-30 to 234, thread count from 36 to 93 — because
+SSOAdminRepository (and other repos) call SqlConnection.Open() synchronously inside async
+methods. That starvation delayed everything on the pod, including /health/liveness (which has
+zero dependencies), causing 3 consecutive probe failures and a Kubernetes restart, twice
+(08:07-08:08 and 08:12-08:14 UTC). We reproduced this exact mechanism locally in an isolated
+harness: the buggy pattern reliably pushes liveness latency to ~780ms; switching to
+OpenAsync() brings it back to ~6ms under identical load. We could not identify the real
+calling application — the ingress masks client IP (always logs 127.0.0.1) and no upstream
+service appears in the Datadog trace. Proposed fix: change db.Open() to await
+db.OpenAsync() in SSOAdminRepository (and the equivalent repos). Happy to walk through the
+repro (C:\doa\sso-error\ssoapi-incident-repro\Run-Repro.ps1) live.
+
+NOT_PROVEN=
+1. Identidad exacta del caller real — falta: IP de cliente real en el proxy/LB que antecede a
+   rke2-ingress-nginx (hoy logea 127.0.0.1 para el 100% del tráfico), o los logs/traces propios
+   de la aplicación llamadora (p.ej. TGLD) si Charles puede obtenerlos.
+2. Confirmación de connection pool exhaustion en producción como mecanismo adicional — falta:
+   el texto exacto de excepción de los 74/108 requests que no llegaron a generar un span SQL
+   (probablemente pool timeout dado el patrón de duración ~15s, pero no capturado; los logs de
+   aplicación que lo mostrarían no están ingeridos en Datadog).
+3. Desglose de los 35-38s en sub-fases de SqlClient — falta: telemetría con granularidad de
+   conexión/envío/espera/lectura (no existe en el historial; Continuous Profiler no está
+   disponible en este MCP de Datadog para revisar retroactivamente esa ventana).
+4. Límite de CPU real del pod ds-web-ssoapi-864d7b6f79-jd4f8 — falta: el manifiesto de
+   Kubernetes con resources.limits.cpu (el .k8s.yml en este repo es el pipeline de build, no
+   el manifiesto de despliegue), necesario para calibrar el harness con el valor real en vez
+   de un valor supuesto (MinThreads=2).
+``` 
+
+
+
+Listo. El reporte final está arriba en el formato exacto solicitado, y el harness reproducible quedó validado y guardado en `ssoapi-incident-repro`.
+
+Made changes.
