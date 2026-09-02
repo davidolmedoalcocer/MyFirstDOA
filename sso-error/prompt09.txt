@@ -1,0 +1,545 @@
+Responde TODO en español.
+
+Quiero que tomes ownership de la investigación completa de un incidente REAL de PRODUCCIÓN usando:
+
+1. El código fuente completo de DS.Web.SSOApi que tienes abierto.
+2. El MCP de Datadog al que ya tienes acceso.
+3. SQL Server SOLO EN MODO LECTURA, si la conexión dbSSO-PROD que ya utilizamos sigue disponible.
+
+NO modifiques código.
+NO hagas commit.
+NO hagas push.
+NO cambies configuración.
+NO ejecutes carga contra producción.
+NO hagas INSERT/UPDATE/DELETE.
+NO propongas un fix hasta haber determinado la causa con evidencia.
+
+====================================================
+OBJETIVO ÚNICO
+====================================================
+
+Determinar qué causó el incidente de producción de SSOAPI del
+1 de septiembre de 2026 aproximadamente entre:
+
+Hora Datadog local (UTC-06):
+02:05 AM - 02:15 AM
+
+Equivalente UTC:
+08:05 - 08:15 UTC
+
+No quiero simplemente encontrar "problemas potenciales" en el código.
+
+Quiero responder:
+
+¿QUÉ CAUSÓ REALMENTE EL OUTAGE DE SSOAPI EN PRODUCCIÓN?
+
+====================================================
+MUY IMPORTANTE: HAY MUCHAS APLICACIONES EN DATADOG
+====================================================
+
+No mezcles resultados de otras aplicaciones.
+
+La aplicación principal que estamos investigando es:
+
+service:
+ds-web-ssoapi-prod
+
+cluster:
+rke2-prod-cluster-ws-04
+
+namespace:
+ngls-api
+
+deployment:
+ds-web-ssoapi
+
+Pod observado durante el incidente:
+ds-web-ssoapi-864d7b6f79-jd4f8
+
+IP observada:
+10.42.8.16
+
+SQL Server de PRODUCCIÓN:
+LWVPDBSQLA020.ngls.ngic.com
+
+Database:
+dbSSO
+
+Endpoint principal:
+GET /SSOAdmin/GetEntitiesForApp?appID=117
+
+Stored procedure:
+dbo.SSOGetEntitiesForApp
+
+Trace de producción que ya identificamos:
+trace_id = 6a96872b00000000ba19be8491a518f0
+
+No asumas que todos los resultados de Datadog pertenecen a SSOAPI.
+Filtra primero por service/pod/namespace/cluster y después correlaciona
+otras aplicaciones solamente cuando exista una relación demostrable
+mediante una trace, llamada HTTP, IP, host, dependency o timestamp.
+
+====================================================
+HECHOS QUE YA ENCONTRAMOS
+====================================================
+
+Tómalos como punto de partida, pero VERIFÍCALOS tú mismo en Datadog/SQL
+antes de utilizarlos como conclusión.
+
+1. Datadog APM muestra múltiples llamadas:
+
+GET /SSOAdmin/GetEntitiesForApp?appID=117
+
+con duraciones aproximadamente de 35-37 segundos y HTTP 500.
+
+2. El span sql_server.query de:
+
+SSOGetEntitiesForApp
+
+también aparece aproximadamente 35-37 segundos.
+
+3. El error del span en PRODUCCIÓN es:
+
+Microsoft.Data.SqlClient.SqlException
+Execution Timeout Expired
+
+Error Number: -2
+State: 0
+Class: 11
+
+No es el mensaje:
+"timeout obtaining a connection from the pool".
+
+4. Query Store de dbSSO-PROD mostró durante el incidente que
+SSOGetEntitiesForApp se ejecutó dentro de SQL Server en milisegundos,
+con máximo aproximado de 65 ms.
+
+5. Query Store Wait Stats para query_id=41422 / plan_id=3007 mostró:
+
+07:30-08:00 UTC:
+CPU max 23 ms
+Memory max 4 ms
+
+08:00-08:30 UTC:
+CPU max 58 ms
+Memory max 5 ms
+
+No aparecieron:
+Lock
+Latch
+Buffer IO
+Network IO
+Worker Thread
+
+6. No encontramos evidencia de blocking/deadlock de ese query en SQL.
+
+7. Datadog runtime metric:
+
+runtime.dotnet.aspnetcore.requests.queue_length
+
+para service:ds-web-ssoapi-prod estuvo en 0 durante aproximadamente
+02:05-02:15.
+
+8. Datadog:
+
+runtime.dotnet.threads.workers_count
+
+para service:ds-web-ssoapi-prod cambia fuertemente cerca de los dos
+eventos:
+aprox. 02:07 y 02:13.
+
+No asumas que eso significa ThreadPool starvation.
+Determina si realmente lo demuestra o no.
+
+9. Kubernetes registró fallas de:
+
+GET http://10.42.8.16:8080/health/liveness
+
+con:
+context deadline exceeded
+Client.Timeout exceeded while awaiting headers
+
+y posteriormente reinicios del contenedor/pod.
+
+Necesito determinar si el restart fue CAUSA o CONSECUENCIA.
+
+10. En Development logramos reproducir un problema REAL de pool:
+
+OpenMs ~15 segundos
+QueryMs ~18 ms
+PoolFree=0
+
+pero la excepción reproducida fue:
+
+Timeout expired prior to obtaining a connection from the pool
+
+y NO:
+
+SqlException Error Number -2 / Execution Timeout Expired
+
+Por lo tanto:
+
+NO asumas que el problema reproducido del pool fue la causa de producción.
+
+Puede ser un defecto relacionado, un factor contribuyente o algo independiente.
+
+====================================================
+CÓDIGO YA IDENTIFICADO
+====================================================
+
+El flujo es:
+
+SSOAdminController.GetEntitiesForApp
+→ SSOAdminService.GetEntitiesForApp
+→ SSOAdminRepository.GetEntitiesForApp
+→ Dapper QueryAsync
+→ dbo.SSOGetEntitiesForApp
+
+El repositorio usa aproximadamente:
+
+using SqlConnection db = new(_connectionString);
+db.Open();
+
+return await db.QueryAsync<EntityModel>(
+    "SSOGetEntitiesForApp",
+    param: ...,
+    commandType: CommandType.StoredProcedure);
+
+No especifica commandTimeout.
+
+También se encontró:
+
+- muchas rutas async usan db.Open() síncrono;
+- GetUserAsync mantiene una conexión mientras realiza otras operaciones
+  que pueden abrir conexiones adicionales;
+- todo SSOAPI utiliza el mismo pool asociado a SSODBConnectionString;
+- no hay una fuga obvia de Dispose en GetEntitiesForApp.
+
+Estos son hallazgos de código, NO los conviertas automáticamente en causa
+del incidente.
+
+====================================================
+INVESTIGACIÓN QUE QUIERO
+====================================================
+
+Hazla tú directamente. No me pidas que vaya tomando screenshots de Datadog.
+
+----------------------------------------
+A. RECONSTRUIR LA LÍNEA DE TIEMPO
+----------------------------------------
+
+Usando Datadog APM, Kubernetes events, logs y métricas, reconstruye desde
+02:05 hasta 02:15:
+
+- primeras requests lentas;
+- GetEntitiesForApp;
+- SQL spans;
+- HTTP 500;
+- liveness failures;
+- connection refused;
+- restart/killing/created/started del pod;
+- recuperación.
+
+Quiero saber exactamente qué ocurrió primero y qué ocurrió después.
+
+----------------------------------------
+B. ANALIZAR TODAS LAS TRAZAS LENTAS
+----------------------------------------
+
+No analices solamente una.
+
+Localiza todas las ejecuciones problemáticas de:
+
+/SSOAdmin/GetEntitiesForApp
+
+en esa ventana.
+
+Para cada grupo de fallos determina:
+
+- timestamp;
+- duración HTTP;
+- duración sql_server.query;
+- status;
+- excepción;
+- pod;
+- trace_id;
+- ClientConnectionId si existe;
+- aplicación/servicio caller si Datadog permite identificarlo.
+
+Determina si todos los fallos presentan la misma firma.
+
+----------------------------------------
+C. IDENTIFICAR QUIÉN ESTÁ LLAMANDO SSOAPI
+----------------------------------------
+
+Charles indicó que GetEntitiesForApp usado por TGLD es el que estaba
+registrado.
+
+No asumas que TGLD es necesariamente el causante.
+
+Usa traces/dependencies para identificar:
+
+- qué servicios/aplicaciones estaban llamando SSOAPI;
+- cuál llamaba appID=117;
+- frecuencia normal;
+- frecuencia durante 02:05-02:15;
+- si hubo un burst/anomalía de concurrencia;
+- si múltiples aplicaciones comenzaron a generar carga simultáneamente.
+
+Si Datadog no permite identificar el caller, dilo.
+
+----------------------------------------
+D. RUNTIME .NET
+----------------------------------------
+
+Para ds-web-ssoapi-prod y, cuando sea posible, específicamente para el pod
+afectado, correlaciona durante 02:05-02:15:
+
+- runtime.dotnet.threads.workers_count
+- ThreadPool queue si existe
+- contention_count
+- contention_time
+- exceptions
+- GC
+- CPU
+- memory
+- process threads
+- ASP.NET request queue
+- request concurrency
+- socket/network metrics relevantes
+- SqlClient metrics / connection pool metrics si fueron recolectadas en producción
+
+IMPORTANTE:
+
+Si una métrica no tiene tag "service", NO concluyas que no existe.
+Revisa tags disponibles y utiliza:
+pod_name
+kube_namespace
+kube_cluster_name
+host
+container_name
+
+cuando sea necesario.
+
+Quiero saber si realmente ocurrió:
+- ThreadPool starvation;
+- lock contention .NET;
+- GC pause;
+- CPU saturation;
+- memory pressure;
+- connection pool pressure;
+- socket/network problem;
+
+o ninguno de ellos.
+
+----------------------------------------
+E. SQLCLIENT VS SQL SERVER
+----------------------------------------
+
+Tenemos una aparente contradicción:
+
+Datadog SqlClient span:
+~35-37 segundos
+
+SQL Server Query Store:
+milisegundos
+
+Determina técnicamente qué parte mide el span sql_server.query de Datadog.
+
+Investiga con la información disponible si esos ~37 segundos pudieron
+consumirse en:
+
+- envío del comando;
+- espera del cliente;
+- recepción/lectura de resultados;
+- scheduling/continuations del ThreadPool;
+- red;
+- connection state;
+- otra fase de SqlClient.
+
+No concluyas algo solo porque "parece posible".
+
+Busca evidencia.
+
+----------------------------------------
+F. RED
+----------------------------------------
+
+Si Datadog Network Performance Monitoring o métricas equivalentes están
+disponibles, revisa comunicación entre:
+
+SSOAPI/pod
+→ LWVPDBSQLA020.ngls.ngic.com
+
+durante 02:05-02:15.
+
+Busca:
+- latency;
+- retransmits;
+- connection failures;
+- resets;
+- packet loss;
+- DNS si aplica.
+
+Si esa telemetría NO está habilitada, indícalo claramente.
+
+----------------------------------------
+G. CÓDIGO
+----------------------------------------
+
+Ahora correlaciona la evidencia encontrada con el código.
+
+Busca específicamente:
+
+- sync-over-async;
+- .Result / .Wait();
+- db.Open() síncrono dentro de async;
+- operaciones que mantengan conexiones mientras hacen otros awaits;
+- locks / Monitor / Semaphore;
+- operaciones de larga duración;
+- shared resources;
+- middleware;
+- logging síncrono;
+- llamadas externas;
+- patrones que puedan explicar EXACTAMENTE la firma observada.
+
+No quiero una lista genérica de code smells.
+
+Solo reporta código que pueda relacionarse temporal y técnicamente con
+la evidencia de producción.
+
+----------------------------------------
+H. POD / LIVENESS
+----------------------------------------
+
+Determina:
+
+1. por qué comenzó a fallar /health/liveness;
+2. si el proceso estaba vivo pero no podía atender threads;
+3. si estaba esperando SQL;
+4. si Kubernetes lo reinició debido a esas fallas;
+5. si después del restart el servicio se recuperó;
+6. cuánto tiempo tardó en volver a degradarse.
+
+Esto nos ayudará a distinguir causa de consecuencia.
+
+----------------------------------------
+I. COMPARAR CONTRA UN PERIODO SANO
+----------------------------------------
+
+Compara las métricas/traces del incidente contra:
+
+01:30-02:00 AM
+
+y contra un periodo posterior sano.
+
+No quiero evaluar una métrica aislada sin baseline.
+
+====================================================
+CRITERIOS DE CONCLUSIÓN
+====================================================
+
+Al terminar, clasifica cada hipótesis:
+
+CONFIRMADA
+DESCARTADA
+SIN EVIDENCIA SUFICIENTE
+
+Como mínimo evalúa:
+
+- SQL Server lento
+- SQL blocking
+- índice/SP
+- connection pool exhaustion
+- ThreadPool starvation
+- .NET lock contention
+- CPU saturation
+- GC/memory
+- network between SSOAPI and SQL
+- caller traffic burst
+- pod restart
+- cualquier otra causa que encuentres
+
+NO declares ROOT CAUSE si solo tienes correlación.
+
+Quiero una cadena causal respaldada por evidencia, por ejemplo:
+
+evento A
+→ provoca B
+→ provoca C
+→ GetEntitiesForApp timeout
+→ liveness falla
+→ Kubernetes reinicia pod
+
+Si no puedes demostrar un eslabón, dilo.
+
+====================================================
+ENTREGA FINAL
+====================================================
+
+No me entregues el historial de todas las búsquedas.
+
+Entrégame un reporte compacto:
+
+1. ROOT CAUSE
+   - causa
+   - CONFIRMADA / NO CONFIRMADA
+   - evidencia concreta
+
+2. TIMELINE
+   Hora local | Evento | Componente | Evidencia
+
+3. WHAT ACTUALLY HAPPENED
+   explicación técnica sencilla de máximo 10 líneas.
+
+4. HYPOTHESES
+   SQL Server:
+   Pool:
+   ThreadPool:
+   Network:
+   Caller burst:
+   Kubernetes:
+   etc.
+
+   Cada una con:
+   CONFIRMADA / DESCARTADA / SIN EVIDENCIA
+
+5. CODE CORRELATION
+   únicamente los métodos/líneas de código directamente relacionados.
+
+6. FIX
+   SOLO si la causa raíz quedó suficientemente demostrada.
+   Separa:
+   - corrección necesaria para este incidente;
+   - mejoras secundarias que encontraste pero NO causaron este incidente.
+
+7. HOW TO PROVE THE FIX
+   prueba reproducible que demuestre que el problema desapareció.
+
+8. MESSAGE FOR CHARLES
+   un mensaje corto EN INGLÉS explicando:
+   - qué encontramos;
+   - evidencia;
+   - qué proponemos hacer.
+
+9. GAPS
+   Si no se pudo demostrar la causa exacta, dime EXACTAMENTE qué dato
+   histórico falta y si existe alguna forma de obtenerlo ahora.
+
+====================================================
+IMPORTANTE
+====================================================
+
+No me preguntes durante la investigación si quieres que continúes.
+
+Usa el código + Datadog MCP + SQL read-only y lleva el análisis tan lejos
+como permitan los datos disponibles.
+
+Solo detente si:
+- necesitas permisos que no tienes;
+- una fuente necesaria no está disponible;
+- continuar implicaría modificar producción.
+
+En esos casos explica exactamente el bloqueo.
+
+No modifiques absolutamente nada.
