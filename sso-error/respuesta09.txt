@@ -1,0 +1,475 @@
+Searched for files matching `**/DS.Web.SSOApi/**/*.cs`, 20 matches
+
+Created 13 todos
+
+
+
+
+
+Ran List Datadog Skills 
+Completed with input: {
+  "query": "traces logs metrics visualizations kubernetes network",
+  "include_header": true,
+  "telemetry": {
+    "intent": "Discover relevant Datadog skills before investigating a production SSO API incident involving APM traces, logs, metrics, and kubernetes events"
+  }
+}
+
+Searched for text `GetEntitiesForApp` (`**/DS.Web.SSOApi/**`), 7 results
+
+Listing server connections
+Completed with input: {}
+
+Ran Load Datadog Skill 
+Completed with input: {
+  "skill_name": "datadog/traces",
+  "header_only": false,
+  "telemetry": {
+    "intent": "Investigating production SSOAPI incident using APM traces to reconstruct timeline of slow requests and SQL spans"
+  }
+}
+
+Ran Load Datadog Skill 
+Completed with input: {
+  "skill_name": "datadog/logs",
+  "header_only": false,
+  "telemetry": {
+    "intent": "Investigating production SSOAPI incident, need to search kubernetes and application logs"
+  }
+}
+
+Ran Load Datadog Skill 
+Completed with input: {
+  "skill_name": "datadog/metrics",
+  "header_only": false,
+  "telemetry": {
+    "intent": "Investigating production SSOAPI incident, need to query runtime dotnet and kubernetes metrics"
+  }
+}
+
+
+
+Connecting using profile d586ee3b-9bb1-4346-9cfe-ce82840738f1
+Completed with input: {
+  "serverName": "LWVPDBSQLA020.ngls.ngic.com",
+  "profileId": "d586ee3b-9bb1-4346-9cfe-ce82840738f1",
+  "database": "dbSSO"
+}
+
+Read 
+
+Read , lines 1 to 400
+
+Read , lines 1 to 180
+
+Ran Get Trace 
+Completed with input: {
+  "trace_id": "6a96872b00000000ba19be8491a518f0",
+  "only_service_entry_spans": false,
+  "max_tokens": 15000,
+  "telemetry": {
+    "intent": "Retrieve full trace for the known slow GetEntitiesForApp request to see all spans, timing, and error details"
+  }
+}
+
+Ran List Spans 
+Completed with input: {
+  "query": "service:ds-web-ssoapi-prod resource_name:*GetEntitiesForApp*",
+  "from": "2026-09-01T07:55:00Z",
+  "to": "2026-09-01T08:20:00Z",
+  "limit": 200,
+  "max_tokens": 18000,
+  "telemetry": {
+    "intent": "Find all slow/failed GetEntitiesForApp spans during the incident window for ds-web-ssoapi-prod"
+  }
+}
+
+Searched for regex `\.Result\b|\.Wait\(\)|GetAwaiter\(\)\.GetResult\(\)|Task\.Run|lock\s*\(|Monitor\.|Semaphore|CommandTimeout|ConnectionTimeout|Max Pool Size|MinPoolSize|MaxPoolSize` (`**/DS.Web.SSOApi/**/*.cs`), 8 results
+
+Searched for files matching `**/DS.Web.SSOApi/SSOApi/**/ConnectionManager*.cs`, 1 match
+
+Running query on connection 'dbSSO-PROD' (ID: bae917ce-5694-44ca-bff5-37c3a5ec5401)
+Completed with input: {
+  "connectionId": "bae917ce-5694-44ca-bff5-37c3a5ec5401",
+  "query": "SELECT q.query_id, p.plan_id, qt.query_sql_text\nFROM sys.query_store_query q\nJOIN sys.query_store_query_text qt ON q.query_text_id = qt.query_text_id\nJOIN sys.query_store_plan p ON p.query_id = q.query_id\nWHERE qt.query_sql_text LIKE '%SSOGetEntitiesForApp%'",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT",
+    "JOIN"
+  ]
+}
+
+Ran List Spans 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "limit": 200,
+  "max_tokens": 18000,
+  "query": "service:ds-web-ssoapi-prod status:error",
+  "telemetry": {
+    "intent": "Find all failed spans for ds-web-ssoapi-prod during incident window regardless of resource name"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Read 
+
+Running query on connection 'dbSSO-PROD' (ID: bae917ce-5694-44ca-bff5-37c3a5ec5401)
+Completed with input: {
+  "connectionId": "bae917ce-5694-44ca-bff5-37c3a5ec5401",
+  "query": "SELECT q.query_id, p.plan_id, OBJECT_NAME(q.object_id) AS proc_name\nFROM sys.query_store_query q\nJOIN sys.query_store_plan p ON p.query_id = q.query_id\nWHERE q.object_id = OBJECT_ID('dbo.SSOGetEntitiesForApp')",
+  "queryIntent": "troubleshooting",
+  "queryTypes": [
+    "SELECT",
+    "JOIN"
+  ]
+}
+
+Searched for regex `Command Timeout|Connect Timeout|SSODBConnectionString|Pooling` (`**/DS.Web.SSOApi/**`), 21 results
+
+Read , lines 1 to 400
+
+Running query on connection 'dbSSO-PROD' (ID: bae917ce-5694-44ca-bff5-37c3a5ec5401)
+Completed with input: {
+  "connectionId": "bae917ce-5694-44ca-bff5-37c3a5ec5401",
+  "query": "SELECT rs.runtime_stats_id, rsi.start_time, rsi.end_time, rs.count_executions, rs.avg_duration, rs.max_duration, rs.avg_cpu_time, rs.max_cpu_time, rs.avg_logical_io_reads, rs.max_logical_io_reads, rs.avg_rowcount\nFROM sys.query_store_runtime_stats rs\nJOIN sys.query_store_runtime_stats_interval rsi ON rs.runtime_stats_interval_id = rsi.runtime_stats_interval_id\nWHERE rs.plan_id = 3007\nAND rsi.start_time >= '2026-09-01T07:00:00' AND rsi.start_time <= '2026-09-01T09:00:00'\nORDER BY rsi.start_time",
+  "queryIntent": "performance_tuning",
+  "queryTypes": [
+    "SELECT",
+    "JOIN"
+  ]
+}
+
+Ran List Spans 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "limit": 1000,
+  "max_tokens": 20000,
+  "query": "trace_id:6a96872b00000000ba19be8491a518f0",
+  "telemetry": {
+    "intent": "Get all spans sharing the same trace_id across the incident window to understand if this represents retries of the same logical request"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran List Spans 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "limit": 200,
+  "max_tokens": 20000,
+  "query": "service:ds-web-ssoapi-prod operation_name:aspnet_core.request resource_name:\"GET /ssoadmin/getentitiesforapp\"",
+  "telemetry": {
+    "intent": "Get every HTTP request attempt (success or failure) to GetEntitiesForApp endpoint during the incident window to build a full timeline of caller traffic"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Read , lines 1 to 150
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01Q9DPiToCWCxAHYN4dimFrW__vscode-1788301448474\content.json" -Pattern '"rows"' -SimpleMatch
+
+Read 
+
+Read , lines 413 to 700
+
+Running query on connection 'dbSSO-PROD' (ID: bae917ce-5694-44ca-bff5-37c3a5ec5401)
+Completed with input: {
+  "connectionId": "bae917ce-5694-44ca-bff5-37c3a5ec5401",
+  "query": "SELECT ws.wait_category_desc, wsi.start_time, wsi.end_time, ws.avg_query_wait_time_ms, ws.max_query_wait_time_ms, ws.total_query_wait_time_ms\nFROM sys.query_store_wait_stats ws\nJOIN sys.query_store_runtime_stats_interval wsi ON ws.runtime_stats_interval_id = wsi.runtime_stats_interval_id\nWHERE ws.plan_id = 3007\nAND wsi.start_time >= '2026-09-01T07:30:00' AND wsi.start_time <= '2026-09-01T08:30:00'\nORDER BY wsi.start_time, ws.avg_query_wait_time_ms DESC",
+  "queryIntent": "performance_tuning",
+  "queryTypes": [
+    "SELECT",
+    "JOIN"
+  ]
+}
+
+Read , lines 1 to 200
+
+
+
+Ran Aggregate Spans 
+Completed with input: {
+  "computes": [
+    {
+      "field": "*",
+      "aggregation": "COUNT",
+      "output": "request_count"
+    },
+    {
+      "field": "trace_id",
+      "aggregation": "CARDINALITY",
+      "output": "distinct_traces"
+    },
+    {
+      "field": "@duration",
+      "aggregation": "P50",
+      "output": "p50_duration"
+    },
+    {
+      "field": "@duration",
+      "aggregation": "MAX",
+      "output": "max_duration"
+    }
+  ],
+  "from": "2026-09-01T07:00:00Z",
+  "group_by": {
+    "interval": 60000
+  },
+  "query": "service:ds-web-ssoapi-prod operation_name:aspnet_core.request resource_name:\"GET /ssoadmin/getentitiesforapp\"",
+  "telemetry": {
+    "intent": "Build a per-minute timeline of request volume, distinct trace count, and duration for GetEntitiesForApp to see traffic burst pattern before/during/after the incident"
+  },
+  "to": "2026-09-01T09:00:00Z"
+}
+
+Ran Aggregate Spans 
+Completed with input: {
+  "computes": [
+    {
+      "field": "*",
+      "aggregation": "COUNT",
+      "output": "count"
+    }
+  ],
+  "from": "2026-09-01T07:00:00Z",
+  "group_by": {
+    "fields": [
+      "@http.status_code"
+    ],
+    "interval": 60000
+  },
+  "query": "service:ds-web-ssoapi-prod operation_name:aspnet_core.request resource_name:\"GET /ssoadmin/getentitiesforapp\"",
+  "telemetry": {
+    "intent": "See HTTP status code distribution over time for GetEntitiesForApp requests to understand error timeline"
+  },
+  "to": "2026-09-01T09:00:00Z"
+}
+
+Ran List Spans 
+Completed with input: {
+  "custom_attributes": [
+    "*"
+  ],
+  "from": "2026-09-01T08:06:00Z",
+  "limit": 1,
+  "max_tokens": 10000,
+  "query": "service:ds-web-ssoapi-prod operation_name:aspnet_core.request resource_name:\"GET /ssoadmin/getentitiesforapp\"",
+  "telemetry": {
+    "intent": "Inspect all available custom attributes on a request span to look for caller identification info such as user-agent, client IP, or upstream service"
+  },
+  "to": "2026-09-01T08:08:00Z"
+}
+
+Ran Get Events 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "query": "kube_deployment:ds-web-ssoapi OR pod_name:ds-web-ssoapi-864d7b6f79-jd4f8 OR kube_namespace:ngls-api",
+  "telemetry": {
+    "intent": "Find kubernetes events (restarts, liveness failures, OOMKilled, scheduling) for the ds-web-ssoapi pod during the incident window"
+  },
+  "to": "2026-09-01T08:25:00Z"
+}
+
+Ran Get Metrics 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "queries": [
+    {
+      "name": "workers",
+      "query": "avg:runtime.dotnet.threads.workers_count{service:ds-web-ssoapi-prod} by {pod_name}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "contention_count",
+      "query": "avg:runtime.dotnet.threads.contention_count{service:ds-web-ssoapi-prod} by {pod_name}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "queue_length",
+      "query": "avg:runtime.dotnet.aspnetcore.requests.queue_length{service:ds-web-ssoapi-prod} by {pod_name}",
+      "space_aggregator": "avg"
+    }
+  ],
+  "raw_data": true,
+  "telemetry": {
+    "intent": "Check .NET runtime threadpool worker count, lock contention, and ASP.NET request queue length during the incident window at raw granularity"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Ran Search Logs 
+Completed with input: {
+  "extra_fields": [
+    "*"
+  ],
+  "from": "2026-09-01T07:55:00Z",
+  "max_tokens": 15000,
+  "query": "kube_namespace:ngls-api kube_deployment:ds-web-ssoapi (liveness OR restart OR Killing OR unhealthy OR \"context deadline exceeded\")",
+  "telemetry": {
+    "intent": "Find kubernetes/kubelet logs about liveness probe failures and pod restarts for ds-web-ssoapi during the incident window"
+  },
+  "to": "2026-09-01T08:25:00Z"
+}
+
+Ran Get Metrics 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "queries": [
+    {
+      "name": "cpu",
+      "query": "avg:kubernetes.cpu.usage.total{pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "mem",
+      "query": "avg:kubernetes.memory.usage{pod_name:ds-web-ssoapi-864d7b6f79-jd4f8}",
+      "space_aggregator": "avg"
+    },
+    {
+      "name": "gc",
+      "query": "avg:runtime.dotnet.gc.pause_time{service:ds-web-ssoapi-prod} by {pod_name}",
+      "space_aggregator": "avg"
+    }
+  ],
+  "raw_data": true,
+  "telemetry": {
+    "intent": "Check CPU, memory, and GC pause time for the affected pod during the incident to rule out resource saturation causes"
+  },
+  "to": "2026-09-01T08:20:00Z"
+}
+
+Read 
+
+Ran Get Events 
+Completed with input: {
+  "from": "2026-09-01T07:55:00Z",
+  "query": "pod_name:ds-web-ssoapi-864d7b6f79-jd4f8",
+  "telemetry": {
+    "intent": "Find kubernetes events specifically for the affected pod during the incident window such as Unhealthy, Killing, Started"
+  },
+  "to": "2026-09-01T08:25:00Z"
+}
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Read 
+
+Read , lines 1 to 100
+
+Read 
+
+Ran terminal command: Select-String -Path "c:\Users\dolme\AppData\Roaming\Code\User\workspaceStorage\45444fb8011afad6326452a337441672\GitHub.copilot-chat\chat-session-resources\0154c42d-1e11-4148-a0e1-ebb1abaacefd\toolu_01N3Lfj74rD2qUeoAmcoWgQC__vscode-1788301448494\content.txt" -Pattern '"timestamp":"[^"]+"|Killing|Unhealthy|Started container|liveness probe|Created container' | Select-Object -First 60
+
+Read 
+
+Ran Search Logs 
+Completed with input: {
+  "extra_fields": [
+    "*"
+  ],
+  "from": "2026-09-01T08:06:00Z",
+  "max_tokens": 15000,
+  "query": "service:ds-web-ssoapi-prod pod_name:ds-web-ssoapi-864d7b6f79-jd4f8",
+  "telemetry": {
+    "intent": "Inspect raw application logs for the affected pod during the incident to look for caller IP, user agent, retry indications, or exception details beyond APM traces"
+  },
+  "to": "2026-09-01T08:14:00Z"
+}
+
+Read , lines 1 to 200
+
+He completado la investigación usando código fuente, Datadog APM/logs/eventos/métricas, y SQL Server (dbSSO-PROD, solo lectura, sin modificar nada). Aquí está el reporte compacto.
+
+---
+
+## 1. ROOT CAUSE
+
+**Causa raíz: ráfaga de solicitudes concurrentes contra `GET /SSOAdmin/GetEntitiesForApp?appID=117`, todas compartiendo el mismo `trace_id`, que saturó el ThreadPool/pool de conexiones de .NET del pod — no un problema de SQL Server.**
+
+**Estado: CONFIRMADA** (evidencia cuantitativa, no solo correlación — ver cadena causal abajo).
+
+Evidencia concreta:
+- SQL Server ejecutó `SSOGetEntitiesForApp` (query_id=41422/plan_id=3007) en **milisegundos** durante todo el incidente (Query Store, verificado por mí): 08:00–08:30 UTC → 401 ejecuciones, avg=10.9ms, **max=64.9ms**, avg CPU=5.9ms, max CPU=16.5ms.
+- `sys.query_store_wait_stats` para ese plan: únicamente categorías **CPU** y **Memory** (max 58ms y 5ms respectivamente). Cero Lock/Latch/Buffer IO/Network IO/Worker Thread.
+- **216 solicitudes** HTTP a ese endpoint entre 08:07–08:13 UTC, con `status:500`, **TODAS con el mismo `trace_id` (`6a96872b...`)** — verificado con `aggregate_spans` (`distinct_traces=1` en cada bucket de 1 minuto). Esto es anómalo: implica que un único caller (o un componente que reutiliza el contexto de traza) generó decenas de llamadas concurrentes/reintentos sin regenerar el trace-id.
+- Métrica `runtime.dotnet.threads.workers_count` del pod afectado (`jd4f8`) muestra un salto abrupto de **4 → 49 hilos** exactamente a partir de **08:07:00 UTC** (el mismo minuto del primer burst), y un segundo salto **hasta 60 hilos** hacia 08:13–08:14 UTC (segundo burst). El pod gemelo (`d45vs`, no afectado) se mantuvo plano en ~4 hilos todo el tiempo. Este patrón de rampa gradual (4→14→22.75→31.5→40.25→49) es la firma clásica de **ThreadPool starvation** con inyección throttled de workers, NO de tráfico normal.
+- `queue_length` (cola de Kestrel) = 0 todo el tiempo → confirma que el cuello de botella no era la cola HTTP de entrada, sino los hilos ya en ejecución bloqueándose (consistente con `db.Open()` síncrono dentro de rutas async).
+
+## 2. TIMELINE
+
+| Hora UTC | Evento | Componente | Evidencia |
+|---|---|---|---|
+| 08:07:00 | Inicio de burst: 84 requests a GetEntitiesForApp en 1 min, todas mismo trace_id | ds-web-ssoapi-prod | `aggregate_spans` |
+| 08:07:00 | `workers_count` empieza a subir de 4 a 49 | Runtime .NET (pod jd4f8) | métrica raw |
+| 08:06:55–08:07:31 | 1ª request larga: HTTP 500, sql_server.query "Execution Timeout Expired" (35.69s) | SSOApi → SQL | trace 6a96872b... |
+| 08:07:12 / :27 / :42 | 3 fallos consecutivos de liveness ("context deadline exceeded") | kubelet | Datadog Events |
+| 08:07:42 | **Killing**: pod muere por liveness fallida | kubelet | Datadog Events |
+| 08:08:13 | Pod reiniciado (Created/Started) | kubelet | Datadog Events |
+| 08:08:15–08:13 | Recuperación aparente (~4-5 min) | — | métricas vuelven a baseline |
+| 08:12:38–08:13:15 | Request de 37.89s, HTTP 500, mismo trace_id | SSOApi → SQL | span |
+| 08:12:57 / :13:12 / :13:27 | 3 fallos consecutivos de liveness | kubelet | Datadog Events |
+| 08:13:15–08:13:30 | Request de ~15.08s (firma distinta, más corta) | SSOApi | span |
+| 08:13:27 | **Killing**: 2º restart por liveness | kubelet | Datadog Events |
+| 08:13:58 | Pod reiniciado nuevamente | kubelet | Datadog Events |
+| ~08:18–08:20 | `workers_count` y CPU vuelven a baseline | — | métricas |
+
+## 3. WHAT ACTUALLY HAPPENED (técnico, ≤10 líneas)
+
+Un caller (no identificable con certeza) disparó decenas de llamadas concurrentes a `GetEntitiesForApp(appID=117)` reutilizando el mismo contexto de traza — indicio de un retry sin backoff ni regeneración de correlación. Cada llamada abre una `SqlConnection` con `db.Open()` **síncrono** dentro de un método `async`, compartiendo el mismo pool que usa toda la API. La concurrencia repentina saturó el ThreadPool de .NET (workers 4→49→60), lo que retrasó la ejecución de continuaciones async — incluido el temporizador interno de SqlClient que dispara "Execution Timeout Expired" y el propio endpoint `/health/liveness`. SQL Server, mientras tanto, ejecutó la consulta real en <65ms; el "timeout" fue enteramente client-side/scheduling, no de base de datos. Al no responder liveness a tiempo, Kubernetes mató y reinició el pod (consecuencia, no causa). El ciclo se repitió ~5 minutos después porque el caller siguió reintentando.
+
+## 4. HYPOTHESES
+
+| Hipótesis | Veredicto | Evidencia |
+|---|---|---|
+| SQL Server lento | **DESCARTADA** | Query Store: max 65ms en toda la ventana |
+| SQL blocking/deadlock | **DESCARTADA** | Wait stats: solo CPU/Memory, sin Lock/Latch |
+| Índice/plan de SP subóptimo | **DESCARTADA** | Mismo plan_id todo el tiempo, duración estable en ms |
+| Connection pool exhaustion | **SIN EVIDENCIA SUFICIENTE (parcialmente compatible)** | Span de ~15.08s coincide con el default de "Connect Timeout"=15s (posible timeout de pool), pero no se confirmó el mensaje exacto de excepción de ese span puntual |
+| ThreadPool starvation (.NET) | **CONFIRMADA** | `workers_count` 4→49→60, coincide en el segundo exacto con los bursts |
+| .NET lock contention | **SIN EVIDENCIA SUFICIENTE** | `contention_count` mayormente 0-2, un pico aislado de 23 sin patrón sostenido |
+| CPU saturation | **DESCARTADA (probable)** | CPU máx ~207 millicores; no hay dato de límite del pod en este repo para confirmar throttling al 100% |
+| GC/memoria | **DESCARTADA** | Memoria estable 230-290MB, sin crecimiento tipo leak; cae tras restart |
+| Red SSOAPI↔SQL | **SIN EVIDENCIA (telemetría no disponible)** | No hay NPM habilitado en este entorno/consulta |
+| Caller burst/reintentos | **CONFIRMADA** | 216 requests, 1 solo trace_id, imposible de explicar como tráfico normal |
+| Pod restart | **CONSECUENCIA, no causa** | Killing ocurre después de 3 liveness fails consecutivos, iniciados al mismo segundo que el burst |
+
+## 5. CODE CORRELATION
+
+- `SSOAdminRepository.cs:362-369` — `GetEntitiesForApp`: `using SqlConnection db = new(_connectionString); db.Open();` — **apertura síncrona dentro de un método `async`**, sin `CommandTimeout` explícito (usa el default de 30s de `SqlCommand`, coincide con los ~35-38s observados sumando latencia de scheduling).
+- Este patrón (`db.Open()` síncrono) se repite en **todos** los métodos de `SSOAdminRepository.cs`, `SSOAccountRepository.cs`, `GenericRepository.cs`, `NotificationRepository.cs`, `SSOAuthRepository.cs` — todos comparten el mismo pool (`SSODBConnectionString`), por lo que un burst en un endpoint puede saturar recursos usados por todos los demás.
+- `ConnectionManager.cs` y `appsettings.json` no configuran `Command Timeout` ni `Max Pool Size` en la cadena de conexión → todos los defaults de ADO.NET aplican (30s comando / 15s pool).
+
+## 6. FIX
+
+**Necesario para este incidente (una vez que se identifique y corrija al caller):**
+- Nada del lado de SSOAPI corrige la causa raíz real (el caller retransmitiendo sin backoff); se necesita identificar y arreglar ese caller primero (ver GAPS).
+
+**Mejoras secundarias encontradas (NO causaron este incidente, pero mitigarían recurrencias):**
+- Cambiar `db.Open()` → `await db.OpenAsync()` en todos los repositorios para no bloquear hilos del ThreadPool durante picos de concurrencia.
+- Configurar `CommandTimeout` explícito y razonable en las llamadas Dapper (hoy usa el default de 30s silenciosamente).
+- Añadir `Max Pool Size` explícito y monitoreo del pool (`SqlClientEventSource` / `System.Data.SqlClient.EventCounters`) para detectar agotamiento antes de que cause timeouts.
+- Añadir *circuit breaker* / *rate limiting* por endpoint para evitar que un caller descontrolado degrade todo el servicio.
+- Investigar por qué múltiples requests comparten el mismo `trace_id` (posible bug de instrumentación en el caller o en un proxy intermedio) — esto además **contamina el diagnóstico** en Datadog.
+
+## 7. HOW TO PROVE THE FIX
+
+1. Reproducir en un entorno de carga: disparar 50-100 requests concurrentes a `GetEntitiesForApp` contra un pod con límites de recursos similares a prod.
+2. Confirmar que **sin** el fix, `runtime.dotnet.threads.workers_count` se dispara igual que en prod y aparecen `Execution Timeout Expired` pese a que SQL Server sigue respondiendo en ms.
+3. Aplicar `OpenAsync` + límite de concurrencia/circuit breaker.
+4. Repetir la misma carga y verificar que `workers_count` se mantiene estable, no hay HTTP 500, y `/health/liveness` sigue respondiendo bajo carga.
+
+## 8. MESSAGE FOR CHARLES
+
+> We root-caused the Sept 1 SSOAPI outage (08:05–08:15 UTC). SQL Server itself was never the problem — Query Store shows `SSOGetEntitiesForApp` executing in under 65ms the entire time, with zero lock/latch waits. Instead, 216 calls to `GetEntitiesForApp?appID=117` hit the pod in two ~1-minute bursts, all sharing the exact same trace ID — strong evidence of a caller retrying without backoff or trace regeneration. This concurrency spike saturated the .NET ThreadPool (worker count jumped from 4 to 49, then 60), which delayed everything on the pod, including the SQL client's own timeout callback (hence the misleading "Execution Timeout Expired" at 35-38s) and the `/health/liveness` endpoint. Kubernetes then killed and restarted the pod after 3 consecutive liveness failures — that restart was a *consequence*, not the cause. We couldn't identify the calling application from Datadog/app logs (no caller IP/User-Agent captured for these specific requests). Proposal: (1) find and fix the retry loop/caller, (2) as defense-in-depth, switch SSOAPI's `db.Open()` calls to async and add basic rate limiting/circuit breaking so one noisy caller can't take down the whole pod again.
+
+## 9. GAPS
+
+- **Identidad exacta del caller**: no se pudo determinar quién generó el burst. Datadog no capturó IP/User-Agent en los spans de este endpoint, y los logs de aplicación (Serilog) del pod en esa ventana solo contienen logs de arranque (post-restart), no logs de request. **Cómo obtenerlo ahora**: revisar logs del *reverse proxy / ingress* (nginx/traefik) delante de `sso-api.appsprod.ngls.ngic.com` si retienen client IP y User-Agent por más tiempo; o revisar logs de la aplicación TGLD (si Charles tiene acceso) para su propio historial de llamadas/reintentos en esa ventana.
+- **Confirmación del mensaje exacto de excepción del span de ~15.08s** (08:13:15–08:13:30): no se verificó si corresponde a "pool timeout" (15s) vs otra causa; requeriría expandir ese span puntual en Datadog (`get_datadog_trace` sobre ese sub-span específico).
+- **CPU throttling real**: no tengo acceso al manifiesto de Kubernetes con los `resources.limits.cpu` reales del pod (el `.k8s.yml` en este repo es el pipeline de build, no el manifiesto de despliegue) — sin ese límite no puedo confirmar si el pico de ~207 millicores representó throttling real o quedó lejos del límite.
+- **Network Performance Monitoring** entre el pod y `LWVPDBSQLA020.ngls.ngic.com`: no encontré métricas de NPM en las consultas realizadas — no puedo confirmar si existía telemetría de red habilitada; si no lo está, no hay forma de descartar por completo un componente de red sin acceso a esa configuración de Datadog.
