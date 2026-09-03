@@ -1,0 +1,118 @@
+# Contexto y objetivo (lo que se pidió)
+
+Se solicitó actuar como Sr. .NET/ASP.NET Core especializado en incidentes de producción, concurrencia, ThreadPool y `Microsoft.Data.SqlClient`, para el ticket:
+
+> "Mitigación de disponibilidad: cambiar `db.Open()` por `await db.OpenAsync()` en los métodos async de SSOAPI"
+
+sobre la rama `features/ssoapi-async-sql-and-request-observability`, sin modificar código, sin commits/push, sin cargar Production, separando hechos de inferencias, y entregando una propuesta técnica en el formato obligatorio pedido, esperando VoBo explícito antes de tocar cualquier archivo. Contexto: incidentes de producción 2026-09-01 y 2026-09-02 en `ds-web-ssoapi-prod` (cluster `rke2-prod-cluster-ws-04`, namespace `ngls-api`, pod `ds-web-ssoapi-864d7b6f79-jd4f8`), con bursts de tráfico contra `GET /SSOAdmin/GetEntitiesForApp?appID=117` (y el día 2 también `/Users/GetUser` → `GetUserPrefsAsync`), SQL Server respondiendo en ms mientras los spans HTTP/SqlClient tardaban 15-60s, error `Execution Timeout Expired`, ThreadPool saturado (workers hasta 308), y caída de `/health/liveness` que provocó el reinicio del pod.
+
+No he modificado ningún archivo. Esta es la propuesta final, ya con la corrección que pediste verificar (el hallazgo de `/health/liveness` pasó de "inferencia" a "hecho de código confirmado", verificado con lectura determinística del pipeline y corroboración en Datadog).
+
+---
+
+## 1. Executive Summary
+
+Propongo convertir `db.Open()` → `await db.OpenAsync()` en los ~30 métodos `async` de `SSOAdminRepository`, `SSOAuthRepository`, `GenericRepository` y `NotificationRepository` que abren una `SqlConnection` nueva por llamada. Está respaldado por: (a) el hallazgo de código confirmado (`db.Open()` síncrono dentro de métodos `async`, verificado línea por línea), (b) tu repro real-code (mismas versiones de Dapper/SqlClient) que reprodujo el mismo síntoma — `Timeout expired obtaining a connection from the pool`, p95≈35s, liveness caído — y lo resolvió solo cambiando a `OpenAsync`, y (c) que el propio código ya usa este patrón en `GetGroupDetails` (`await conn.OpenAsync()`), es decir no es un patrón nuevo para el equipo. Además, verificado ahora como **hecho de código** (no inferencia): `/health/liveness` pasa por el mismo middleware de logging fire-and-forget que el resto del tráfico, lo cual es coherente con que la caída de liveness ocurriera junto con la saturación general del ThreadPool. Hay 3 hallazgos adicionales con relación técnica directa que conviene decidir si entran en este PR o en uno separado: un `.Result` real (sync-over-async) en `ImportUser`, el logging fire-and-forget vía `Task.Factory.StartNew`, y una amplificación N×4 de `db.Open()` secuenciales en `SSOAuthRepository.GetUserAsync`.
+
+---
+
+## 2. Evidence Boundary
+
+### FACTS CONFIRMED (incidente, dados por ti)
+- Bursts de requests concurrentes el 2026-09-01 (`GetEntitiesForApp?appID=117`) y 2026-09-02 (`GetEntitiesForApp` + `/Users/GetUser` → `GetUserPrefsAsync` → `Dapper.QueryAsync`).
+- SQL Server ejecutó `SSOGetEntitiesForApp` en ms (max 65ms el día 1; avg 20ms/max 130ms el día 2) mientras los spans HTTP/SqlClient duraron 15–60s.
+- Error `SqlException: Execution Timeout Expired (-2, State 0, Class 11)`.
+- Worker threads 5-6 → picos de 308; requests actuales ~313; conexiones actuales ~321; threads totales ~340.
+- `/health/liveness` dejó de responder → 3 fallos consecutivos → Kubernetes reinició el pod.
+- Repro local (harness fuera del repo, `ssoapi-incident-repro`) con Dapper 2.1.44 / Microsoft.Data.SqlClient 5.2.2, real-code contra SQL Server local: `db.Open()` sync → 187/3000 errores `InvalidOperationException: Timeout expired obtaining a connection from the pool`, p95=34.7s, liveness 4/4 fallidas, workers baseline~2.5→pico 108. `await db.OpenAsync()` → 0 errores, p95=437ms, liveness 92/92 OK, workers pico 11.
+
+### CODE FACTS CONFIRMED (verificado leyendo el código línea por línea)
+- `SSOAdminRepository.cs` `GetEntitiesForApp(long appID)`: `using SqlConnection db = new(_connectionString); db.Open(); ... return await db.QueryAsync<EntityModel>("SSOGetEntitiesForApp", ...)`. Coincide exactamente con el flujo reportado del incidente (`SSOAdminController.GetEntitiesForApp` → `SSOAdminService.GetEntitiesForApp` → este método).
+- El mismo patrón (`db.Open()`/`conn.Open()` síncrono dentro de un método `async`) se repite en ~30 métodos de `SSOAdminRepository.cs`, `SSOAuthRepository.cs`, `GenericRepository.cs` y `NotificationRepository.cs`.
+- `SSOAdminRepository.cs` línea 676: `return _accountService.ImportUser(ssouser.LoginName, false, ssouser.SiteID).Result;` dentro de un método **síncrono** `ImportUser`, invocado desde `SSOAdminController.ImportUser` (síncrono) → `SSOAdminService.ImportUser` (síncrono). Es `.Result` real sobre un `Task<string>` async.
+- `SSOAdminRepository.cs` método `GetGroupDetails` **ya usa** `await conn.OpenAsync()` y `QueryMultipleAsync` — precedente ya existente en la base de código.
+- `SSOAuthRepository.cs` `GetUserAsync`: por cada `app` en `userApps`, llama secuencialmente a `GetUserRolesAsync`, `GetUserOperationsAsync`, `GetUserTasksAsync`, `GetSSOLenderGroupsAsync`, y cada uno abre una `SqlConnection` **nueva** con `db.Open()` síncrono. Un usuario con N apps genera hasta 4×N aperturas síncronas secuenciales en una sola request.
+- `SSOAuthRepository.cs` `GetSSOUserData`: usa `SqlDataAdapter.Fill(userData)` (ADO.NET síncrono/bloqueante) dentro de un método declarado `async Task<DataSet>` que nunca hace `await` real sobre esa llamada.
+- `SSOAccountRepository.cs`: clase **completamente síncrona** (`IsEmailExists`, `GetUserPrefs` con `SqlDataReader`, `SetSSOUserData` con `db.Query`, `SetUserPrefs` con `conn.Execute`), usada desde `AccountService`.
+- Common/Logging/LoggingService.cs: `LogRequestResponse` y ambos overloads de `LogError` usan `Task.Factory.StartNew(...)` (fire-and-forget, ThreadPool) sin `await`.
+- **[Verificado y reclasificado tras tu observación]** `Program.cs`: `app.UseRequiredHeaderValidator(); app.UseRequestResponseLogging();` se registran como middleware global antes de `app.MapHealthChecks(...)`, sin ningún `MapWhen`/branch que excluya rutas. Esto es determinístico en ASP.NET Core: middleware registrado con `app.Use...()` antes de los `Map*` se ejecuta para **toda** request, incluidas las de `/health/liveness`, salvo que haya una rama explícita que lo excluya (no la hay). `RequiredHeaderValidatorMiddleware.cs` solo excluye paths con `/settings` o `/swagger`. `RequestResponseLogging.cs` solo excluye la llamada a `_trackguardLogger.LogRequestResponse(...)` para paths con `/ping` o `/swagger` — `/health/liveness` no cumple ninguna exclusión, así que **sí** dispara ese `Task.Factory.StartNew` fire-and-forget en cada probe de liveness. Confirmado por lectura de código, no por telemetría (ver más abajo por qué Datadog no puede probarlo para las llamadas que fallaron).
+- `builder.Services.AddHealthChecks();` (Program.cs) no registra ningún `IHealthCheck` con tag `"monitor"` (usado por el predicate de `/health/liveness`) — el endpoint en sí no hace ningún trabajo de dependencia (no pinga SQL).
+- Connection string SSO no define `Max Pool Size` ni `Connect Timeout` explícitos → aplican defaults de Microsoft.Data.SqlClient (Max Pool Size=100, Connect Timeout=15s).
+- `ADWrapper.cs` `ValidateCredentials`: bind LDAP **síncrono** (`Novell.Directory.Ldap`), usado en el flujo de autenticación.
+
+### INFERENCES (plausibles, no medidas/cuantificadas)
+- Que el logging fire-and-forget (`Task.Factory.StartNew`) en cada request/probe **haya contribuido de forma medible** a la saturación del ThreadPool durante el burst es razonable pero no está cuantificado — no sé cuánto retraso añade bajo esa carga específica sin reproducirlo.
+- La amplificación N×4 en `GetUserAsync` (SSOAuthRepository) podría explicar por qué `/Users/GetUser` también falló el 2 de septiembre, pero no tengo el dato de cuántas apps tenía asignado el usuario afectado ese día.
+
+### UNKNOWN / NEEDS CONFIRMATION
+- **Sobre `/health/liveness` y Datadog**: busqué spans (`service:ds-web-ssoapi-prod resource_name:*health*`) filtrando por el pod exacto (`ds-web-ssoapi-864d7b6f79-jd4f8`) en la ventana 08:00–08:20 UTC del 2026-09-01. Encontré solo 3 spans de liveness en esa ventana (uno con `useragent: kube-probe/1.34` a las 08:09:42, 2.3ms, status 200), y **ninguno cae dentro de las ventanas de falla exactas** (08:07:42–08:08:13 y 08:13:27–08:13:58 UTC). Búsqueda de logs (`*health* OR *liveness*`) en ambos días: 0 resultados. Esto es un límite esperado de la telemetría (los probes que realmente fallaron probablemente no generaron un span completo, y los logs Serilog/TrackGuard de la app no se ingieren en Datadog Logs, gap ya documentado) — **no contradice ni confirma** el mecanismo por esa vía; la confirmación válida es la lectura de código de arriba.
+- No se localizó ningún `CommandTimeout` explícito en el código (usa el default de Dapper/SqlCommand, ~30s).
+- No se verificó `ThreadPool.SetMinThreads` ni variables de entorno de runtime en el Dockerfile/k8s yaml de producción.
+- No confirmé si `AuthenticationController`/login tuvo tráfico relevante durante el incidente (relacionado al hallazgo de LDAP síncrono).
+
+---
+
+## 3. Proposed Change Set
+
+| File | Method(s) | Current Pattern | Proposed Pattern | Why | Risk |
+|---|---|---|---|---|---|
+| `SSOAdminRepository.cs` | `GetSites`, `AddUpdateSite`, `AddUpdateSiteApp`, `AddUpdateSiteAppClient`, `AddUpdateSiteAppClientSubClient`, `AddUpdateSubClient`, `GetClients`, `GetSubClients`, `AddUpdateClient`, `AddUpdateGroup`, `AddUpdateApplication`, `AddUpdateEntitlement`, `RemoveEntity`, `GetGroups`, `GetUserDetail`, `GetSiteApps`, `GetSiteAppClients`, `GetEntitlements`, `GetEntitiesForApp`, `GetSiteAppClientSubClients`, `GetUserAdminPermisions`, `GetApplications`, `GetApplicationsCSUser`, `GetAppsForApplicationDDL`, `GetSelectedUsers`, `GetListUsers`, `GetUserByID`, `GetUserLogData`, `GetUserInfo`, `GetSSOGroupOrRole`, `AddUserToGroup`, `AddUserToEntitlement`, `AddUserToSubClient`, `GetEntitiesForAssignment` | `db.Open()` síncrono dentro de método `async Task<...>` | `await db.OpenAsync()` | Mismo mecanismo confirmado por tu repro real-code; el resto del método ya es async | Bajo — cambio local de una línea, sin transacciones, sin tocar firma pública |
+| `SSOAuthRepository.cs` | `GetUserPrefsAsync`, `GetUserRolesAsync`, `GetUserOperationsAsync`, `GetUserTasksAsync`, `GetSSOLenderGroupsAsync`, `InsertToken`, `GetUserInfo`, `GetUserAsync` (conexión del bloque `userApps`), `SetUserPrefs`, `ValidateToken`, `LogAuditEventToDb`, `GetUsersByAppId`, `SetUserAttr`, `UpdateUser`, `InsertUserVerificationCodeAsync`, `UpdateVerificationCodeAsync`, `GetUserVerificationCodeAsync` | `db.Open()` síncrono | `await db.OpenAsync()` | Directamente en el camino confirmado del incidente del 2 de septiembre (`GetUserPrefsAsync`) | Bajo, mismo patrón |
+| `GenericRepository.cs` | `GetCodeTranslations`, `GetEntitlements` | `db.Open()` síncrono | `await db.OpenAsync()` | Consistencia, mismo pool compartido | Bajo |
+| `NotificationRepository.cs` | `GetAllNotifications` | `db.Open()` síncrono | `await db.OpenAsync()` | Consistencia | Bajo |
+
+**CancellationToken**: ninguno de estos métodos recibe `CancellationToken` en su firma actual, ni el controller lo propaga desde `HttpContext.RequestAborted`. Propongo **no** añadirlo en este PR (evita tocar firmas públicas/interfaces); evaluable en un PR posterior de "cancelación cooperativa".
+
+### Do Not Change in This PR
+- `SSOAdminRepository.cs` `ChangeEntityAssignments` — `conn.Open()` síncrono **dentro de una transacción explícita** (`BeginTransaction`/`Commit`/`Rollback`) con Dapper síncrono. Convertir implica también `OpenAsync`/`ExecuteAsync`/`ExecuteScalarAsync` bajo la misma transacción — mayor superficie, no está en el camino del incidente reportado.
+- `SSOAccountRepository.cs` — completamente síncrono (firmas no `async`). Convertirlo cambia firmas públicas y sus llamadores.
+- `CMSWrapper.cs` — mismo caso.
+- `SSOAuthRepository.cs` `GetSSOUserData` — `SqlDataAdapter.Fill` síncrono, sin `FillAsync` equivalente directo; requiere rediseño, no un cambio mínimo.
+- `SSOAdminRepository.cs` `ImportUser`, `AddUpdateUser`, `CreateIntAccount`, `GetIntAccountState`, `SetUserSecurityQA`, `GetUserSecurityQA` — síncronos, llaman a `AccountService`/`SSOAccountRepository`; el `.Result` de `ImportUser` se trata aparte en la sección 4.
+- `GetGroupDetails` — ya correcto (`await conn.OpenAsync()`), sin cambios.
+
+---
+
+## 4. Other Incident-Relevant Findings
+
+| Severity | File / Method | Exact Code Pattern | Relationship to Incident | Recommendation |
+|---|---|---|---|---|
+| High | `SSOAdminRepository.cs` línea 676, `ImportUser` | `return _accountService.ImportUser(...).Result;` | Sync-over-async real: bloquea un worker thread completo hasta que el `Task` async interno (Graph API + SQL) termine. No es el endpoint reportado, pero es el mismo mecanismo de fondo. | Requiere decisión: hacer `SSOAdminController.ImportUser`/`SSOAdminService.ImportUser` async de punta a punta (cambia contrato del controller), o documentarlo como riesgo conocido fuera de este PR. |
+| Medium | Common/Logging/LoggingService.cs, `LogRequestResponse`/`LogError` | `Task.Factory.StartNew(() => ...)` sin `await`, sin `TaskCreationOptions.LongRunning` | Cada request —confirmado también `/health/liveness`— encola un work item adicional en el mismo ThreadPool ya saturado durante el burst. Amplifica, no causa por sí sola. | Evaluar mover a `Channel<T>` + `BackgroundService` dedicado, o `TaskCreationOptions.LongRunning`/scheduler propio. Requiere decisión de diseño, no es un cambio de una línea. |
+| Medium | `Program.cs` + `RequestResponseLogging.cs` | Middlewares globales antes de `MapHealthChecks`, sin excluir `/health/*` | **Confirmado por código** que `/health/liveness` pasa por el mismo logging fire-and-forget que el resto del tráfico — coherente con que liveness cayera junto con el resto durante la saturación (no probado que sea la causa, solo que comparte el mecanismo). | Excluir explícitamente `/health/*` del pipeline de logging/validación de headers. |
+| Low-Medium | `SSOAuthRepository.cs`, `GetUserAsync` | Loop por cada app del usuario, cada helper abre `SqlConnection` nueva con `db.Open()` síncrono | Amplifica linealmente con el número de apps por usuario el costo de bloqueo síncrono por request — relevante para `/Users/GetUser` el 2 de septiembre. | Se resuelve automáticamente al aplicar el cambio de la sección 3 en esos 4 helpers. No requiere cambio estructural adicional. |
+| Low | `SSOAuthRepository.cs`, `GetSSOUserData` | `da.Fill(userData)` dentro de método `async` | I/O bloqueante real (no solo `Open`) enmascarado como async; fuera del camino reportado. | Deuda técnica; requiere refactor mayor, fuera de este PR. |
+| Low | `ADWrapper.cs`, `ValidateCredentials` | `ldapConnection.Connect(...)`, `Bind(...)` síncronos | Llamada de red bloqueante en el camino de autenticación; sin evidencia de que login fuera parte de este incidente. | Solo monitorear; no incluir en este PR salvo que confirmes bursts en auth. |
+
+---
+
+## 5. Validation Plan
+
+1. **Build**: `dotnet build DS.Web.SSOApi/SSOApi.sln` en Development, sin warnings nuevos.
+2. **Tests existentes**: no encontré un proyecto de tests para `SSOApi` (a diferencia de `tests`) — si existe en otro lugar, indícamelo; si no, se documenta como gap de cobertura en el PR.
+3. **Escenario concurrente seguro (solo Development/local, nunca Production)**: reutilizar/adaptar `RealCodeRepro` apuntando a una base de datos de Development, repitiendo el burst controlado que ya validó el mecanismo; correr el liveness-probing en un proceso separado del generador de carga (lección ya documentada).
+4. **Métricas/logs a observar**: contadores de connection pool de SqlClient (activas/en cola), `ThreadPool` worker count/queue length (EventCounters), p50/p95/p99 de `GetEntitiesForApp` y `/Users/GetUser`, latencia y tasa de éxito de `/health/liveness`, ausencia de `SqlException: Execution Timeout Expired`/`Timeout expired obtaining a connection from the pool`.
+5. **Criterios de éxito**: 0 timeouts de pool bajo el mismo perfil de carga que antes producía errores; liveness p95 en milisegundos; ThreadPool sin escalar a cientos de workers.
+6. **Criterios de rollback**: si aparecen nuevos errores de conexión, deadlocks de transacción o cambios de comportamiento en los `catch (Exception)` genéricos existentes, revertir el commit específico por archivo/método (cambios atómicos).
+7. **No se ejecuta carga contra Production** en ningún punto.
+
+---
+
+## 6. Scope / PR Plan
+
+- **Branch/PR**: `features/ssoapi-async-sql-and-request-observability` (ya estás en ella) o, si prefieres separarlo, `fix/ssoapi-sync-sqlconnection-open`.
+- **Título sugerido**: "Fix: reemplazar `db.Open()` síncrono por `await db.OpenAsync()` en repositorios async de SSOAPI".
+- **Descripción corta**: Mitigación de disponibilidad para el incidente de producción 2026-09-01/02. Bajo bursts de concurrencia, `db.Open()` síncrono dentro de métodos `async` retiene workers del ThreadPool esperando adquirir conexiones del pool, lo que en producción derivó en timeouts de SqlClient (aunque SQL Server respondía en ms) y coincidió con la caída de `/health/liveness`. Se reemplaza por `await db.OpenAsync()` donde es seguro hacerlo sin tocar transacciones ni firmas públicas.
+- **Archivos esperados**: `SSOAdminRepository.cs`, `SSOAuthRepository.cs`, `GenericRepository.cs`, `NotificationRepository.cs`.
+- **Explícitamente fuera de alcance**: `SSOAccountRepository.cs`, `CMSWrapper.cs`, `ChangeEntityAssignments`, `GetSSOUserData`, el `.Result` en `ImportUser`, el logging fire-and-forget de `LoggingService`, el orden de middlewares en `Program.cs`, y `ADWrapper.ValidateCredentials`.
+
+---
+
+## 7. Questions Requiring My Decision
+
+1. ¿El PR incluye **solo** el cambio mecánico `db.Open()`→`await db.OpenAsync()` (sección 3), o también el `.Result` de `ImportUser` (requiere decidir si el controller pasa a ser async)?
+2. Para el logging fire-and-forget que ahora sé con certeza que también corre en `/health/liveness`: ¿quieres que proponga directamente excluir `/health/*` del pipeline de `RequestResponseLogging`/`RequiredHeaderValidatorMiddleware` en un PR separado, o prefieres priorizar solo el fix de `OpenAsync` primero y medir su efecto antes de tocar el logging?
+3. ¿Existe un proyecto de tests para `DS.Web.SSOApi` que deba correr como parte de la validación? No lo encontré en el listado del workspace.
+4. ¿Quieres que amplíe el repro harness para cubrir específicamente el loop N×4 de `SSOAuthRepository.GetUserAsync`, o el repro ya hecho para `GetEntitiesForApp` es evidencia suficiente para este ticket?
+
+Quedo a la espera de tu **VoBo** y de las respuestas anteriores antes de tocar cualquier archivo.
