@@ -1,0 +1,31 @@
+Haré una comparación READ-ONLY de la implementación actual, el executor, el registro DI y los tests de `SSOAccountRepository`. Separaré lo que se mantiene idéntico de diferencias de orden temporal y de lo que solo puede confirmarse contra SQL Server; no correré ni añadiré pruebas.
+
+Read 
+
+Read 
+
+Read 
+
+Read , lines 78 to 92
+
+La comparación confirmó que el mapeo síncrono con `DataTable` ya está restaurado. Sí encontré diferencias de orden entre validar/construir parámetros y abrir SQL en algunos métodos; además, todas las pruebas del executor simulan SQL, así que no demuestran conexión, ejecuciones ni fallos parciales reales. Presentaré esas diferencias con clasificación estricta, no declararé equivalencia global.
+
+
+
+**Auditoría READ-ONLY**: no modifiqué archivos ni ejecuté pruebas. Comparé el código actual con la versión original que compartiste. El mapeo síncrono con `DataTable` ya está restaurado; quedan diferencias de orden en otros métodos que impiden afirmar equivalencia estricta en todos los casos.
+
+| Método | Clasificación | Comparación y evidencia |
+|---|---|---|
+| `IsEmailExistsAsync` | **RIESGO** | Original: abría SQL y después creaba `DynamicParameters`. Nuevo: crea los parámetros antes de que el executor abra SQL. Con entrada válida, conserva `SSOIsEmailExists`, `@EmailID` y el mismo mapeo `"0"` → `SUCCESS`, otro resultado → `EMAILEXISTS`. **HECHO:** cambió el orden. **RIESGO:** si fallan tanto la conexión como la preparación de parámetros, puede observarse primero una excepción distinta. |
+| `GetUserPrefs` | **RIESGO** | Original: abría conexión y comando, luego ejecutaba `loginName.ToUpper()`, leía con `SqlDataReader`, cargaba `DataTable` y usaba `prefRow["PrefKey"].ToString()` / `prefRow["PrefValue"].ToString()`. Nuevo: delega a `QueryDataTable`; el executor conserva `SqlCommand`, `ExecuteReader`, `DataTable.Load` y esos mismos accesos por nombre. **EQUIVALENCIA INFERIDA:** para entrada válida, lectura y conversión se preservan. **HECHO:** `ToUpper()` ahora se evalúa antes de entrar al executor y abrir conexión; ante login nulo y conexión fallida puede cambiar cuál error aparece primero. |
+| `GetUserPrefsAsync` | **RIESGO** | La consulta Dapper, el procedimiento y `ToDictionary` son los mismos. Originalmente se abría SQL antes de construir los parámetros; ahora el repositorio los construye antes de llamar al executor. **HECHO:** el orden cambió. El resultado normal esperado es igual; el orden de errores puede diferir en situaciones anómalas. |
+| `SetSSOUserDataAsync` | **RIESGO** | Se mantienen `CreateSetSsoUserDataParameters`, `cAddOrUpdateUserToAuthStore`, `QueryAsync<long>`, lectura de `@NewUserID`, `LogError(ex.Message)` y `throw`. **HECHO:** ahora se construyen parámetros antes de abrir SQL; antes la conexión se abría primero. Por ejemplo, con un `Pin` que no convierte a `Int16` y SQL inaccesible, podría cambiar la excepción prioritaria. |
+| `SetUserPrefs` / `SetUserPrefsAsync` | **RIESGO** bajo criterio estricto | Los snippets muestran el mismo procedimiento, parámetros, normalización y ejecución secuencial. El `yield return` es diferido; `ExecuteMany`/`ExecuteManyAsync` abre una conexión y enumera una vez, igual que el ciclo original tras abrir la conexión. **HECHO:** no se agrega transacción y se conserva el orden de las ejecuciones. **RIESGO:** las excepciones ahora incluyen frames del executor en su stack trace. |
+| `CreateSetSsoUserDataParameters` | **EQUIVALENTE** | El método permanece igual; sus pruebas verifican campos y valores opcionales. |
+| `CreateSetUserPrefParameters` | **EQUIVALENTE** en ejecución normal | Es un helper nuevo que reemplaza el ciclo original. Su `yield return` crea los parámetros conforme el executor los consume; este contiene un único `foreach`, sin `Count()`, `ToList()` ni una segunda enumeración. |
+
+En `DapperQueryExecutor.cs`, los wrappers conservan las llamadas correspondientes a `Open`/`OpenAsync`, Dapper y `CommandType.StoredProcedure`; `QueryDataTable` conserva la secuencia ADO.NET original. Eso es **evidencia de equivalencia en el código**, no una comprobación contra SQL Server.
+
+Las pruebas de `SSOAccountRepositoryTests.cs` usan un mock de `IDapperQueryExecutor`. Verifican parámetros, mapeos, resultados, writes y rethrow; **no ejecutan Dapper real ni procedimientos almacenados**. Por tanto, no validan apertura/cierre real de conexiones, columnas del procedimiento, valores de salida de SQL ni qué ocurre ante un fallo a mitad de un lote. La última suite registrada tenía 319 pruebas aprobadas, pero eso por sí solo no demuestra equivalencia con SQL Server.
+
+**Conclusión:** la ruta de `GetUserPrefs` mantiene el mapeo original que te preocupaba. Hay cambios de orden al preparar parámetros antes de abrir conexión en `IsEmailExistsAsync`, `GetUserPrefsAsync` y `SetSSOUserDataAsync`, además de stack traces distintos en errores. Por tu requisito de comportamiento estrictamente idéntico, esas diferencias deben revisarse como riesgos; no afirmo equivalencia total sin una prueba de integración con SQL Server.
