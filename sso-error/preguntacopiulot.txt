@@ -1,0 +1,24 @@
+Antes de aprobar el refactor, realiza una auditoría READ-ONLY comparando el código original contra el código modificado.
+
+Mi requisito principal es que el comportamiento observable permanezca exactamente igual.
+
+Revisa especialmente:
+
+1. Apertura, reutilización y cierre de conexiones SQL.
+2. Orden y cantidad de ejecuciones de los stored procedures.
+3. Comportamiento ante excepciones y ejecuciones parcialmente completadas.
+4. Diferencias entre SqlCommand/ExecuteReader/DataTable.Load y QueryDataTable.
+5. Evaluación diferida de yield return y enumeraciones múltiples.
+6. Manejo de null, DBNull, cadenas vacías y transformaciones de parámetros.
+7. Diferencias entre ejecución síncrona y asíncrona, incluyendo propagación de excepciones.
+
+No modifiques código ni agregues pruebas todavía.
+
+Para cada diferencia encontrada, indica HECHO, INFERENCIA o DESCONOCIDO, mostrando el código original y el nuevo que justifican la conclusión.
+
+Finalmente, clasifica cada método como:
+- EQUIVALENTE: existe evidencia suficiente de comportamiento idéntico.
+- RIESGO: existe una diferencia que podría alterar el comportamiento.
+- NO VERIFICADO: falta evidencia.
+
+No declares equivalencia únicamente porque las 319 pruebas pasan. Identifica las pruebas que realmente cubren los riesgos anteriores y distingue los comportamientos que requieren pruebas de integración con SQL Server.
