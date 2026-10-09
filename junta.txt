@@ -1,0 +1,8 @@
+**What went well?**  
+I learned how to read code coverage percentages.
+
+**What went wrong?**  
+Sometimes it's difficult to write unit tests.
+
+**What can be improved?**  
+Find better ways to increase code coverage.
