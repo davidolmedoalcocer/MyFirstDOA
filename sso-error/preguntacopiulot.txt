@@ -1,24 +1,70 @@
-Antes de aprobar el refactor, realiza una auditoría READ-ONLY comparando el código original contra el código modificado.
+Necesito que revises la implementación actual de la inyección de dependencias (Dependency Injection) y el manejo de conexiones a base de datos en este proyecto .NET 10, especialmente en el archivo `Program.cs`.
 
-Mi requisito principal es que el comportamiento observable permanezca exactamente igual.
+**Contexto:**
 
-Revisa especialmente:
+Durante una revisión de código, Charles comentó que algunos servicios están siendo registrados utilizando `GetRequiredService()` para resolver manualmente dependencias como `ConnectionManager`, `NotificationRepository` y `GenericRepository`.
 
-1. Apertura, reutilización y cierre de conexiones SQL.
-2. Orden y cantidad de ejecuciones de los stored procedures.
-3. Comportamiento ante excepciones y ejecuciones parcialmente completadas.
-4. Diferencias entre SqlCommand/ExecuteReader/DataTable.Load y QueryDataTable.
-5. Evaluación diferida de yield return y enumeraciones múltiples.
-6. Manejo de null, DBNull, cadenas vacías y transformaciones de parámetros.
-7. Diferencias entre ejecución síncrona y asíncrona, incluyendo propagación de excepciones.
+Charles explicó que, si estas dependencias ya están registradas en el contenedor de inyección de dependencias de .NET, el framework puede resolverlas automáticamente mediante la inyección por constructor, sin necesidad de utilizar explícitamente `GetRequiredService()`.
 
-No modifiques código ni agregues pruebas todavía.
+Originalmente mantuve el enfoque del código legacy para minimizar los cambios, ya que esta es una aplicación core y queremos evitar modificaciones innecesarias.
 
-Para cada diferencia encontrada, indica HECHO, INFERENCIA o DESCONOCIDO, mostrando el código original y el nuevo que justifican la conclusión.
+### 1. Análisis del código actual
 
-Finalmente, clasifica cada método como:
-- EQUIVALENTE: existe evidencia suficiente de comportamiento idéntico.
-- RIESGO: existe una diferencia que podría alterar el comportamiento.
-- NO VERIFICADO: falta evidencia.
+- Identifica todos los registros de servicios que utilizan `GetRequiredService()` en `Program.cs`.
+- Revisa cómo se están configurando e inyectando los connection strings, administradores de conexiones y repositorios.
+- Identifica qué servicios pueden simplificarse utilizando la inyección de dependencias automática de .NET.
+- Verifica que todas las dependencias estén correctamente registradas.
 
-No declares equivalencia únicamente porque las 319 pruebas pasan. Identifica las pruebas que realmente cubren los riesgos anteriores y distingue los comportamientos que requieren pruebas de integración con SQL Server.
+### 2. Revisión de conexiones a base de datos
+
+- Analiza cómo se obtienen y utilizan los connection strings.
+- Verifica si `ConnectionManager` y los repositorios están correctamente registrados.
+- Determina si eliminar el uso explícito de `GetRequiredService()` podría afectar las conexiones a base de datos.
+- Identifica posibles problemas relacionados con los ciclos de vida `Singleton`, `Scoped` y `Transient`.
+
+### 3. Recomendaciones de Charles
+
+Evalúa si podemos reemplazar registros como:
+
+```csharp
+builder.Services.AddTransient<IUserService>(sp =>
+    new UserService(
+        sp.GetRequiredService<IGenericRepository>(),
+        sp.GetRequiredService<IConnectionManager>()
+    )
+);
+```
+
+Por una implementación más sencilla:
+
+```csharp
+builder.Services.AddTransient<IUserService, UserService>();
+```
+
+Estos ejemplos son ilustrativos. Verifica las implementaciones y constructores reales del proyecto antes de recomendar cualquier cambio.
+
+### 4. Resultado esperado
+
+Genera un reporte que incluya:
+
+1. Archivo y ubicación exacta de cada implementación identificada.
+2. Explicación de cómo funciona actualmente.
+3. Qué parte del código corresponde al comentario de Charles.
+4. Qué cambios recomiendas y por qué.
+5. Ejemplos del código actual y del código propuesto.
+6. Posibles riesgos de realizar estos cambios.
+7. Confirmación de si se puede mantener el mismo comportamiento de las conexiones a base de datos.
+
+### Restricciones importantes
+
+- NO modifiques ningún archivo todavía.
+- NO cambies los connection strings.
+- NO modifiques la configuración de las bases de datos.
+- NO alteres la lógica de negocio.
+- NO realices refactorizaciones innecesarias.
+- Mantén la compatibilidad con .NET 10.
+- Prioriza cambios mínimos y seguros.
+
+**Primero necesito únicamente tu análisis y recomendaciones. Espera mi autorización antes de modificar cualquier archivo.**
+
+Responde completamente en español.
