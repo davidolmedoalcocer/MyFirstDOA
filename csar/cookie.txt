@@ -1,0 +1,240 @@
+# Investigación técnica: problema de autenticación SSO y cookies entre TrackGuard Portal y CSR Web UI
+
+Actúa como un **Senior Software Engineer especializado en .NET, autenticación, Single Sign-On (SSO), middleware, cookies, JavaScript y debugging de aplicaciones web**.
+
+Necesito que realices una investigación exhaustiva del problema de autenticación que estamos experimentando con CSR Web UI.
+
+Tienes acceso a tres proyectos abiertos en el workspace:
+
+1. **CSR Web UI:** aplicación que presenta el problema.
+2. **TrackGuard:** portal principal que inicia el proceso de autenticación y redirección.
+3. **Policy Search Portal:** aplicación donde la integración funciona correctamente.
+
+Quiero que analices los tres proyectos, compares sus implementaciones y determines por qué CSR Web UI no está generando correctamente su cookie de autenticación.
+
+## 1. Contexto del problema
+
+Estamos integrando CSR Web UI con TrackGuard Portal siguiendo la guía de integración de PG Portal elaborada por Robbie.
+
+Como referencia utilizamos Policy Search Portal, que ya tiene implementada esta integración y funciona correctamente.
+
+**Comportamiento correcto — Policy Search Portal**
+
+- Application ID: `119`.
+- El usuario inicia sesión en TrackGuard Portal.
+- Selecciona Policy Search Portal.
+- TrackGuard genera y envía el interop token.
+- La aplicación recibe y procesa el token.
+- Se genera correctamente la cookie `Portal.App.119`.
+- El usuario puede acceder a la aplicación.
+
+**Comportamiento incorrecto — CSR Web UI**
+
+- Application ID: `124`.
+- El usuario inicia sesión en TrackGuard Portal.
+- Selecciona CSR Management.
+- TrackGuard utiliza correctamente el Application ID `124`.
+- Se genera el interop token.
+- La redirección hacia CSR Web UI funciona.
+- El middleware de CSR Web UI recibe el interop token.
+- El código intenta establecer la cookie `PortalInterop`.
+- Sin embargo, **la cookie `Portal.App.124` no aparece**.
+- En el navegador aparecen cookies correspondientes a `Portal.App.119` y `Portal.App.0`, pero no la correspondiente a `124`.
+- El código que espera encontrar la cookie `Portal.App.124` termina alcanzando su timeout.
+
+Hasta ahora no se ha identificado una excepción que explique el problema.
+
+Importante: los nombres de cookies anteriores provienen de la investigación inicial. Confirma sus nombres exactos revisando el código.
+
+## 2. Objetivo principal
+
+Determinar **por qué Policy Search Portal genera correctamente su cookie de aplicación mientras CSR Web UI no consigue generar la correspondiente al Application ID 124**.
+
+No quiero suposiciones sin evidencia.
+
+Quiero que encuentres las diferencias relevantes en el código y la configuración, identifiques la causa más probable y propongas una solución respaldada por evidencia técnica.
+
+## 3. Investigación de TrackGuard
+
+Analiza cómo TrackGuard maneja la selección de aplicaciones y el proceso de autenticación.
+
+Investiga:
+
+- Cómo obtiene el Application ID de la aplicación seleccionada.
+- Cómo genera el interop token.
+- Cómo transmite el token a la aplicación destino.
+- Qué endpoint o URL utiliza para redirigir.
+- Cómo se relacionan el Application ID, el interop token y la cookie final.
+- Si existen diferencias en el procesamiento de los IDs `119` y `124`.
+- Si algún valor de configuración podría estar provocando que se utilice el identificador equivocado.
+
+Identifica los archivos, clases y métodos responsables de estas operaciones.
+
+## 4. Comparación entre Policy Search Portal y CSR Web UI
+
+Esta es la parte más importante de la investigación.
+
+Utiliza **Policy Search Portal como implementación de referencia** y compara su flujo de autenticación con CSR Web UI.
+
+Revisa especialmente:
+
+### A. Middleware
+
+- Registro del middleware.
+- Orden de ejecución.
+- Intercepción del interop token.
+- Procesamiento de la solicitud.
+- Generación y almacenamiento de cookies.
+- Redirección al login.
+- Diferencias entre ambos proyectos.
+
+### B. AuthHelper y servicios de autenticación
+
+- Implementaciones de `AuthHelper`.
+- Consumo y validación del interop token.
+- Resolución del Application ID.
+- Creación de la sesión autenticada.
+- Generación de la cookie específica de la aplicación.
+- Llamadas a servicios externos o endpoints necesarios para completar el login.
+
+### C. Configuración
+
+Compara los archivos y secciones relevantes, incluyendo, cuando existan:
+
+- `appsettings.json`
+- `appsettings.Development.json`
+- `Program.cs`
+- `Startup.cs`
+- Opciones de autenticación.
+- Settings específicas de Portal Interop.
+- Registro de servicios.
+- Dependency Injection.
+- Configuración de cookies.
+- Configuración del Application ID.
+- Variables de entorno y posibles overrides.
+
+Verifica que CSR Web UI esté utilizando correctamente el Application ID `124` durante todo el flujo, no solamente durante la redirección inicial.
+
+### D. Autenticación y cookies
+
+Investiga:
+
+- En qué método se genera `Portal.App.119` dentro de Policy Search Portal.
+- Cuál es el método equivalente en CSR Web UI.
+- Por qué no se genera `Portal.App.124`.
+- Si CSR ejecuta realmente el método que emite la cookie.
+- Si la cookie es emitida mediante `Set-Cookie`.
+- Si hay conflictos de `Domain`, `Path`, `SameSite`, `Secure` o expiración.
+- Si existe algún problema con los esquemas de autenticación.
+- Si se están utilizando configuraciones o identificadores de otra aplicación.
+- Si existen diferencias entre el contexto local y el ambiente donde funciona Policy Search Portal.
+
+Distingue entre estos escenarios:
+
+1. El servidor nunca intenta crear la cookie.
+2. El servidor intenta crearla, pero ocurre un error.
+3. El servidor devuelve `Set-Cookie`, pero el navegador rechaza la cookie.
+4. La cookie se crea, pero posteriormente se elimina o sobrescribe.
+5. La cookie se crea correctamente, pero el código intenta encontrarla bajo otro nombre, dominio o ruta.
+
+## 5. Revisión de versiones y dependencias
+
+Durante la investigación inicial se mencionó que hubo una actualización de componentes.
+
+Compara:
+
+- Versiones de .NET.
+- Paquetes NuGet relacionados con autenticación.
+- Bibliotecas compartidas entre aplicaciones.
+- Versiones de middleware.
+- APIs o comportamientos que pudieron cambiar.
+- Diferencias en la configuración de autenticación entre versiones.
+
+No asumas que la actualización es la causa. Investígala únicamente como una posibilidad.
+
+## 6. Rastrear el flujo completo
+
+Necesito que reconstruyas el flujo real de autenticación:
+
+**TrackGuard → selección CSR Management → Application ID 124 → generación del interop token → redirección → middleware CSR → cookie PortalInterop → procesamiento del login → generación de Portal.App.124.**
+
+Para cada paso, identifica:
+
+- Proyecto responsable.
+- Archivo.
+- Clase.
+- Método.
+- Datos recibidos.
+- Datos generados.
+- Resultado esperado.
+- Evidencia encontrada en el código.
+
+Compara este flujo con el que utiliza Policy Search Portal.
+
+Determina el punto exacto donde ambos comportamientos divergen.
+
+## 7. Reglas importantes
+
+**Primero investiga. No modifiques ningún archivo todavía.**
+
+- No realices cambios automáticos.
+- No reestructures código que no esté relacionado con el problema.
+- No asumas que CSR Web UI debe copiar literalmente toda la implementación de Policy Search Portal.
+- No afirmes que una causa está confirmada cuando solamente es una hipótesis.
+- No inventes métodos, configuraciones o archivos.
+- Indica claramente cuando una conclusión requiere validación en ejecución.
+- Si necesitas logs, breakpoints o información adicional, explica exactamente dónde y cómo obtenerlos.
+- No expongas secretos, credenciales ni tokens de autenticación en tus resultados.
+
+## 8. Formato de respuesta esperado
+
+Quiero que presentes los resultados en español y en este orden:
+
+### 1. Resumen ejecutivo
+Explica brevemente qué encontraste y cuál parece ser el problema.
+
+### 2. Comparación técnica
+Presenta una tabla con las diferencias relevantes entre Policy Search Portal y CSR Web UI, incluyendo archivo, método y comportamiento.
+
+### 3. Flujo de autenticación
+Describe el flujo completo y señala el punto exacto donde probablemente está fallando CSR Web UI.
+
+### 4. Hallazgos respaldados por evidencia
+Para cada hallazgo incluye:
+
+- Proyecto.
+- Archivo y ruta.
+- Clase o método.
+- Líneas relevantes, cuando estén disponibles.
+- Fragmento de código que justifique el hallazgo.
+- Explicación de por qué puede afectar la creación de la cookie.
+
+### 5. Causa raíz
+Indica la causa raíz si se puede demostrar.
+
+Si no hay evidencia suficiente, presenta las hipótesis ordenadas por probabilidad y especifica cómo confirmar o descartar cada una.
+
+### 6. Solución propuesta
+Explica qué cambios específicos deberían realizarse, en qué archivos y por qué.
+
+No apliques los cambios hasta que los autorice.
+
+### 7. Plan de validación
+Indica cómo comprobar que la solución funciona, incluyendo:
+
+- Login desde TrackGuard.
+- Generación de `Portal.App.124`.
+- Ausencia de conflictos con `Portal.App.119`.
+- Logout.
+- Cambio de permisos y roles.
+- Comparación con Policy Search Portal.
+
+## 9. Prioridad
+
+Este problema es importante porque CSR Web UI se utilizará en una demostración donde necesitamos mostrar las páginas con diferentes permisos, incluyendo usuarios Team Manager y usuarios sin ese rol.
+
+El objetivo es solucionar la autenticación sin afectar el funcionamiento de TrackGuard ni Policy Search Portal.
+
+**Comienza examinando el código real de los tres proyectos. Tu primera prioridad es localizar dónde se genera la cookie `Portal.App.119` en Policy Search Portal y rastrear por qué el flujo equivalente no genera `Portal.App.124` en CSR Web UI.**
+
+No quiero una explicación genérica sobre cookies o SSO. Quiero una investigación específica basada en los repositorios disponibles.
