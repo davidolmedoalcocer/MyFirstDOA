@@ -1,0 +1,380 @@
+# Investigación técnica de pendientes de la demo de CSAR — 27 de octubre de 2026
+
+## OBJETIVO
+
+Necesito que realices una investigación técnica exhaustiva, pero enfocada, sobre varios requerimientos y posibles defectos identificados durante una demostración de la nueva aplicación CSAR.
+
+**NO QUIERO QUE IMPLEMENTES NINGUNA SOLUCIÓN.**
+
+Tu trabajo consiste únicamente en investigar el código existente y generar un documento técnico, completamente en español, que me permita entender qué está funcionando, qué falta y qué modificaciones serían necesarias para resolver cada punto.
+
+Soy desarrollador y posteriormente revisaré tus conclusiones para decidir cuáles cambios implementar.
+
+## REGLAS OBLIGATORIAS
+
+1. NO modifiques ningún archivo de código fuente.
+2. NO realices refactorizaciones ni optimizaciones.
+3. NO modifiques archivos de configuración, proyectos, pipelines ni dependencias.
+4. NO ejecutes migraciones ni modifiques bases de datos.
+5. NO crees pruebas automatizadas ni modifiques las existentes.
+6. NO hagas commits ni operaciones Git que alteren el repositorio.
+7. NO ejecutes aplicaciones, pruebas o scripts con efectos secundarios.
+8. Puedes utilizar búsquedas, lectura de archivos y otros comandos de solo lectura.
+9. El ÚNICO archivo que tienes autorización para crear o actualizar es el documento de investigación solicitado.
+10. NO asumas que una funcionalidad existe o está ausente sin comprobarlo en el código.
+11. NO inventes rutas, clases, métodos, endpoints ni configuraciones.
+12. NO propongas una refactorización general cuando el problema se pueda solucionar mediante un cambio puntual.
+13. No repitas auditorías generales innecesarias. Enfócate en los puntos específicos de esta solicitud.
+
+**IMPORTANTE:** Si descubres que algo requiere modificar código, únicamente debes documentar qué modificarías, dónde, por qué y cómo. No realices el cambio.
+
+## CONTEXTO
+
+Estamos migrando una aplicación CSAR anterior a una nueva solución que utiliza una interfaz Blazor, una API .NET 10 y la integración con TrackGuard Portal.
+
+Durante la demostración del 27 de octubre de 2026 surgieron observaciones funcionales y técnicas.
+
+Quiero comprobar cuáles requieren realmente cambios de código, cuáles ya funcionan, cuáles son problemas de configuración y cuáles necesitan decisiones de otros equipos.
+
+Investiga los repositorios y proyectos que estén disponibles en este workspace. Identifica primero qué soluciones corresponden a la aplicación anterior, la nueva UI, la API, la autenticación y los servicios relacionados.
+
+Si un repositorio necesario no está disponible, indícalo como limitación. No supongas que lo revisaste.
+
+## PUNTOS QUE DEBES INVESTIGAR
+
+### 1. Notificaciones por correo cuando un Team Manager rechaza una solicitud CSAR
+
+**Situación reportada:**
+
+En la aplicación anterior, cuando un Team Manager rechaza una solicitud CSAR, se envía automáticamente una notificación por correo a una lista de distribución para informar a los responsables.
+
+Durante la demo surgieron dudas sobre si esta funcionalidad sigue existiendo en la aplicación nueva.
+
+Se mencionaron un servicio denominado Balboa Mail Service, una lista de distribución asociada con CSAR Mortgage Users y configuraciones en el `web.config` de la aplicación anterior.
+
+También se comentó que posiblemente parte de la lógica se había trasladado a la API, pero esto no quedó confirmado.
+
+**Investiga:**
+
+- Cómo funciona actualmente el envío de correos en la aplicación anterior.
+- Qué acción o condición provoca el envío.
+- Qué clases, métodos y servicios participan.
+- Qué servicio externo se utiliza y cómo se configura.
+- De dónde se obtienen los destinatarios.
+- Si existe la misma funcionalidad en la nueva UI o API.
+- Si existe alguna diferencia funcional entre ambas implementaciones.
+- Qué haría falta para reproducir el comportamiento original.
+- Cómo se podría validar sin enviar notificaciones reales a usuarios de producción.
+
+No supongas que los rechazos realizados por Client Support deben enviar automáticamente correos: durante la demo se mencionó que esas notificaciones posiblemente se hacen manualmente.
+
+**Resultado esperado:** explicación de la implementación actual y pasos exactos para conservar o recuperar la notificación automática de Team Manager.
+
+### 2. Estado de solicitudes canceladas desde Audit Forms
+
+**Situación reportada:**
+
+Durante la demostración, Charles canceló una solicitud desde Audit Forms.
+
+La solicitud desapareció de la cola y la nota asociada quedó registrada, pero no se pudo confirmar que `Request Status` y los datos de procesamiento se actualizaran correctamente.
+
+También surgieron preguntas sobre si la solicitud regresa a Customer Care, pasa a reprocesamiento o simplemente se cierra.
+
+**Investiga:**
+
+- Flujo completo al seleccionar `Cancelled`.
+- Qué endpoint recibe la operación.
+- Qué métodos y servicios ejecutan el procesamiento.
+- Qué tablas y campos participan.
+- Cómo se actualizan `Request Status`, `Work Step` y los demás campos relacionados.
+- Si existen diferencias entre la aplicación anterior y la nueva.
+- Cómo se determina el siguiente estado o destino de la solicitud.
+- Qué sucede con las opciones `Resolved` y `Pending` cuando apliquen.
+- Si el comportamiento depende del tipo de solicitud o proceso.
+- Si existe un defecto comprobable o únicamente falta una validación.
+
+**Resultado esperado:** explicación del flujo actual, diferencias encontradas y pasos concretos para corregirlas si es necesario.
+
+### 3. Grand Total faltante en Work on Hand Report
+
+**Situación reportada:**
+
+Durante la demostración se detectó que el nuevo Work on Hand Report no mostraba la fila `Grand Total`, presente en el reporte anterior.
+
+También se solicitó comprobar si ese total aparece en la exportación CSV.
+
+**Investiga:**
+
+- Implementación del reporte anterior y del nuevo.
+- Origen de los datos.
+- Forma de calcular los subtotales y el total general.
+- Si el backend devuelve el total o la UI debe calcularlo.
+- Dónde se construye la tabla.
+- Dónde se genera el archivo CSV.
+- Qué cambios puntuales serían necesarios para agregar el total general.
+- Cómo asegurar que el total sea correcto cuando se aplican filtros.
+
+**Resultado esperado:** instrucciones precisas para agregar Grand Total sin alterar los cálculos existentes.
+
+### 4. Logging y monitoreo de la API en Kubernetes
+
+**Situación reportada:**
+
+Uno de los criterios de aceptación exige que las transacciones de CSAR API registren logs y que exista monitoreo y alertamiento operacional.
+
+Durante la demo no se logró demostrar completamente esta funcionalidad.
+
+**Investiga:**
+
+- Qué mecanismos de logging utiliza la API.
+- Qué servicios o herramientas de observabilidad están configurados.
+- Qué configuraciones existen en los repositorios disponibles.
+- Si hay evidencia de integración con la plataforma empresarial de monitoreo.
+- Si falta instrumentación, configuración o únicamente una demostración.
+- Qué se necesita validar dentro de Kubernetes.
+- Qué información requeriríamos del equipo DevOps.
+
+No afirmes que el monitoreo está operativo si únicamente encuentras código de configuración.
+
+**Resultado esperado:** pasos para verificar logs, monitoreo y alertas, diferenciando actividades del desarrollador y de DevOps.
+
+### 5. Funcionalidad Create Forms como respaldo
+
+**Situación reportada:**
+
+La aplicación anterior incluye Create Forms, pero esa funcionalidad no existe en la nueva CSAR Management porque la creación de solicitudes se realiza en Customer Care Portal.
+
+Durante la demo preguntaron qué sucedería si Customer Care Portal no estuviera disponible.
+
+No se tomó una decisión definitiva sobre mantener Create Forms como alternativa.
+
+**Investiga:**
+
+- Cómo funciona Create Forms en la aplicación anterior.
+- Qué dependencias tiene.
+- Si existe alguna implementación parcial en la nueva aplicación.
+- Qué APIs necesita.
+- Qué implicaciones tendría incorporarlo nuevamente.
+- Si existen alternativas técnicas sin duplicar la funcionalidad.
+
+**Resultado esperado:** opciones técnicas, impacto y dependencias. No lo clasifiques como defecto confirmado ni como cambio aprobado; es una decisión funcional pendiente.
+
+### 6. Acceso a CSAR mediante TrackGuard Portal y ServiceNow
+
+**Situación reportada:**
+
+Se solicitó garantizar que los usuarios actuales con acceso a CSAR conserven los permisos necesarios.
+
+También preguntaron si los nuevos empleados podrán solicitar acceso a CSAR Management mediante ServiceNow, seleccionando la aplicación y el tipo de acceso.
+
+**Investiga:**
+
+- Cómo funciona actualmente la autenticación desde TrackGuard Portal.
+- Cómo se obtienen los roles y permisos.
+- Qué roles están definidos para CSAR.
+- Cómo se asocian los usuarios a los roles.
+- Qué ocurre cuando se modifican los permisos de un usuario.
+- Si la configuración de acceso depende de código, base de datos, SSO o sistemas externos.
+- Qué componentes podrían necesitar ajustes.
+- Qué corresponde al equipo de desarrollo y qué a los responsables de ServiceNow o administración de accesos.
+
+No confundas la integración SSO con la configuración del catálogo de solicitudes de ServiceNow.
+
+**Resultado esperado:** procedimiento técnico propuesto para conservar permisos existentes y permitir nuevas solicitudes de acceso.
+
+### 7. Cambio de nombre Valen a Carrington
+
+Durante la demo se preguntó si debía actualizarse el nombre de un lender de Valen a Carrington.
+
+Se explicó que posiblemente afectaría a varias aplicaciones y que no necesariamente forma parte del alcance de CSAR.
+
+Investiga únicamente dónde se obtiene ese nombre, si es compartido y qué dependencias tendría modificarlo.
+
+No propongas implementar el cambio sin confirmación del negocio.
+
+### 8. Defecto SSO: Welcome undefined undefined
+
+Este defecto se mencionó al finalizar la junta, pero es independiente de los nuevos requerimientos de CSAR.
+
+Se indicó que un problema de visualización del nombre del usuario ya había sido corregido, aunque todavía existía un posible error de backend relacionado con el acceso a TrackGuard Document Intelligence (TGDI).
+
+Si el código correspondiente está disponible:
+
+- Investiga cómo se obtiene la información del usuario autenticado.
+- Revisa el flujo de autenticación relacionado.
+- Identifica causas posibles del error de backend.
+- Determina qué evidencias permitirían confirmar cada causa.
+- Documenta posibles soluciones sin implementarlas.
+
+Si no tienes el repositorio de TGDI o las evidencias suficientes, indícalo claramente y no inventes un diagnóstico.
+
+## CÓMO DEBES REALIZAR LA INVESTIGACIÓN
+
+Para cada punto:
+
+**Paso 1. Localizar la implementación existente.**
+
+Encuentra archivos, clases, métodos, endpoints, configuraciones y dependencias relevantes.
+
+**Paso 2. Entender el comportamiento actual.**
+
+Explica el flujo completo de ejecución utilizando nombres reales del código.
+
+**Paso 3. Identificar las diferencias o problemas.**
+
+Compara el comportamiento existente con lo solicitado durante la demo. Cuando estén disponibles ambos sistemas, compara implementación anterior y nueva.
+
+**Paso 4. Determinar si se requieren modificaciones.**
+
+Clasifica cada hallazgo como:
+
+- No requiere cambios.
+- Requiere cambios de código.
+- Requiere cambios de configuración.
+- Requiere validación o pruebas.
+- Requiere intervención de otro equipo.
+- Requiere decisión funcional.
+- No se puede determinar con la evidencia disponible.
+
+**Paso 5. Documentar la solución propuesta.**
+
+Si requiere cambios, describe paso a paso cómo realizarlos, pero NO los ejecutes.
+
+Incluye rutas reales de archivos, clases, métodos, propiedades y configuraciones que deberían revisarse o modificarse.
+
+No escribas código nuevo completo si no es necesario. Prefiero entender los cambios concretos antes de implementarlos.
+
+**Paso 6. Explicar cómo comprobar la solución.**
+
+Describe qué pruebas manuales o automatizadas serían adecuadas, qué resultados se esperarían y qué consideraciones deben tenerse para evitar alterar información real.
+
+No ejecutes dichas pruebas.
+
+## ARCHIVO QUE DEBES GENERAR
+
+Crea o actualiza exclusivamente este archivo:
+
+`docs/investigacion-demo-csar-2026-10-27.md`
+
+Si no existe la carpeta `docs`, puedes crearla.
+
+El archivo debe estar **completamente en español**, utilizando un lenguaje técnico pero claro.
+
+### Estructura obligatoria
+
+#### 1. Resumen ejecutivo
+
+Una tabla con:
+
+| Número | Tema | Estado encontrado | ¿Requiere cambios? | Prioridad sugerida | Responsable técnico sugerido |
+|---|---|---|---|---|---|
+
+La prioridad es una recomendación técnica, no una prioridad aprobada por negocio. El responsable sugerido no representa una asignación oficial.
+
+#### 2. Investigación detallada de cada punto
+
+Para CADA uno de los ocho puntos, utiliza exactamente esta estructura:
+
+**A. Qué solicitaron durante la demo**
+
+Explicación sencilla del problema o requerimiento reportado.
+
+**B. Qué existe actualmente**
+
+Explicación del funcionamiento real encontrado en el código.
+
+**C. Evidencia técnica**
+
+Tabla con rutas de archivos, clases, métodos, líneas aproximadas o exactas cuando sea posible y función de cada componente.
+
+Indica si la evidencia pertenece al sistema anterior o al nuevo.
+
+**D. Qué falta o qué está incorrecto**
+
+Diferencias técnicas comprobadas, información no disponible y aspectos pendientes de confirmar.
+
+**E. ¿Se requiere modificar código?**
+
+Responder explícitamente SÍ, NO o NO DETERMINADO, con justificación.
+
+**F. Archivos que habría que modificar**
+
+Tabla con:
+
+| Archivo | Clase o método | Modificación propuesta | Motivo |
+|---|---|---|---|
+
+Si no requiere modificaciones, indicarlo expresamente.
+
+**G. Cómo solucionar el problema, paso a paso**
+
+Instrucciones numeradas y concretas, por ejemplo:
+
+1. Abrir el archivo indicado.
+2. Ubicar el método identificado.
+3. Revisar la condición que ejecuta la operación.
+4. Modificar la lógica especificada.
+5. Revisar las dependencias afectadas.
+6. Validar el resultado esperado.
+
+Estos pasos son para una implementación futura. No debes ejecutarlos.
+
+**H. Cómo validar que quedó solucionado**
+
+Escenarios de prueba, datos necesarios, pasos para validar y resultados esperados.
+
+**I. Dependencias, riesgos y dudas pendientes**
+
+Incluir las decisiones que otros equipos deben tomar.
+
+**J. Conclusión del punto**
+
+Una explicación breve y clara de cuál sería el siguiente paso recomendado.
+
+#### 3. Orden recomendado de implementación
+
+Propón el orden más eficiente para atender los problemas, teniendo en cuenta dependencias y evitando cambios duplicados.
+
+#### 4. Preguntas para Charles
+
+Genera una lista corta de preguntas concretas, únicamente cuando la investigación no permita determinar un requerimiento o comportamiento esperado.
+
+#### 5. Conclusiones generales
+
+Resume:
+
+- Qué problemas están comprobados.
+- Qué funcionalidades ya existen.
+- Qué cambios de código serían necesarios.
+- Qué cambios son exclusivamente de configuración.
+- Qué temas siguen dependiendo de negocio, DevOps u otros equipos.
+- Qué información o repositorios faltan para completar la investigación.
+
+## CÓMO REPORTAR EL NIVEL DE CERTEZA
+
+Identifica los hallazgos como:
+
+- **HECHO:** comprobado mediante código, configuración o evidencia concreta.
+- **INFERENCIA:** conclusión razonable que todavía necesita verificación.
+- **DESCONOCIDO:** no existe evidencia suficiente.
+
+No presentes una inferencia como si fuera un defecto demostrado.
+
+El contexto de esta solicitud procede de una transcripción de reunión, por lo que describe requerimientos y observaciones, pero no demuestra por sí mismo que existan errores en el código.
+
+## INSTRUCCIÓN FINAL
+
+Investiga todos los puntos y genera el archivo Markdown solicitado.
+
+NO modifiques nada más.
+
+Cuando termines, responde en el chat únicamente con:
+
+1. Ruta del documento generado.
+2. Número de puntos investigados.
+3. Número de puntos que requieren modificaciones confirmadas de código.
+4. Número de puntos que no requieren modificaciones de código.
+5. Número de puntos cuyo diagnóstico queda pendiente.
+6. Confirmación de que no se modificó código, configuraciones ni bases de datos.
+
+**No implementes las soluciones. Quiero revisar y comprender primero tu investigación.**
