@@ -1,0 +1,114 @@
+Estamos realizando un **redeployment del SSO API en producción**.
+
+## Contexto
+
+- El **Release 99 (build `2026904.1`)** era la versión que estaba ejecutándose anteriormente en producción.
+- Se está realizando un nuevo deployment utilizando el mismo código del Release 99.
+- Este proceso consiste únicamente en una recompilación y redeployment, sin cambios intencionales en el código.
+- Necesitamos confirmar que el nuevo deployment está funcionando correctamente y mantiene el mismo comportamiento y rendimiento que la versión anterior.
+
+## Tu tarea
+
+Investiga el servicio **SSO API en Datadog** y realiza una comparación detallada del estado del servicio antes y después del redeployment.
+
+### 1. Identificar los deployments
+
+- Localiza el Release 99 y el nuevo deployment.
+- Identifica las fechas, horas y versiones de ambos.
+- Confirma qué versión está ejecutándose actualmente en producción.
+- Verifica si el nuevo deployment se completó correctamente.
+
+### 2. Comparar métricas antes y después
+
+Revisa las siguientes métricas en Datadog:
+
+- Volumen de solicitudes (requests).
+- Throughput (solicitudes por segundo).
+- Tasa de errores HTTP 4xx y 5xx.
+- Latencia promedio, p95 y p99.
+- Porcentaje de solicitudes exitosas y fallidas.
+- Consumo de CPU y memoria, si está disponible.
+- Disponibilidad y estado general del servicio.
+
+Compara las métricas del Release 99 contra las del nuevo deployment, utilizando períodos equivalentes y considerando las diferencias en el volumen de tráfico.
+
+### 3. Revisar logs y excepciones
+
+- Identifica errores, warnings o excepciones que hayan aparecido después del nuevo deployment.
+- Compara los errores actuales con los que existían durante el Release 99.
+- Busca problemas relacionados con autenticación, validación de tokens y funcionamiento del SSO API.
+- Revisa errores de conexión con servicios externos o dependencias.
+- Identifica reinicios inesperados, crashes o comportamientos anormales.
+
+### 4. Validar el funcionamiento del SSO API
+
+- Revisa los traces y logs disponibles de los flujos de autenticación.
+- Verifica que los endpoints estén respondiendo correctamente.
+- Comprueba si aumentaron los tiempos de respuesta.
+- Busca fallas nuevas que no existían antes del redeployment.
+- Confirma si el comportamiento observado es equivalente al del Release 99.
+
+### 5. Revisar monitores y alertas de Datadog
+
+- Identifica alertas activas relacionadas con el SSO API.
+- Revisa si aparecieron anomalías después del redeployment.
+- Confirma si existen nuevos problemas críticos.
+- Verifica el estado de salud general del servicio.
+
+## Instrucciones importantes
+
+- Utiliza datos reales de Datadog: métricas, logs, traces y eventos de deployment.
+- No asumas que todo está bien únicamente porque el deployment terminó exitosamente.
+- No inventes resultados ni métricas.
+- Si no tienes acceso a Datadog, indícalo claramente.
+- Si no hay suficiente información para validar algún punto, márcalo como **No verificado**.
+- No realices modificaciones en producción.
+- Proporciona enlaces a Datadog que respalden tus conclusiones.
+
+## Resultado esperado
+
+Genera un reporte con la siguiente estructura:
+
+**1. Información del deployment**
+- Release anterior.
+- Release nuevo.
+- Fecha y hora del redeployment.
+- Versión actualmente en producción.
+
+**2. Comparación de métricas**
+
+Presenta una tabla:
+
+| Métrica | Release 99 | Nuevo deployment | Resultado |
+|---|---|---|---|
+| Request volume | | | |
+| Error rate 4xx | | | |
+| Error rate 5xx | | | |
+| Latencia promedio | | | |
+| Latencia p95 | | | |
+| Latencia p99 | | | |
+| CPU y memoria | | | |
+
+**3. Errores y problemas detectados**
+
+Indica si aparecieron nuevos errores, excepciones o problemas después del redeployment.
+
+**4. Estado del SSO API**
+
+Explica si los endpoints y los flujos de autenticación están funcionando correctamente, según la evidencia disponible.
+
+**5. Conclusión final**
+
+Clasifica el deployment como:
+
+- **PASS:** No se detectaron regresiones relevantes y existe evidencia suficiente de que el servicio funciona correctamente.
+- **FAIL:** Se detectaron errores nuevos, degradación significativa o problemas funcionales.
+- **INCONCLUSIVE:** No existe suficiente evidencia para confirmar el estado del deployment.
+
+Justifica tu conclusión con datos concretos de Datadog.
+
+## Pregunta principal
+
+**¿El nuevo deployment del SSO API en producción está funcionando correctamente y mantiene el mismo comportamiento, rendimiento y estabilidad que el Release 99, sin errores nuevos ni regresiones?**
+
+Necesito una respuesta basada en evidencia real de Datadog y no en suposiciones.
