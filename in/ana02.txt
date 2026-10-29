@@ -1,0 +1,32 @@
+Utiliza TODO el análisis de arquitectura de Infios Dev Portal que acabas de realizar.
+
+No vuelvas a investigar desde cero ni repitas el análisis.
+
+Quiero conservar el resultado como documentación técnica en un archivo HTML.
+
+**Requisitos del documento:**
+
+1. Genera un único archivo HTML5 completo, en español.
+2. Incluye todo el análisis: arquitectura, frontend, backend .NET, PostgreSQL, Docker, Dev Container, Kubernetes, autenticación, Platform API, Seeder y flujos de comunicación.
+3. Agrega diagramas de arquitectura, tablas de componentes, rutas de archivos, tecnologías, puertos y dependencias.
+4. Distingue entre HECHO, INFERENCIA y DESCONOCIDO.
+5. Utiliza un diseño profesional, con navegación mediante índice, encabezados, tablas y secciones bien organizadas.
+6. Incluye CSS dentro del mismo HTML, sin depender de Internet para visualizarlo.
+7. No incluyas contraseñas, tokens, credenciales ni información sensible.
+
+**Ubicación temporal del archivo:**
+
+`/tmp/analisis-arquitectura-infios-dev-portal.html`
+
+Posteriormente copiaré ese archivo a mi equipo Windows, en:
+
+`C:\doa_working\repositories\dev-portal\docs`
+
+**Restricciones:**
+- Puedes crear exclusivamente el archivo HTML solicitado.
+- No modifiques ningún archivo del repositorio.
+- No cambies código ni configuraciones.
+- No ejecutes instalaciones, migraciones ni despliegues.
+- No hagas commits.
+
+Al terminar, confirma que el archivo realmente existe y dime su ruta exacta.
