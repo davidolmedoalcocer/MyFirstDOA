@@ -1,0 +1,80 @@
+Analiza completamente la arquitectura del proyecto Infios Dev Portal ubicado en `/workspaces/dev-portal`.
+
+Soy un desarrollador nuevo en este proyecto y necesito comprender cómo funciona toda la solución antes de realizar cambios.
+
+**REGLAS OBLIGATORIAS:**
+- Trabaja exclusivamente en modo lectura.
+- NO modifiques, crees ni elimines archivos.
+- NO instales paquetes ni ejecutes migraciones.
+- NO cambies configuraciones de Docker, Kubernetes ni bases de datos.
+- NO ejecutes operaciones de escritura.
+- NO muestres contraseñas, tokens ni secretos.
+- Responde completamente en español.
+- Fundamenta tus conclusiones en el código y archivos reales del proyecto.
+
+**INVESTIGA LOS SIGUIENTES PUNTOS:**
+
+**1. Arquitectura general**
+- Qué tecnologías utiliza la solución.
+- Qué proyectos y módulos contiene.
+- Cuál es la responsabilidad de cada componente.
+- Cómo se comunican entre sí.
+
+**2. Backend**
+- Dónde se encuentra el backend .NET.
+- Cuáles son sus proyectos principales.
+- Cómo se inicia y configura.
+- Dónde están los controladores, servicios y endpoints.
+- Cómo accede a la base de datos.
+
+**3. Base de datos**
+- Qué motor utiliza.
+- Dónde está alojada durante el desarrollo.
+- Cómo está configurada la conexión.
+- Dónde se encuentran las tablas, entidades y migraciones.
+- Cómo funciona Liquibase.
+- Dónde se almacenan físicamente los datos mediante Docker.
+
+**4. Frontend**
+- Cómo están construidos Admin UI y Tenant UI.
+- Qué componentes comparten.
+- Cómo utilizan Vue, Vite y pnpm.
+- Cómo se comunican con el backend.
+
+**5. Infraestructura**
+- Para qué sirve el Dev Container.
+- Qué contenedores ejecuta Docker Compose.
+- Qué puertos utiliza cada componente.
+- Qué función tiene Kubernetes.
+- Cómo se inicia y detiene todo el entorno.
+
+**6. Autenticación**
+- Cómo funciona la autenticación.
+- Cómo se integra con GitHub.
+- Dónde se configuran los permisos.
+
+**7. Platform API y Seeder**
+- Qué hace cada componente.
+- Por qué el Seeder necesita el puerto 35003.
+- Si Platform API forma parte de este repositorio o es una dependencia externa.
+- Si existe una forma documentada de iniciar Platform API localmente.
+- Qué funcionalidades quedan afectadas cuando no está disponible.
+
+**8. Flujo de funcionamiento**
+Explica paso a paso qué sucede desde que un usuario abre el navegador, realiza una operación, el frontend llama al backend y este consulta o actualiza PostgreSQL.
+
+**FORMATO DEL RESULTADO:**
+
+1. Resumen ejecutivo de la arquitectura.
+2. Diagrama de componentes en texto.
+3. Tabla con componente, tecnología, ubicación y puerto.
+4. Explicación detallada del backend y la base de datos.
+5. Flujo de comunicación entre componentes.
+6. Problemas o dependencias pendientes.
+7. Guía para un desarrollador que acaba de incorporarse al proyecto.
+
+Distingue claramente entre HECHO, INFERENCIA y DESCONOCIDO.
+
+Para cada conclusión importante, indica las rutas de los archivos que la respaldan.
+
+**IMPORTANTE:** Presenta todo el análisis directamente en esta conversación. No generes archivos ni modifiques el proyecto. Si necesitas ejecutar comandos, utiliza únicamente operaciones de lectura y solicita autorización antes de cualquier otra acción.
