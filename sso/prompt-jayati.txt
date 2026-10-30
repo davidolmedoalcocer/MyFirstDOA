@@ -1,0 +1,269 @@
+# Análisis de impacto — SSO Admin y Client Source Admin
+
+## CONTEXTO
+
+Acabo de realizar una demo de una corrección relacionada con el campo `LastNameFirst`, utilizado para mostrar correctamente el nombre del usuario en el mensaje de bienvenida de Track Guard, evitando que aparezca `Welcome undefined`.
+
+La corrección realizada consiste en asegurar que `LastNameFirst` se envíe correctamente durante la creación y actualización de usuarios, antes de ejecutar el procedimiento almacenado correspondiente.
+
+Durante una revisión, mi jefa Jayati expresó una preocupación importante:
+
+**Necesitamos confirmar que esta modificación no afecte el funcionamiento de Client Source Admin, especialmente si SSO Admin y Client Source Admin comparten endpoints, controladores, métodos, servicios o procedimientos almacenados.**
+
+Jayati también explicó que existen dos tipos de usuarios:
+
+- **Usuarios internos:** se autentican mediante Active Directory y utilizan identificadores IID.
+- **Usuarios externos (Client Source):** no pertenecen al Active Directory interno y utilizan otro mecanismo de autenticación y administración.
+
+Los flujos de ambos tipos de usuarios deben conservar su comportamiento actual.
+
+## RESTRICCIONES OBLIGATORIAS
+
+1. NO modifiques ningún archivo de código.
+2. NO realices refactorizaciones.
+3. NO ejecutes migraciones ni procedimientos almacenados que modifiquen información.
+4. NO modifiques configuraciones ni dependencias.
+5. NO realices commits.
+6. NO corrijas automáticamente ningún problema encontrado.
+7. NO supongas comportamientos sin verificar el código.
+8. Puedes inspeccionar archivos y utilizar búsquedas de código, pero no ejecutar operaciones que alteren datos o el estado del proyecto.
+9. Responde TODO en español.
+10. Identifica claramente qué está **CONFIRMADO**, qué es una **INFERENCIA** y qué **NO SE PUDO VERIFICAR**.
+
+El objetivo es exclusivamente realizar una investigación técnica.
+
+---
+
+## INVESTIGACIÓN 1 — Identificar los cambios realizados
+
+Revisa los cambios actuales relacionados con `LastNameFirst`.
+
+Identifica:
+
+- Archivos modificados.
+- Controladores involucrados.
+- Métodos modificados.
+- Servicios utilizados.
+- Procedimientos almacenados involucrados.
+- Parámetros enviados antes y después de la corrección.
+
+Si existen cambios en Git, utiliza el diff para determinar exactamente qué se modificó.
+
+No confundas cambios de otros desarrolladores con los relacionados con esta corrección. Si no puedes determinar el alcance exacto, indícalo.
+
+Explica qué problema existía originalmente, cómo se resolvió y qué componentes fueron afectados.
+
+## INVESTIGACIÓN 2 — Flujo completo de SSO Admin
+
+Localiza la funcionalidad utilizada para crear y actualizar usuarios desde SSO Admin.
+
+Quiero conocer el flujo completo:
+
+1. Interfaz desde donde comienza la operación.
+2. Acción o método ejecutado por la interfaz.
+3. Endpoint HTTP invocado.
+4. Controlador que recibe la solicitud.
+5. Servicio o método que procesa la operación.
+6. Procedimiento almacenado ejecutado.
+7. Tabla o tablas afectadas.
+8. Cómo se construye y envía `LastNameFirst`.
+
+Analiza por separado:
+
+- Creación de un usuario nuevo.
+- Actualización de un usuario existente.
+- Asignación de acceso o roles a una aplicación, si forma parte del flujo.
+
+Para cada paso indica el nombre del proyecto, archivo, método y líneas relevantes.
+
+## INVESTIGACIÓN 3 — Flujo completo de Client Source Admin
+
+Realiza la misma investigación para Client Source Admin.
+
+Es importante que no asumas que utiliza el mismo proceso que SSO Admin.
+
+Determina:
+
+1. Desde qué interfaz se crean y actualizan los usuarios externos.
+2. Qué endpoints utiliza.
+3. Qué controladores reciben las solicitudes.
+4. Qué servicios y métodos ejecuta.
+5. Qué procedimientos almacenados utiliza.
+6. Cómo maneja `LastNameFirst`.
+7. Cómo maneja los identificadores y credenciales de usuarios externos.
+
+Identifica también las diferencias entre el tratamiento de usuarios internos y externos.
+
+Si el código de Client Source Admin no está disponible en el workspace, indícalo expresamente. No inventes su flujo.
+
+## INVESTIGACIÓN 4 — Verificar la preocupación principal de Jayati
+
+Esta es la parte MÁS IMPORTANTE del análisis.
+
+Jayati preguntó:
+
+**¿SSO Admin y Client Source Admin utilizan la misma ruta o el mismo método para crear y actualizar usuarios?**
+
+Investiga y responde:
+
+- ¿Comparten endpoints?
+- ¿Comparten controladores?
+- ¿Comparten servicios?
+- ¿Comparten métodos de creación o actualización?
+- ¿Comparten procedimientos almacenados?
+- ¿Existen condiciones específicas según el tipo de usuario?
+- ¿El cambio de `LastNameFirst` se ejecuta también cuando Client Source Admin crea o actualiza usuarios?
+- ¿Existe algún riesgo de sobrescribir información de usuarios externos?
+- ¿Existe algún riesgo de alterar usernames, identificadores o mecanismos de autenticación?
+- ¿Existe algún riesgo de introducir valores NULL o incorrectos?
+- ¿El cambio puede modificar un comportamiento que antes funcionaba correctamente?
+
+Revisa también los puntos donde estos métodos son invocados desde otras partes del sistema.
+
+**No basta con revisar la definición del método. Necesito que identifiques sus consumidores reales y todas las rutas de ejecución relevantes.**
+
+Para cada riesgo encontrado, explica:
+
+- Qué comportamiento podría verse afectado.
+- En qué archivo y método se origina.
+- Bajo qué condiciones ocurre.
+- Qué evidencia del código respalda el riesgo.
+- Si está confirmado o es únicamente un riesgo potencial.
+- Qué habría que modificar para corregirlo, pero SIN realizar cambios.
+
+Si no encuentras problemas, explícalo con evidencias. No concluyas que algo es seguro simplemente porque no encontraste referencias.
+
+## INVESTIGACIÓN 5 — Caso de usernames diferentes
+
+Jayati también solicitó revisar el escenario donde el identificador de un usuario no coincide entre Active Directory, SSO y los datos de la aplicación.
+
+Investiga:
+
+- Cómo se obtiene el username durante la autenticación.
+- Cómo se identifica si el usuario es interno o externo.
+- Cómo se relacionan IID, username y los identificadores con guion bajo.
+- Dónde se consulta el usuario para obtener su información.
+- Qué ocurre cuando el identificador recibido no coincide con el almacenado.
+- Qué componentes podrían devolver errores 403 o 404.
+- Si este escenario está relacionado con `LastNameFirst` o corresponde a otro problema independiente.
+- Si la corrección actual afecta este comportamiento.
+
+No asumas que un identificador específico representa necesariamente al mismo usuario en ambos sistemas.
+
+Si necesitas datos reales de Active Directory o de una base de datos a la que no tienes acceso, indícalo y especifica qué comprobación faltaría realizar.
+
+## INVESTIGACIÓN 6 — Escenarios de prueba
+
+Determina qué pruebas permitirían confirmar que la corrección funciona sin afectar otros flujos.
+
+Incluye como mínimo:
+
+1. Crear un usuario interno nuevo.
+2. Actualizar un usuario interno existente.
+3. Crear un usuario externo nuevo mediante Client Source Admin.
+4. Actualizar un usuario externo existente.
+5. Crear o asignar un usuario desde SSO Admin.
+6. Verificar que `LastNameFirst` se almacena correctamente.
+7. Verificar que Track Guard muestra el nombre correcto.
+8. Verificar que los usuarios externos mantienen su autenticación y accesos.
+9. Verificar el comportamiento cuando existen identificadores diferentes entre los sistemas.
+10. Verificar que los usuarios existentes y sus permisos no sufren modificaciones no deseadas.
+
+Para cada prueba indica:
+
+- Precondiciones.
+- Pasos para reproducirla.
+- Resultado esperado.
+- Componentes involucrados.
+- Si existe una prueba automatizada que ya la cubra.
+- Riesgo que ayuda a descartar.
+
+No ejecutes pruebas que creen, actualicen o eliminen información. Solo documenta los escenarios.
+
+---
+
+# FORMATO OBLIGATORIO DEL REPORTE
+
+Entrega los resultados en español, utilizando esta estructura:
+
+## 1. Resumen ejecutivo
+
+Explica brevemente:
+
+- Qué modificamos.
+- Qué preocupación tiene Jayati.
+- Si encontraste algún problema.
+- Qué puntos siguen sin verificarse.
+
+## 2. Diagrama del flujo SSO Admin
+
+Representa el recorrido:
+
+Interfaz → Endpoint → Controlador → Servicio → Procedimiento almacenado → Base de datos.
+
+Distingue creación y actualización.
+
+## 3. Diagrama del flujo Client Source Admin
+
+Utiliza el mismo formato.
+
+## 4. Tabla comparativa de ambos flujos
+
+Incluye endpoints, controladores, servicios, métodos, procedimientos almacenados y tratamiento de `LastNameFirst`.
+
+## 5. Análisis del impacto de nuestra modificación
+
+Explica qué componentes comparten ambos sistemas y cuáles son independientes.
+
+## 6. Problemas y riesgos encontrados
+
+Para cada problema incluye:
+
+- Severidad: Alta, Media o Baja.
+- Descripción.
+- Evidencia del código.
+- Escenario en el que podría ocurrir.
+- Recomendación técnica.
+- Archivos y líneas que requerirían revisión o modificación.
+
+Si no existen problemas confirmados, separa los riesgos potenciales de los hechos demostrados.
+
+## 7. Investigación del problema de usernames
+
+Explica los flujos de identificación y autenticación, incluyendo el escenario de usuarios con identificadores diferentes.
+
+## 8. Matriz de pruebas recomendadas
+
+Incluye los escenarios necesarios para proteger ambos sistemas.
+
+## 9. Preguntas pendientes para Jayati
+
+Incluye únicamente preguntas que no puedan responderse inspeccionando el código disponible.
+
+## 10. Conclusión para el code review del lunes
+
+Termina respondiendo directamente estas preguntas:
+
+**A. ¿SSO Admin y Client Source Admin utilizan el mismo código para crear y actualizar usuarios?**
+
+**B. ¿Nuestra modificación de `LastNameFirst` puede afectar Client Source Admin?**
+
+**C. ¿Encontraste algún error o riesgo que debamos corregir antes del deployment?**
+
+**D. ¿Qué pruebas necesitamos realizar antes de aprobar el cambio?**
+
+**E. ¿Qué evidencia concreta puedo mostrarle a Jayati para responder sus preocupaciones?**
+
+Para todas las conclusiones proporciona referencias a archivos y líneas.
+
+---
+
+# INSTRUCCIÓN FINAL
+
+Antes de concluir, revisa que cada afirmación importante tenga evidencia en el código.
+
+No quiero una explicación genérica de cómo funcionan los sistemas de autenticación.
+
+Quiero un análisis real de esta solución y sus dependencias.
+
+**No modifiques ningún código. No implementes soluciones. No realices cambios automáticos. Todo el resultado debe estar en español.**
