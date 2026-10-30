@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de Arquitectura — Infios Dev Portal</title>
+<style>
+  :root {
+    --color-bg: #0f172a;
+    --color-bg-alt: #f8fafc;
+    --color-primary: #1e40af;
+    --color-primary-light: #3b82f6;
+    --color-accent: #0ea5e9;
+    --color-text: #1e293b;
+    --color-text-light: #64748b;
+    --color-border: #e2e8f0;
+    --color-card: #ffffff;
+    --color-hecho: #16a34a;
+    --color-hecho-bg: #dcfce7;
+    --color-inferencia: #d97706;
+    --color-inferencia-bg: #fef3c7;
+    --color-desconocido: #dc2626;
+    --color-desconocido-bg: #fee2e2;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--color-bg-alt);
+    color: var(--color-text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* ---------- Header ---------- */
+  header.hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #0ea5e9 100%);
+    color: white;
+    padding: 48px 32px 40px;
+    text-align: center;
+  }
+  header.hero h1 {
+    margin: 0 0 8px;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  header.hero p.subtitle {
+    margin: 0 auto;
+    max-width: 760px;
+    color: #cbd5e1;
+    font-size: 1.05rem;
+  }
+  header.hero .meta {
+    margin-top: 18px;
+    font-size: 0.85rem;
+    color: #93c5fd;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+  }
+  header.hero .meta span { white-space: nowrap; }
+
+  /* ---------- Layout ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; max-height: none; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow-y: auto;
+    background: #ffffff;
+    border-right: 1px solid var(--color-border);
+    padding: 28px 20px 60px;
+  }
+  nav.toc h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-light);
+    margin: 0 0 14px;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: toc-counter;
+  }
+  nav.toc > ol > li {
+    counter-increment: toc-counter;
+    margin-bottom: 4px;
+  }
+  nav.toc a {
+    display: block;
+    padding: 7px 10px;
+    border-radius: 6px;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  nav.toc > ol > li > a::before {
+    content: counter(toc-counter) ". ";
+    color: var(--color-primary-light);
+    font-weight: 700;
+  }
+  nav.toc a:hover { background: #eff6ff; color: var(--color-primary); }
+  nav.toc ul.sub {
+    list-style: none;
+    margin: 2px 0 8px 14px;
+    padding: 0;
+    border-left: 2px solid var(--color-border);
+  }
+  nav.toc ul.sub li a {
+    font-weight: 400;
+    font-size: 0.82rem;
+    color: var(--color-text-light);
+    padding: 4px 10px;
+  }
+  nav.toc ul.sub li a:hover { color: var(--color-primary); background: #f1f5f9; }
+
+  main {
+    padding: 36px 48px 80px;
+    min-width: 0;
+  }
+
+  @media (max-width: 640px) {
+    main { padding: 24px 18px 60px; }
+  }
+
+  section {
+    margin-bottom: 56px;
+    scroll-margin-top: 12px;
+  }
+
+  section > h2 {
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    border-bottom: 3px solid var(--color-accent);
+    padding-bottom: 10px;
+    margin-top: 0;
+  }
+
+  h3 {
+    color: #0f172a;
+    font-size: 1.15rem;
+    margin-top: 32px;
+    border-left: 4px solid var(--color-accent);
+    padding-left: 10px;
+  }
+
+  h4 {
+    color: #1e3a8a;
+    font-size: 1rem;
+    margin-top: 22px;
+  }
+
+  p { margin: 10px 0; }
+
+  a { color: var(--color-primary); }
+
+  code {
+    background: #eef2ff;
+    color: #312e81;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+    font-size: 0.88em;
+    word-break: break-word;
+  }
+
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 18px 20px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-family: 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    box-shadow: var(--shadow);
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  .diagram {
+    background: #0f172a;
+    color: #7dd3fc;
+    padding: 20px 24px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    box-shadow: var(--shadow);
+    white-space: pre;
+  }
+
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin: 18px 0;
+    box-shadow: var(--shadow);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0 28px;
+    background: var(--color-card);
+    box-shadow: var(--shadow);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 0.88rem;
+  }
+  thead { background: var(--color-primary); color: white; }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody tr:hover { background: #eff6ff; }
+  td code, th code { white-space: nowrap; }
+
+  .path {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 0.82rem;
+    color: #334155;
+    background: #f1f5f9;
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  /* ---------- Badges de clasificación epistémica ---------- */
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 2px 9px;
+    border-radius: 999px;
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .tag-hecho { background: var(--color-hecho-bg); color: var(--color-hecho); border: 1px solid #86efac; }
+  .tag-inferencia { background: var(--color-inferencia-bg); color: var(--color-inferencia); border: 1px solid #fcd34d; }
+  .tag-desconocido { background: var(--color-desconocido-bg); color: var(--color-desconocido); border: 1px solid #fca5a5; }
+
+  .leyenda {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 14px 0 24px;
+    padding: 14px 18px;
+    background: #f1f5f9;
+    border-radius: var(--radius);
+    border: 1px dashed #94a3b8;
+    font-size: 0.85rem;
+  }
+  .leyenda .item { display: flex; align-items: center; gap: 8px; }
+
+  .evidencia {
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+    margin-top: 6px;
+    border-top: 1px dotted var(--color-border);
+    padding-top: 6px;
+  }
+  .evidencia strong { color: #334155; }
+
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 6px; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .callout {
+    border-left: 4px solid var(--color-accent);
+    background: #ecfeff;
+    padding: 12px 18px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 16px 0;
+  }
+  .callout.warn { border-color: var(--color-inferencia); background: #fffbeb; }
+  .callout.danger { border-color: var(--color-desconocido); background: #fef2f2; }
+
+  footer {
+    text-align: center;
+    padding: 28px;
+    color: var(--color-text-light);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .back-top {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--color-primary-light);
+    text-decoration: none;
+  }
+
+  .toc-section-title {
+    margin-top: 22px;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Análisis de Arquitectura — Infios Dev Portal</h1>
+  <p class="subtitle">Documentación técnica generada a partir de la inspección directa del código fuente y configuración del repositorio <code style="background:rgba(255,255,255,0.15);color:#fff;">/workspaces/dev-portal</code>, para onboarding de nuevos desarrolladores.</p>
+  <div class="meta">
+    <span>📁 Repositorio: dev-portal</span>
+    <span>🏢 Proyecto: Infios Platform</span>
+    <span>📅 Generado: 2026-10-29</span>
+    <span>🔒 Modo: solo lectura, sin secretos</span>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc">
+  <h2>Índice</h2>
+  <ol>
+    <li><a href="#resumen">Resumen ejecutivo</a></li>
+    <li><a href="#diagrama">Diagrama de componentes</a></li>
+    <li><a href="#tabla-componentes">Tabla de componentes, tecnología y puertos</a></li>
+    <li><a href="#backend">Backend y base de datos en detalle</a>
+      <ul class="sub">
+        <li><a href="#backend-estructura">Ubicación y estructura</a></li>
+        <li><a href="#backend-arranque">Arranque y configuración</a></li>
+        <li><a href="#backend-controladores">Controladores y servicios</a></li>
+        <li><a href="#backend-datos">Acceso a base de datos</a></li>
+        <li><a href="#bd-motor">Motor y alojamiento de PostgreSQL</a></li>
+        <li><a href="#liquibase">Liquibase</a></li>
+      </ul>
+    </li>
+    <li><a href="#frontend">Frontend</a>
+      <ul class="sub">
+        <li><a href="#frontend-construccion">Construcción (Vue, Vite, pnpm)</a></li>
+        <li><a href="#frontend-compartido">Componentes compartidos</a></li>
+        <li><a href="#frontend-comunicacion">Comunicación con el backend</a></li>
+      </ul>
+    </li>
+    <li><a href="#infraestructura">Infraestructura</a>
+      <ul class="sub">
+        <li><a href="#devcontainer">Dev Container</a></li>
+        <li><a href="#compose">Docker Compose</a></li>
+        <li><a href="#kubernetes">Kubernetes</a></li>
+        <li><a href="#arranque-parada">Arranque y parada del entorno</a></li>
+      </ul>
+    </li>
+    <li><a href="#autenticacion">Autenticación</a>
+      <ul class="sub">
+        <li><a href="#auth-mecanismo">Mecanismo de autenticación</a></li>
+        <li><a href="#auth-github">Integración con GitHub</a></li>
+        <li><a href="#auth-permisos">Configuración de permisos</a></li>
+      </ul>
+    </li>
+    <li><a href="#platform-seeder">Platform API y Seeder</a></li>
+    <li><a href="#flujo">Flujo de funcionamiento paso a paso</a></li>
+    <li><a href="#pendientes">Problemas o dependencias pendientes</a></li>
+    <li><a href="#guia">Guía para un desarrollador nuevo</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="resumen">
+  <h2>1. Resumen ejecutivo</h2>
+
+  <div class="leyenda">
+    <div class="item"><span class="tag tag-hecho">HECHO</span> Verificado leyendo directamente código/configuración del repositorio.</div>
+    <div class="item"><span class="tag tag-inferencia">INFERENCIA</span> Conclusión razonada a partir de evidencia indirecta o convención.</div>
+    <div class="item"><span class="tag tag-desconocido">DESCONOCIDO</span> No se puede determinar desde este repositorio.</div>
+  </div>
+
+  <p><span class="tag tag-hecho">HECHO</span> Dev Portal es una solución multi-proyecto para la gestión de tenants y despliegue de servicios dentro de <strong>Infios Platform</strong> (<span class="path">README.md</span>). Se compone de:</p>
+  <ul>
+    <li>Un backend .NET (<span class="path">devPortalService/</span>) con API REST + OData sobre PostgreSQL.</li>
+    <li>Dos SPAs en Vue 3 (<span class="path">adminUi/</span> para administradores, <span class="path">tenantUi/</span> para clientes/tenants) que comparten lógica vía un paquete interno (<span class="path">sharedUIComponents/</span>).</li>
+    <li>Una base de datos PostgreSQL gestionada con Liquibase (<span class="path">database/</span>).</li>
+    <li>Un entorno de desarrollo basado en Dev Container + Docker Compose.</li>
+    <li>Manifiestos de Kubernetes (<span class="path">k8s/</span>) para despliegue en el clúster de "Platform", usando Kong como gateway/API Manager.</li>
+    <li>Pruebas end-to-end con Playwright (<span class="path">e2e/</span>).</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>Dependencia crítica externa:</strong> el sistema depende de un repositorio/entorno <strong>"Platform" (PlatformV2) externo a este repo</strong> para autenticación, autorización, multi-tenencia y otros servicios compartidos (sesión, seguridad, Kong). Esta es la pieza menos autocontenida de la arquitectura — ver sección <a href="#platform-seeder">Platform API y Seeder</a>.
+  </div>
+</section>
+
+<section id="diagrama">
+  <h2>2. Diagrama de componentes</h2>
+  <p><span class="tag tag-hecho">HECHO</span> Basado en <span class="path">docker-compose.yml</span>, <span class="path">k8s/dev-portal-services.yaml</span>, <span class="path">k8s/dev-portal-service-admin-kong-ingress.yaml</span>, <span class="path">tenantUi/nginx.testing.conf</span>.</p>
+
+<div class="diagram">                         ┌───────────────────────────────┐
+                         │         NAVEGADOR              │
+                         └───────────────┬────────────────┘
+                                         │ HTTP
+            ┌────────────────────────────┼───────────────────────────┐
+            │                            │                           │
+   ┌────────▼─────────┐        ┌─────────▼─────────┐        ┌────────▼────────┐
+   │  adminUi (Vue 3)  │        │  tenantUi (Vue 3) │        │  Kong Gateway   │
+   │  :35001 / nginx   │        │  :35002 / nginx   │        │  (Platform k8s) │
+   └────────┬──────────┘        └─────────┬─────────┘        └────────┬────────┘
+            │  usa paquete compartido      │ usa paquete compartido   │ enruta /devportal/*
+            └──────────┬───────────────────┘                         │
+                        ▼                                            │
+             sharedUIComponents (Vue/TS, pnpm) ◄──────────────────────┘
+                        │ fetch() a /devportal/service/{admin|customer}
+                        ▼
+            ┌───────────────────────────────┐
+            │  devPortalService (.NET 10)   │   :35000 (dev) / :8080 (contenedor)
+            │  Api -&gt; Domain.Services -&gt;     │
+            │  Infrastructure (EF Core)      │
+            └───────────────┬───────────────┘
+                            │ Npgsql (EF Core)
+                            ▼
+            ┌───────────────────────────────┐
+            │     PostgreSQL 16              │   :5432
+            │     (contenedor Docker)        │
+            │     esquema gestionado por     │
+            │     Liquibase (database/)      │
+            └───────────────────────────────┘
+
+   Dependencia externa (fuera de este repo):
+   ┌───────────────────────────────┐
+   │  Infios Platform (PlatformV2) │   Kong, sesión, seguridad,
+   │  Platform API :35003 (local)  │   Platform API pública
+   └───────────────────────────────┘
+            ▲
+            │ consumida en arranque por
+   ┌────────┴──────────┐
+   │ dev-portal-seeder  │ (imagen externa ghcr.io/infios-tools/dev-portal-seeder)
+   └────────────────────┘</div>
+
+  <h3>Flujo en capas del backend</h3>
+  <div class="diagram">   Api/  ──────────────▶  Domain.Services/  ──────────────▶  Infrastructure/
+   (controladores,         (lógica de negocio,              (DbContext, repositorios
+    filtros, DTOs)          orquestación)                    EF Core, configuraciones)
+        │                                                            │
+        ▼                                                            ▼
+   Domain/ (interfaces, modelos de dominio) ◄─────── implementa ─────┘</div>
+</section>
+
+<section id="tabla-componentes">
+  <h2>3. Tabla de componentes, tecnología, ubicación y puerto</h2>
+  <p><span class="tag tag-hecho">HECHO</span> Fuente: <span class="path">docker-compose.yml</span>, <span class="path">docker-compose-devui.yml</span>, <span class="path">docker-compose-prodservice.yml</span>, <span class="path">docker-compose-produi.yml</span>, <span class="path">docker-compose-testing.yml</span>.</p>
+
+  <table>
+    <thead>
+      <tr><th>Componente</th><th>Tecnología</th><th>Ubicación</th><th>Puerto (dev)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>devPortalService</td><td>.NET 10, ASP.NET Core, EF Core, OData</td><td class="path">devPortalService/src</td><td>35000 → 8080</td></tr>
+      <tr><td>PostgreSQL</td><td>postgres:16</td><td>contenedor <code>dev-portal-postgres</code>, volumen <code>pg_data</code></td><td>5432</td></tr>
+      <tr><td>Liquibase</td><td>liquibase:4.31.1 (imagen custom)</td><td class="path">database/liquibase</td><td>— (job de inicialización)</td></tr>
+      <tr><td>adminUi</td><td>Vue 3 + Vite + TS + pnpm + nginx</td><td class="path">adminUi/</td><td>35001 → 80</td></tr>
+      <tr><td>tenantUi</td><td>Vue 3 + Vite + TS + pnpm + nginx</td><td class="path">tenantUi/</td><td>35002 → 80</td></tr>
+      <tr><td>sharedUIComponents</td><td>Vue 3 + TS (librería interna)</td><td class="path">sharedUIComponents/</td><td>N/A (no se sirve sola)</td></tr>
+      <tr><td>dev-portal-seeder</td><td>imagen externa <code>ghcr.io/infios-tools/dev-portal-seeder</code></td><td>no está en el repo</td><td>N/A (consume Platform API en 35003)</td></tr>
+      <tr><td>Platform (Kong, sesión, seguridad, Platform API)</td><td>externo, "PlatformV2"</td><td>fuera de este repo</td><td>Platform API: 35003 (local, vía <code>host.docker.internal</code>)</td></tr>
+      <tr><td>e2e</td><td>Playwright + TS</td><td class="path">e2e/</td><td>8082 (solo <code>docker-compose-testing.yml</code>, modo UI)</td></tr>
+      <tr><td>Dozzle (logs)</td><td>Docker Compose aparte</td><td class="path">docker-compose-dozzle.yml</td><td>ver ese archivo</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="backend">
+  <h2>4. Backend y base de datos en detalle</h2>
+
+  <h3 id="backend-estructura">4.1 Ubicación y estructura <span class="tag tag-hecho">HECHO</span></h3>
+  <p>Backend en <span class="path">/workspaces/dev-portal/devPortalService/</span>, solución <code>.sln</code> con proyectos:</p>
+  <ul>
+    <li><span class="path">src/DevPortalService.csproj</span> → proyecto principal.</li>
+    <li><span class="path">test/DevPortalService.Tests.csproj</span> → pruebas.</li>
+  </ul>
+  <p>Target framework: <strong>.NET 10</strong> (<code>&lt;TargetFramework&gt;net10.0&lt;/TargetFramework&gt;</code>, <span class="path">devPortalService/src/DevPortalService.csproj</span>).</p>
+  <div class="callout warn">
+    El <span class="path">devPortalService/readme</span> interno indica "Dotnet 9", pero el <code>.csproj</code> real usa <code>net10.0</code>. Documentación desactualizada — no confiar en ese dato del readme.
+  </div>
+
+  <p>Capas dentro de <code>src/</code> (arquitectura en capas clásica):</p>
+  <table>
+    <thead><tr><th>Capa</th><th>Responsabilidad</th><th>Ejemplos de archivos</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Api/</strong></td><td>Controladores REST y OData, filtros, validadores (FluentValidation), mapeos (Mapperly)</td><td class="path">Api/Controllers/UsersController.cs, Api/Controllers/OData/*</td></tr>
+      <tr><td><strong>Domain/</strong></td><td>Modelos de dominio e interfaces de repositorios/servicios</td><td class="path">Domain/Models/*.cs, Domain/Repositories/Interfaces, Domain/Services/Interfaces</td></tr>
+      <tr><td><strong>Domain.Services/</strong></td><td>Implementación de la lógica de negocio</td><td class="path">TenantService.cs, DeploymentRequestService.cs, ProductVersionService.cs</td></tr>
+      <tr><td><strong>Infrastructure/</strong></td><td>DbContext, repositorios EF Core, configuraciones de mapeo de entidades</td><td class="path">Infrastructure/DevPortalDbContext.cs, Infrastructure/Repositories/*, Infrastructure/Configurations/*</td></tr>
+      <tr><td><strong>Middleware/</strong></td><td>Manejo global de excepciones y headers de prueba</td><td class="path">GlobalExceptionHandlerMiddleware.cs, TestHeaderMiddleware.cs</td></tr>
+      <tr><td><strong>Core/</strong></td><td>Excepciones de dominio, utilidades, multi-tenencia</td><td class="path">Core/MultiTenancy/TenantHeaders.cs, Core/Models/UserSessionModel.cs</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="backend-arranque">4.2 Cómo se inicia y configura <span class="tag tag-hecho">HECHO</span></h3>
+  <p>Punto de entrada: <span class="path">devPortalService/src/Program.cs</span>. En el arranque:</p>
+  <ol>
+    <li>Lee <code>ConnectionStrings:DefaultConnection</code> y configura <code>DevPortalDbContext</code> con <code>UseNpgsql</code>.</li>
+    <li>Escanea ensamblados en busca de clases marcadas con <code>[RegisterToDI]</code> y las registra automáticamente (<span class="path">Api/Extensions/Setup/ServiceRegistrationExtensions.cs</span>).</li>
+    <li>Configura OData, FluentValidation, Swagger, CORS (según <code>Cors:AllowedOrigins</code> en <span class="path">appsettings.Development.json</span>) y health checks (<code>/livez</code>, <code>/readyz</code>).</li>
+    <li>Divide el pipeline HTTP en dos ramas (<code>app.Map("/admin", ...)</code> y <code>app.Map("/customer", ...)</code>), marcando el segmento de ruta en <code>HttpContext.Items</code>. <strong>El mismo backend sirve tanto a Admin UI como a Tenant UI</strong>, diferenciando por prefijo de ruta.</li>
+    <li>Para peticiones que llegan directo desde Kong (sin prefijo en el path), lee un header personalizado para inferir si es admin o customer.</li>
+  </ol>
+
+  <p>Configuración de desarrollo (<span class="path">devPortalService/src/appsettings.Development.json</span>):</p>
+  <pre><code>"DefaultConnection": "Host=dev-portal-postgres;Port=5432;Database=devPortal;Username=devPortal;Password=devPortal!"</code></pre>
+  <p><em>(Credencial de desarrollo local, no sensible — está versionada en el repo tal cual.)</em></p>
+
+  <p>En <span class="path">docker-compose.yml</span>, el backend corre con la imagen <code>mcr.microsoft.com/dotnet/sdk:10.0</code>, montando el workspace completo y ejecutando <code>dotnet watch run</code> (hot reload) dentro del contenedor — no se compila una imagen propia en dev, a diferencia de producción (<span class="path">docker-compose-prodservice.yml</span>, imagen <code>ghcr.io/infios-tools/devportal-service</code>).</p>
+
+  <h3 id="backend-controladores">4.3 Controladores y servicios <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li>Controladores REST "planos": <code>UsersController</code> (<code>/api/users/current</code>), <code>TenantDeploymentController</code>, <code>SettingReferenceController</code>, <code>ProductRegistrationController</code>.</li>
+    <li>Controladores <strong>OData</strong> en <span class="path">Api/Controllers/OData/*</span>: <code>TenantsController</code>, <code>CustomersController</code>, <code>ProductsController</code>, <code>ProductVersionsController</code>, <code>DeploymentRequestsController</code>, <code>SettingsController</code>, <code>TemplatesController</code>, etc. — exponen CRUD + consultas OData (<code>$filter</code>, <code>$expand</code>) sobre cada entidad de dominio.</li>
+    <li>Patrón base reutilizable en <span class="path">Api/Controllers/OData/BaseOdataControllers/</span> (Get, GetById, Post, Put, Patch, Delete genéricos) que los controladores concretos heredan/extienden.</li>
+    <li>La lógica de negocio real vive en <span class="path">Domain.Services/*.cs</span>, inyectada vía interfaces de <span class="path">Domain/Services/Interfaces/</span>.</li>
+  </ul>
+
+  <h3 id="backend-datos">4.4 Acceso a base de datos <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li>ORM: <strong>Entity Framework Core</strong> con proveedor <strong>Npgsql</strong> (<code>Npgsql.EntityFrameworkCore.PostgreSQL</code>, ver <span class="path">DevPortalService.csproj</span>).</li>
+    <li><span class="path">Infrastructure/DevPortalDbContext.cs</span> expone <code>DbSet&lt;T&gt;</code> para cada entidad (Tenants, Products, ProductVersions, Customers, DeploymentRequests, Settings, SettingVersions, Users, etc.) y aplica configuraciones de mapeo vía <code>modelBuilder.ApplyConfigurationsFromAssembly</code>, definidas en <span class="path">Infrastructure/Configurations/*.cs</span> (patrón <code>IEntityTypeConfiguration&lt;T&gt;</code>, un archivo por entidad).</li>
+    <li>Los repositorios (<span class="path">Infrastructure/Repositories/*.cs</span>) encapsulan las consultas EF Core detrás de interfaces de dominio (<span class="path">Domain/Repositories/Interfaces/*.cs</span>), siguiendo el patrón Repository.</li>
+    <li>Health check de disponibilidad de BD vía <code>AddHealthChecks().AddDbContextCheck&lt;DevPortalDbContext&gt;()</code>, expuesto en <code>/readyz</code>.</li>
+  </ul>
+
+  <h3 id="bd-motor">4.5 Base de datos — motor, alojamiento y migraciones <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li>Motor: <strong>PostgreSQL 16</strong> (<code>image: postgres:16</code>, <span class="path">docker-compose.yml</span>).</li>
+    <li>En desarrollo corre como contenedor Docker <code>dev-portal-postgres-db</code>, con credenciales <code>devPortal</code> / <code>devPortal!</code> y base de datos <code>devPortal</code> (mismas credenciales de entorno local/CI en <span class="path">docker-compose.yml</span>, <span class="path">docker-compose-testing.yml</span>, <span class="path">docker-compose-prodservice.yml</span> — no son credenciales de producción real).</li>
+    <li><strong>Persistencia física</strong>: volumen Docker <strong>nombrado</strong> <code>pg_data</code> montado en <code>/var/lib/postgresql/data</code> (<span class="path">docker-compose.yml</span>, sección <code>volumes:</code>). Es un volumen gestionado por Docker (no un bind-mount a una ruta visible del host); los datos sobreviven a <code>docker compose down</code> pero solo se eliminan con <code>docker compose down -v</code> o <code>docker volume rm</code>.</li>
+    <li><strong>Migraciones de esquema</strong>: el esquema productivo se gestiona por <strong>Liquibase</strong>, no por <code>dotnet ef database update</code> directamente contra el entorno compartido (aunque el readme del servicio documenta el flujo clásico de EF Core para desarrollo local de migraciones individuales).</li>
+  </ul>
+
+  <h3 id="liquibase">4.6 Cómo funciona Liquibase <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li>Imagen construida en <span class="path">database/Dockerfile</span>: parte de Ubuntu 22.04, instala un JRE fijado por motivos de seguridad (mitigación de CVE) y copia los binarios de <code>liquibase/liquibase:4.31.1</code>.</li>
+    <li>Changelog maestro: <span class="path">database/liquibase/master.yaml</span>, que incluye en <strong>orden estricto</strong> (documentado con comentarios sobre dependencias de claves foráneas) los archivos de <span class="path">database/liquibase/tables/*.yaml</span>:</li>
+  </ul>
+  <div class="card">
+    <code>users → cluster_groups → clusters → customers → customer_public_tenants → tenants → products → product_versions → tenant_product_versions → settings → setting_versions → product_version_settings → tenant_settings → deployment_requests → deployment_request_product_versions → deployment_request_settings → templates → template_product_versions → template_settings → drop_legacy_config_secret_tables</code>
+  </div>
+  <ul>
+    <li>También incluye <span class="path">tables_e2e/test_seed_data.yaml</span>, activado solo bajo el contexto <code>testing</code> (<code>LIQUIBASE_CONTEXTS=testing</code> en <span class="path">docker-compose-testing.yml</span>).</li>
+    <li>El <code>ENTRYPOINT</code> del contenedor espera a que Postgres esté listo (<code>pg_isready</code>) y luego ejecuta <code>liquibase update</code> contra <code>jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}</code>.</li>
+    <li>En <span class="path">docker-compose.yml</span>, el servicio <code>dev-portal-liquibase</code> se construye localmente (<code>build: ./database</code>) y depende de <code>dev-portal-postgres</code>; el backend depende a su vez de que Liquibase termine. En <span class="path">docker-compose-testing.yml</span> esto es explícito con <code>condition: service_completed_successfully</code>; en <span class="path">docker-compose.yml</span> el <code>depends_on</code> solo ordena arranque de contenedor, sin esperar healthcheck.</li>
+  </ul>
+</section>
+
+<section id="frontend">
+  <h2>5. Frontend</h2>
+
+  <h3 id="frontend-construccion">5.1 Construcción <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li><strong>adminUi</strong> y <strong>tenantUi</strong> son dos aplicaciones Vue 3 independientes, cada una con su propio <code>package.json</code>, <code>vite.config.ts</code>, <code>Dockerfile</code> (prod) y <code>Dockerfile.dev</code> (desarrollo con hot-reload vía nginx + entrypoint).</li>
+    <li>Gestor de paquetes: <strong>pnpm</strong> (lockfiles <code>pnpm-lock.yaml</code> en <span class="path">adminUi/</span>, <span class="path">tenantUi/</span>, <span class="path">sharedUIComponents/</span>, <span class="path">e2e/</span>; <code>.npmrc</code> apunta a un registro con paquetes privados, ej. <code>@infios/uikit</code>).</li>
+    <li>Bundler: <strong>Vite</strong>. <span class="path">adminUi/vite.config.ts</span> fija <code>base: '/devportal/adminui'</code> en modo <code>serve</code> y alias <code>@devportal/shared-ui</code> apuntando directamente al código fuente de <span class="path">sharedUIComponents/src</span> (no al paquete compilado) — en desarrollo el componente compartido se consume como fuente viva, sin build intermedio.</li>
+    <li>UI Kit: usan el design system <code>@infios/uikit</code> (steering obligatorio según <span class="path">.kiro/steering/uikit-usage.md</span>), con componentes <code>&lt;infios-*&gt;</code> registrados como custom elements.</li>
+  </ul>
+
+  <h3 id="frontend-compartido">5.2 Componentes compartidos <span class="tag tag-hecho">HECHO</span></h3>
+  <p><span class="path">sharedUIComponents/</span> es un paquete interno (no una app desplegable) con:</p>
+  <ul>
+    <li><span class="path">src/auth/auth.ts</span> — lógica de autenticación común (login, refresco de sesión, callback).</li>
+    <li><span class="path">src/api/httpClient.ts, apiClient.ts, odataUtils.ts</span> — cliente HTTP genérico basado en <code>fetch</code>.</li>
+    <li><span class="path">src/stores/user.ts</span> — store Pinia que llama a <code>GET {backendUrl}/api/users/current</code> para resolver la identidad.</li>
+    <li><span class="path">src/components/, src/views/, src/layouts/, src/composables/, src/dto/, src/models/, src/services/</span> — UI y lógica de negocio de frontend reutilizada por ambas apps.</li>
+  </ul>
+  <p>Ambas UIs importan estos módulos vía el alias <code>@devportal/shared-ui</code> (ver <span class="path">adminUi/vite.config.ts</span>, <span class="path">adminUi/src/router/index.ts</span>).</p>
+
+  <h3 id="frontend-comunicacion">5.3 Comunicación con el backend <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li>El frontend llama al backend mediante <code>fetch</code> con rutas relativas (ej. <code>${utils.getBackendUrl()}/api/users/current</code> en <span class="path">sharedUIComponents/src/stores/user.ts</span>).</li>
+    <li>En <strong>desarrollo con Docker</strong> (<span class="path">docker-compose-devui.yml</span>), cada UI corre en su propio contenedor nginx; no hay evidencia de proxy directo configurado ahí hacia el backend.</li>
+    <li>En <strong>testing</strong> (<span class="path">docker-compose-testing.yml</span>, <span class="path">tenantUi/nginx.testing.conf</span>), nginx actúa de <strong>reverse proxy</strong>: <code>location /devportal/service/ { proxy_pass http://dev-portal-service-testing:8080/customer/; }</code>.</li>
+    <li>En <strong>producción/Kubernetes</strong>, Kong es el gateway: las rutas <code>/devportal/service/admin</code> y <code>/devportal/service/customer</code> (<span class="path">k8s/dev-portal-service-admin-kong-ingress.yaml</span> y su equivalente de customer) se enrutan al servicio <code>dev-portal-service</code>, que internamente usa el prefijo de ruta para decidir el pipeline.</li>
+    <li>Variable <code>BACKEND_SERVICE_URL</code> (ver <span class="path">docker-compose-produi.yml</span>, <span class="path">tenantUi/entrypoint.sh</span>) se inyecta en tiempo de arranque del contenedor nginx vía <code>envsubst</code> sobre <code>index.html.template</code>, permitiendo configurar el backend sin rebuild de imagen.</li>
+  </ul>
+</section>
+
+<section id="infraestructura">
+  <h2>6. Infraestructura</h2>
+
+  <h3 id="devcontainer">6.1 Dev Container <span class="tag tag-hecho">HECHO</span></h3>
+  <p><span class="path">.devcontainer/devcontainer.json</span> define un contenedor de desarrollo (<span class="path">.devcontainer/Dockerfile</span>) con features: GitHub CLI, Azure CLI, .NET 10, Vue CLI, Docker-outside-of-docker, kubectl/helm/minikube. Forward de puertos 5200 y 5201 (puertos de desarrollo directo del backend fuera de Docker — swagger en <code>localhost:5200/swagger</code> según <span class="path">devPortalService/readme</span>).</p>
+  <ul>
+    <li><code>postCreateCommand.sh</code>: instala <code>dotnet-ef</code>, <code>yq</code> y la CLI de Kiro.</li>
+    <li><code>postStartCommand.sh</code>: configura registros npm privados, detecta/escribe el volumen del devcontainer, configura kubeconfig, y rellena variables faltantes en <code>.env</code>.</li>
+    <li>Monta el <code>kubeconfig</code> del host para que <code>kubectl</code>/Helm funcionen dentro del devcontainer apuntando al clúster real de Platform.</li>
+  </ul>
+
+  <h3 id="compose">6.2 Contenedores de Docker Compose <span class="tag tag-hecho">HECHO</span></h3>
+  <table>
+    <thead><tr><th>Archivo</th><th>Propósito</th></tr></thead>
+    <tbody>
+      <tr><td class="path">docker-compose.yml</td><td>Entorno de <strong>desarrollo completo</strong>: postgres, liquibase (build local), seeder (imagen externa), backend (<code>dotnet watch</code>)</td></tr>
+      <tr><td class="path">docker-compose-devui.yml</td><td>Solo UIs en modo dev (<code>adminUi</code>, <code>tenantUi</code>) usando <code>Dockerfile.dev</code></td></tr>
+      <tr><td class="path">docker-compose-prodservice.yml</td><td>Backend + BD + liquibase + seeder usando imágenes publicadas, para probar el build de release localmente</td></tr>
+      <tr><td class="path">docker-compose-produi.yml</td><td>UIs usando imágenes publicadas</td></tr>
+      <tr><td class="path">docker-compose-testing.yml</td><td>Pipeline de CI/E2E: postgres, liquibase, backend y tenantUi compilados localmente con healthchecks encadenados, más servicios <code>e2e</code>/<code>e2e-ui</code> (Playwright) bajo perfiles</td></tr>
+      <tr><td class="path">docker-compose-dozzle.yml</td><td>Visor de logs de contenedores (Dozzle)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="kubernetes">6.3 Kubernetes <span class="tag tag-hecho">HECHO</span></h3>
+  <p><span class="path">k8s/</span> contiene manifiestos para integrar Dev Portal en el clúster compartido de "Platform" (namespace <code>platform</code>), <strong>no un despliegue Kubernetes autocontenido</strong>:</p>
+  <ul>
+    <li><span class="path">dev-portal-services.yaml / dev-portal-services-template.yaml</span>: <code>Service</code> + <code>EndpointSlice</code> que apuntan, vía IP fija (<code>192.168.65.254</code>, típica de Docker Desktop/minikube), a los contenedores Docker locales — es decir, <strong>puente entre el entorno Docker Compose local y el clúster Kubernetes de Platform</strong> usado en desarrollo.</li>
+    <li><span class="path">dev-portal-*-kong-ingress.yaml</span>: <code>Ingress</code> de Kong con plugins (<code>strip-path</code>, autorización, segmentación de ruta) que exponen el backend bajo <code>/devportal/service/admin</code> y <code>/devportal/service/customer</code>.</li>
+    <li><span class="path">dev-portal-auth-plugin-*.yaml</span>: <code>KongClusterPlugin</code> de tipo <code>kong-plugin-authorization</code> que valida sesiones contra servicios de Platform (<code>k1-services-security</code>, <code>k1-services-session</code>).</li>
+    <li><span class="path">dev-portal-ui-ingress-dev.yaml / -prod.yaml</span>: ingress para las SPAs.</li>
+  </ul>
+  <div class="callout">
+    En resumen: Kubernetes cumple aquí el rol de <strong>gateway/autenticación/enrutamiento compartido de la plataforma</strong>, no de orquestador de los propios contenedores de Dev Portal en desarrollo (esos corren en Docker Compose).
+  </div>
+
+  <h3 id="arranque-parada">6.4 Arranque y parada del entorno <span class="tag tag-hecho">HECHO</span> / <span class="tag tag-inferencia">INFERENCIA</span></h3>
+  <p>Scripts en <span class="path">.workspaceScripts/</span> (invocados normalmente como tareas de VS Code, ver <span class="path">.vscode/tasks.json</span>):</p>
+  <table>
+    <thead><tr><th>Script</th><th>Acción</th></tr></thead>
+    <tbody>
+      <tr><td class="path">task_startDevPortal.sh</td><td><code>docker compose -f docker-compose.yml up -d --build</code> (tras configurar servicios k8s)</td></tr>
+      <tr><td class="path">task_startDevPortalDevUI.sh</td><td><code>docker compose -f docker-compose-devui.yml up -d --build</code></td></tr>
+      <tr><td class="path">task_startDevPortalProdService.sh / task_startDevPortalProdUI.sh</td><td>Variantes con imágenes publicadas</td></tr>
+      <tr><td class="path">task_stopDevPortal.sh / task_stopUI.sh / task_stopDozzle.sh</td><td>Paradas correspondientes <span class="tag tag-inferencia">INFERENCIA</span> (no se leyó el contenido exacto, pero por convención de nombre ejecutan <code>docker compose down</code>)</td></tr>
+      <tr><td class="path">task_startPlatform.sh / task_stopPlatform.sh</td><td><code>cd PlatformV2 &amp;&amp; docker compose --profile interface --profile webhook --profile storage up/down -d</code></td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    <strong>INFERENCIA fuerte, casi HECHO:</strong> esto confirma que existe un repositorio/directorio hermano llamado <code>PlatformV2</code> que el devcontainer espera encontrar junto a <code>dev-portal</code>, pero <strong>no está presente dentro de <code>/workspaces/dev-portal</code></strong> (confirmado por búsqueda <code>glob</code> de <code>**/PlatformV2*</code> sin resultados). Es una dependencia externa al repositorio actual.
+  </div>
+</section>
+
+<section id="autenticacion">
+  <h2>7. Autenticación</h2>
+
+  <h3 id="auth-mecanismo">7.1 Mecanismo <span class="tag tag-hecho">HECHO</span></h3>
+  <p>La autenticación <strong>no es un login propio de Dev Portal ni usa OAuth de GitHub para usuarios finales</strong>. Es delegada por completo a <strong>"Platform"</strong>:</p>
+  <ol>
+    <li>El frontend (<span class="path">sharedUIComponents/src/auth/auth.ts</span>) redirige a <code>{origin}/mobile-bff/v1/auth/signin?applicationId=...&amp;connectionType=Mobile&amp;callbackURL=...</code> cuando detecta que no hay sesión (<code>requireAuth()</code> → <code>redirectToLogin()</code>).</li>
+    <li><code>applicationId</code> es distinto por UI: <code>"Infios Admin Portal"</code> en <span class="path">adminUi/src/auth/authInstance.ts</span> (customer portal usaría otro valor análogo — <span class="tag tag-desconocido">DESCONOCIDO</span> su literal exacto, no confirmado en esta pasada).</li>
+    <li>Tras el login en Platform, este redirige a <code>/auth/callback</code> con un <code>sessionToken</code>; el frontend llama a <code>POST /mobile-bff/v1/auth/acquire-session</code> para intercambiar el token por una cookie de sesión (<code>credentials: 'include'</code>).</li>
+    <li>La sesión se refresca periódicamente con <code>POST /mobile-bff/v1/auth/refresh-session</code> cada 30s (intervalo configurable, <code>refreshIntervalMs</code>).</li>
+    <li>Una vez autenticado, cada petición al backend llega (vía Kong) con headers inyectados por Platform: <code>X-UserSessionModel</code> (JSON con <code>UserId</code>, <code>UserName</code>, <code>Tenant</code>, etc. — <span class="path">Core/Models/UserSessionModel.cs</span>), <code>X-PrivateTenant</code>, <code>X-PublicTenant</code> (<span class="path">Core/MultiTenancy/TenantHeaders.cs</span>).</li>
+    <li>El backend resuelve al actor de la petición en <span class="path">Api/Services/RequestActorResolver.cs</span>: parsea <code>X-UserSessionModel</code>, hace upsert del usuario local, y determina si es "admin" según el <strong>segmento de ruta</strong> (<code>admin</code> vs <code>customer</code>) por el que entró la petición — no por un rol almacenado en la tabla <code>users</code>.</li>
+  </ol>
+
+  <h3 id="auth-github">7.2 Integración con GitHub <span class="tag tag-hecho">HECHO</span></h3>
+  <p>No se encontró ningún mecanismo de login/OAuth contra GitHub para usuarios finales de Dev Portal. Las únicas referencias a "GitHub" en el código son:</p>
+  <ul>
+    <li><strong>Campo de dominio de negocio</strong>: <code>CustomerDto.gitHubOrganization</code> (<span class="path">sharedUIComponents/src/stores/user.ts</span>, usado en <code>CustomerDrawer.vue</code>/<code>CustomerInformation.vue</code>) — probablemente para vincular la organización de GitHub del cliente a efectos de despliegue/CI, no de autenticación de usuarios.</li>
+    <li><strong>Infraestructura de CI/CD</strong>: GitHub Actions (<span class="path">.github/workflows/ci.yml, cd.yml, release-promotion.yml</span>) y GitHub Container Registry (<code>ghcr.io/...</code>) para build/scan/publicación de imágenes.</li>
+    <li><strong>Autenticación de desarrollador con GitHub Packages</strong> (no de usuario final): <span class="path">.workspaceScripts/task_setupSdlc.sh</span> usa <code>gh auth login</code> para obtener un token y configurar <code>.npmrc</code> contra <code>npm.pkg.github.com</code> (paquetes privados como <code>@infios/uikit</code>).</li>
+  </ul>
+  <div class="callout danger">
+    <span class="tag tag-desconocido">DESCONOCIDO</span> Si el proyecto tiene en algún otro lugar (ej. configuración de Platform, fuera de este repo) un proveedor OAuth de GitHub para login de usuarios finales, no es visible desde este repositorio.
+  </div>
+
+  <h3 id="auth-permisos">7.3 Dónde se configuran los permisos <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li><strong>Autorización de acceso al portal</strong> (quién puede entrar a admin vs. customer): plugins Kong <code>kong-plugin-authorization-admin-portal</code> / <code>-customer-portal</code> (<span class="path">k8s/dev-portal-auth-plugin-admin-portal.yaml</span>, <span class="path">-customer-portal.yaml</span>), que consultan servicios externos de Platform (<code>securityService</code>, <code>sessionService</code>) con un <code>applicationId</code> específico por portal.</li>
+    <li><strong>Autorización a nivel de endpoint dentro del backend</strong>: <span class="path">Api/Filters/RoutePrefixFilter.cs</span> — filtro de recurso ASP.NET Core que rechaza (404) peticiones que llegan por un segmento de ruta no permitido para ese controlador/acción, usando el atributo <code>[ODataRoutePrefix(...)]</code>. Regla fija: <strong>"admin" siempre está permitido en cualquier endpoint</strong>; "customer" requiere autorización explícita por atributo.</li>
+    <li>No existe una tabla de roles/permisos en el esquema de Liquibase (<span class="path">database/liquibase/tables/</span>) — el modelo de permisos vive fuera del repo, en Platform.</li>
+  </ul>
+</section>
+
+<section id="platform-seeder">
+  <h2>8. Platform API y Seeder</h2>
+
+  <h3>8.1 Qué hace cada componente <span class="tag tag-hecho">HECHO</span></h3>
+  <ul>
+    <li><strong>dev-portal-seeder</strong>: contenedor efímero (<code>restart: "no"</code>) que ejecuta una imagen externa, <code>ghcr.io/infios-tools/dev-portal-seeder:${SEEDER_IMAGE_TAG}</code> (<span class="path">docker-compose.yml</span>, <span class="path">docker-compose-prodservice.yml</span>). <strong>No tiene código fuente en este repositorio</strong>. Su función, según los comentarios del propio <code>docker-compose.yml</code>, es configurar datos iniciales en Platform para que Dev Portal funcione: crea un "Identity Claim" para el tenant, y puede configurar aspectos de Customer Portal / Admin Portal.</li>
+    <li><strong>Platform API</strong>: servicio HTTP del "Platform" externo (API pública de la plataforma, ej. <code>k1-api</code> en el entorno real de Platform). El seeder necesita hablar con ella para crear el Identity Claim.</li>
+  </ul>
+
+  <h3>8.2 Por qué el puerto 35003 <span class="tag tag-hecho">HECHO</span></h3>
+  <p>En <span class="path">docker-compose.yml</span>:</p>
+  <pre><code>PLATFORM_API_URL: http://host.docker.internal:35003</code></pre>
+  <p>Comentario textual en el mismo archivo:</p>
+  <blockquote style="border-left:4px solid var(--color-accent); margin:12px 0; padding:8px 16px; background:#f8fafc; color:#475569;">
+    "This value sets the URL that points to Platform's public API service. DEFAULT VALUE: http://k1-api:80"
+  </blockquote>
+  <p>El valor por defecto de la imagen del seeder (<code>k1-api:80</code>) asume que corre <strong>dentro</strong> de la red de Platform. Como en este repo el seeder corre en la red de Docker Compose de Dev Portal, se sobreescribe para apuntar, vía <code>host.docker.internal</code>, a <strong>un Platform API expuesto en el puerto 35003 del host</strong> — se asume que el entorno de "Platform" (levantado aparte, posiblemente desde el repo hermano <code>PlatformV2</code>) publica su API pública en ese puerto del host/devcontainer.</p>
+
+  <h3>8.3 ¿Forma parte de este repositorio? <span class="tag tag-hecho">HECHO</span></h3>
+  <p>No. Ni el Seeder ni Platform API tienen código fuente en <span class="path">/workspaces/dev-portal</span>. Evidencia:</p>
+  <ul>
+    <li>Búsqueda de <code>PlatformV2</code> en todo el árbol: <strong>0 resultados</strong> (glob <code>**/PlatformV2*</code>).</li>
+    <li>El seeder se consume únicamente como imagen Docker publicada (<code>image: ghcr.io/infios-tools/dev-portal-seeder:...</code>), nunca como <code>build:</code> local.</li>
+    <li><span class="path">task_startPlatform.sh</span> hace <code>cd PlatformV2 &amp;&amp; docker compose ...</code>, lo cual solo funcionaría si existiera un directorio <code>PlatformV2</code> <strong>al mismo nivel que <code>dev-portal</code></strong> (repo hermano clonado aparte, no una subcarpeta de este repo).</li>
+  </ul>
+
+  <h3>8.4 ¿Existe forma documentada de iniciarlo localmente? <span class="tag tag-desconocido">DESCONOCIDO</span></h3>
+  <p>Dentro de este repositorio solo existe la referencia indirecta de <span class="path">.workspaceScripts/task_startPlatform.sh</span> y <span class="path">task_stopPlatform.sh</span>, que asumen un checkout externo de <code>PlatformV2</code> con sus propios <code>docker-compose</code> y perfiles (<code>interface</code>, <code>webhook</code>, <code>storage</code>). <strong>No hay documentación dentro de <code>/workspaces/dev-portal</code></strong> sobre cómo obtener o configurar ese repositorio (ni URL, ni instrucciones de clonado, ni variables de entorno necesarias para que sus servicios expongan el puerto 35003). Probablemente está documentado en el repositorio <code>PlatformV2</code> mismo o en documentación de equipo fuera del código.</p>
+
+  <h3>8.5 Qué funcionalidades quedan afectadas si no está disponible <span class="tag tag-inferencia">INFERENCIA razonada</span></h3>
+  <ul>
+    <li>El contenedor <code>dev-portal-seeder</code> fallará o no podrá completar su inicialización (no crea el Identity Claim ni configura Customer/Admin Portal) — pero como tiene <code>restart: "no"</code>, no bloquea indefinidamente el resto del stack, aunque los datos de Platform quedarían sin sembrar.</li>
+    <li>La <strong>autenticación real end-to-end</strong> (login vía <code>/mobile-bff/v1/auth/signin</code>, resolución de sesión vía Kong) depende de que exista un Platform operativo (no solo su API pública en 35003, sino los servicios <code>security</code>/<code>session</code> referenciados en los plugins Kong). Sin Platform corriendo, el flujo de login quedará bloqueado en el estado <code>redirecting</code> (<span class="path">auth.ts</span>).</li>
+    <li>El backend de Dev Portal <strong>sí puede arrancar</strong> y responder a <code>/livez</code>/<code>/readyz</code> sin Platform, porque su única dependencia dura es PostgreSQL. Pero cualquier endpoint que dependa de <code>X-UserSessionModel</code>/<code>X-PublicTenant</code> (ej. <code>UsersController.Current</code>) devolverá 400 si esos headers no llegan — son los que inyecta Platform/Kong.</li>
+    <li>En modo <code>DOTNET_ENVIRONMENT=Testing</code>, el propio backend <strong>inyecta headers de prueba por defecto</strong> (<span class="path">Program.cs</span>), lo que permite que los tests E2E (<span class="path">docker-compose-testing.yml</span>) funcionen sin depender de Platform en absoluto.</li>
+  </ul>
+</section>
+
+<section id="flujo">
+  <h2>9. Flujo de funcionamiento paso a paso</h2>
+  <p><span class="tag tag-hecho">HECHO</span> / <span class="tag tag-inferencia">INFERENCIA</span> combinados, según el código revisado.</p>
+
+  <div class="card">
+    <ol>
+      <li>El usuario abre el navegador en la URL de la UI (ej. <code>adminUi</code>, servida tras <code>/devportal/adminui</code> en dev local, o tras el ingress de Kong en el entorno real).</li>
+      <li>El router de Vue (<span class="path">adminUi/src/router/index.ts</span>) ejecuta <code>router.beforeEach</code>: si <code>auth.isAuthenticated()</code> es falso, llama a <code>auth.requireAuth()</code>.</li>
+      <li><code>requireAuth()</code> redirige el navegador a <code>{origin}/mobile-bff/v1/auth/signin?applicationId=...&amp;callbackURL=...</code> — ruta resuelta por <strong>Platform</strong>, no por Dev Portal.</li>
+      <li>Tras autenticarse en Platform, el usuario regresa a <code>/auth/callback</code> con un <code>sessionToken</code>. El componente <code>AuthCallback</code> invoca <code>auth.handleCallback(sessionToken)</code>.</li>
+      <li><code>handleCallback</code> llama a <code>POST /mobile-bff/v1/auth/acquire-session</code> con <code>credentials: 'include'</code>: Platform fija una cookie de sesión en el navegador. El estado interno pasa a <code>authenticated</code> y arranca el bucle de refresco cada 30s.</li>
+      <li>Se ejecuta <code>userStore.initialize()</code>, que hace <code>fetch(GET {backendUrl}/api/users/current)</code>.</li>
+      <li>En producción, la petición viaja a través de Kong: el Ingress aplica plugins (<code>kong-publicapi-auth-platform</code>, <code>kong-tenant-plugin-platform</code>, <code>kong-plugin-authorization-admin-portal</code>, <code>kong-plugin-route-segment-admin-portal</code>), que validan la cookie, resuelven el tenant, e <strong>inyectan los headers</strong> <code>X-UserSessionModel</code>, <code>X-PrivateTenant</code>, <code>X-PublicTenant</code> y el segmento de ruta antes de reenviar al servicio <code>dev-portal-service</code> (strip-path activado).</li>
+      <li>El backend recibe la petición, guarda el segmento de ruta en <code>HttpContext.Items</code>, y ejecuta el pipeline: <code>GlobalExceptionHandlerMiddleware</code> → CORS → (no-producción) <code>TestHeaderMiddleware</code> → <code>UseRouting</code> → <code>UseAuthorization</code> → <code>MapControllers</code>.</li>
+      <li><code>RoutePrefixFilter</code> valida que el controlador/acción permita ese segmento de ruta; si no, 404.</li>
+      <li><code>UsersController.Current</code> (o el controlador OData correspondiente) se ejecuta: parsea <code>X-UserSessionModel</code>, resuelve el <code>CustomerPublicTenant</code> a partir de <code>X-PublicTenant</code> vía <code>ICustomerPublicTenantService</code>, y hace upsert del usuario local vía <code>IUserService.UpsertFromSession</code>.</li>
+      <li>El servicio invoca al repositorio correspondiente, que usa <code>DevPortalDbContext</code> (EF Core/Npgsql) para ejecutar SQL contra <strong>PostgreSQL</strong> (contenedor <code>dev-portal-postgres</code>, puerto 5432).</li>
+      <li>El resultado se mapea a un DTO (Mapperly, <span class="path">Api/Mappings/DtoMapper.cs</span>) y se devuelve como JSON al frontend.</li>
+      <li>El frontend actualiza el store Pinia y el router permite continuar la navegación, disparando más llamadas (ej. a controladores OData para listar tenants, productos, deployment requests), repitiendo el mismo patrón de los pasos 7–12 en cada operación de lectura/escritura.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="pendientes">
+  <h2>10. Problemas o dependencias pendientes</h2>
+  <ul>
+    <li><span class="tag tag-hecho">HECHO</span> + <span class="tag tag-desconocido">DESCONOCIDO</span> <strong>Dependencia externa no documentada en este repo</strong>: <code>PlatformV2</code> (referenciado por <code>task_startPlatform.sh</code>/<code>task_stopPlatform.sh</code>) no existe dentro de <span class="path">/workspaces/dev-portal</span> y no hay instrucciones de cómo obtenerlo/clonarlo desde este repositorio.</li>
+    <li><span class="tag tag-hecho">HECHO</span> <strong>Platform API en el puerto 35003</strong> se asume disponible en el host (<code>host.docker.internal:35003</code>) para que el seeder funcione; no hay healthcheck ni mecanismo de espera visible para esa dependencia en <span class="path">docker-compose.yml</span> (a diferencia de Postgres, que sí tiene orden de arranque explícito).</li>
+    <li><span class="tag tag-hecho">HECHO</span> <strong>Documentación desactualizada</strong>: <span class="path">devPortalService/readme</span> indica "Dotnet 9" cuando el <code>.csproj</code> usa <code>net10.0</code>. Riesgo de confusión para quien siga ese README al pie de la letra.</li>
+    <li><span class="tag tag-hecho">HECHO</span> <strong>Sin tabla de roles/permisos local</strong>: toda la autorización fina depende de Platform (Kong + servicios de seguridad/sesión externos), coherente con la arquitectura de plataforma centralizada pero significa que no se puede razonar sobre permisos mirando solo este repo.</li>
+    <li><span class="tag tag-hecho">HECHO</span> <strong>CORS con orígenes fijos</strong> en <span class="path">appsettings.Development.json</span> (<code>localhost:35001</code>, <code>35002</code>, <code>5173</code>) — si se cambian puertos de desarrollo, hay que actualizar ese archivo manualmente.</li>
+    <li><span class="tag tag-hecho">HECHO</span> <strong><code>.env</code> en la raíz</strong> contiene solo 5 variables de composición (<code>COMPOSE_PROJECT_NAME</code>, <code>UI_IMAGE_TAG</code>, <code>SERVICE_IMAGE_TAG</code>, <code>SEEDER_IMAGE_TAG</code>, <code>DEVCONTAINER_VOLUME</code>) — no se detectaron secretos ni tokens en ese archivo.</li>
+  </ul>
+</section>
+
+<section id="guia">
+  <h2>11. Guía rápida para un desarrollador nuevo</h2>
+  <div class="card">
+    <ol>
+      <li><strong>Lee primero</strong>: <span class="path">README.md</span> (raíz), <span class="path">devPortalService/readme</span>, <span class="path">adminUi/README.md</span>, <span class="path">e2e/README.md</span>, y los ADRs en <span class="path">docs/adrs/</span> (decisiones de diseño sobre configuración y settings — relevantes porque buena parte del dominio de negocio gira en torno a <code>Setting</code>/<code>SettingVersion</code>/<code>DeploymentRequest</code>).</li>
+      <li><strong>Entorno</strong>: abre el repo en el Dev Container (<span class="path">.devcontainer/devcontainer.json</span>); instala automáticamente .NET 10, pnpm/Vue CLI, kubectl/helm, GitHub/Azure CLI.</li>
+      <li><strong>Arrancar backend + BD</strong>: tarea/script <span class="path">task_startDevPortal.sh</span> → levanta Postgres, Liquibase (aplica esquema) y el backend con hot-reload en <code>localhost:35000</code> (Swagger disponible en <code>/swagger</code>).</li>
+      <li><strong>Arrancar UIs</strong>: <span class="path">task_startDevPortalDevUI.sh</span> → <code>adminUi</code> en <code>localhost:35001</code>, <code>tenantUi</code> en <code>localhost:35002</code>.</li>
+      <li><strong>Si necesitas login real</strong>: requieres que el repositorio hermano <code>PlatformV2</code> esté clonado y corriendo (<span class="path">task_startPlatform.sh</span>) y expuesto en el puerto 35003 para Platform API; sin eso, usa el modo de pruebas (<code>VITE_TESTING=true</code>, ya presente en <span class="path">adminUi/.env.development</span> y <span class="path">tenantUi/.env.development</span>) que omite el login real y autentica automáticamente en desarrollo.</li>
+      <li><strong>Dónde tocar código de negocio</strong>: casi toda la lógica nueva de backend va en <span class="path">Domain.Services/*.cs</span> (implementación) + su interfaz en <span class="path">Domain/Services/Interfaces/</span>; los controladores son delgados. Para una entidad nueva: añade modelo en <span class="path">Domain/Models/</span>, configuración EF en <span class="path">Infrastructure/Configurations/</span>, repositorio en <span class="path">Infrastructure/Repositories/</span> + su interfaz en <span class="path">Domain/Repositories/Interfaces/</span>, changelog Liquibase en <span class="path">database/liquibase/tables/</span> + referencia en <code>master.yaml</code>.</li>
+      <li><strong>Frontend</strong>: usa siempre componentes de <code>@infios/uikit</code> (obligatorio según <span class="path">.kiro/steering/uikit-usage.md</span>) y código compartido de <span class="path">sharedUIComponents/src</span> vía el alias <code>@devportal/shared-ui</code>; no dupliques lógica entre <code>adminUi</code> y <code>tenantUi</code>.</li>
+      <li><strong>Pruebas</strong>: unitarias .NET en <span class="path">devPortalService/test/</span> (por capa: <code>Api.Test</code>, <code>Domain.Services.Test</code>, <code>Infrastructure.Repositories.Test</code>, <code>Core.Test</code>, <code>Startup.Test</code>, <code>Middleware.Test</code>); frontend con Vitest (<code>vitest.config.ts</code> en cada UI y en <code>sharedUIComponents</code>); end-to-end con Playwright en <span class="path">e2e/</span>, orquestado por <span class="path">docker-compose-testing.yml</span>.</li>
+      <li><strong>CI/CD</strong>: revisa <span class="path">.github/workflows/ci.yml</span> (build + test) y <span class="path">cd.yml</span> (build + scan + publish a <code>ghcr.io</code>) antes de abrir un PR.</li>
+    </ol>
+  </div>
+
+  <div class="callout">
+    <strong>Nota de alcance:</strong> todo este documento se obtuvo exclusivamente mediante lectura de archivos y búsquedas de texto/AST dentro de <code>/workspaces/dev-portal</code>. No se modificó, creó ni eliminó ningún archivo del repositorio, no se instalaron paquetes, no se ejecutaron migraciones ni se alteró ninguna configuración de Docker/Kubernetes/base de datos, y no se incluye ningún secreto o token real (el único archivo de variables <code>.env</code> inspeccionado solo contiene nombres de tags de imagen, sin credenciales).
+  </div>
+
+  <a class="back-top" href="#resumen">↑ Volver al inicio del documento</a>
+</section>
+
+</main>
+</div>
+
+<footer>
+  Documento generado automáticamente a partir del análisis de arquitectura de <strong>Infios Dev Portal</strong> (<code>/workspaces/dev-portal</code>) — uso interno de onboarding técnico. No contiene credenciales, tokens ni secretos.
+</footer>
+
+</body>
+</html>
