@@ -1,0 +1,68 @@
+Scenario: Select an eligible unprocessed note
+
+Given a record exists in db_lossdrafts.tbl_Notes
+And the record belongs to an MSP client (SM, UA, CR)
+And processInd is 9 or blank (contains only whitespace)
+When the LossdraftProcess console application runs the notes processor
+Then the processor must select the record for processing grouped by refernceid and notedaetime and filenotedatetime is null or less then last hour
+
+And update filenotedatetime of the selected notes row.
+
+
+
+Scenario: Process multiple eligible notes
+Given multiple eligible MSP notes have a blank or 9 processInd
+When the notes processor runs
+Then a set of 10 eligible notes should be processed
+And each note must receive its own processing result
+And a failure for one note must not prevent the remaining notes from being processed.
+And next set of 10 eligible notes in a loop until there are no notes left to be processed in tbl_notes
+
+Scenario: Format a note into lines of no more than 50 characters
+Given an eligible note contains more than 50 characters
+When the note is formatted
+Then each output line must contain no more than 50 characters
+And the formatted note must contain no more than 10 lines.
+And the request is sent to SOR API
+
+Scenario: Handle a note that exceeds the supported formatted length (50 characters in each in 10 lines)
+Given an 1 set of eligible note contains more content than can fit within 10 lines of 50 characters
+When the processor attempts to format the note
+Then the note must be be sent to SOR API in multiple requests with set of 10 in each
+
+Scenario: Successfully update the system of record
+Given an eligible note has been successfully formatted
+And the SOR API Notes route returns a successful response
+When processing completes for the note
+Then tbl_Notes.processInd must be updated to Y
+And any existing processing error message for that note must be cleared
+And the note must not be selected during the next normal processor run.
+
+Scenario: SOR API returns an unsuccessful response
+Given an eligible note has been formatted
+When the SOR API Notes route returns an unsuccessful response
+Then tbl_Notes.processInd must be updated to 9
+And the error message column must contain the relevant API error
+And the processor must continue with the next eligible note.
+
+Scenario: SOR API is unavailable
+Given an eligible note has been formatted
+When the SOR API Notes route times out or cannot be reached
+Then tbl_Notes.processInd must be updated to 9
+And the error message column must contain a meaningful connection or timeout error
+And the application must not terminate with an unhandled exception
+And the processor must continue with the next eligible note when possible.
+
+Scenario: SOR API returns Loan not found
+Given an eligible note has been formatted
+When the SOR API Notes route times out or cannot be reached
+Then tbl_Notes.processInd must be updated to 8
+And the error message column must contain a meaningful connection or timeout error
+And the application must not terminate with an unhandled exception
+And the processor must continue with the next eligible note when possible.
+
+Scenario: MSP Notes Format
+Given an eligible note has been formatted
+When the SOR API Notes is sucessful
+Then MSP Notes should be formatted according to the attached screen shot
+
