@@ -1,0 +1,225 @@
+# Análisis de cumplimiento de criterios de aceptación y pruebas unitarias
+
+Actúa como un arquitecto de software senior especializado en .NET, C#, procesamiento por lotes, integración con APIs y pruebas unitarias.
+
+Necesito que realices una revisión técnica del código existente para determinar si la implementación cumple con todos los criterios de aceptación de una tarea.
+
+**IMPORTANTE: ESTA ACTIVIDAD ES EXCLUSIVAMENTE DE ANÁLISIS.**
+
+No debes modificar, crear, eliminar, renombrar ni formatear archivos. No debes implementar soluciones ni generar pruebas unitarias en el repositorio. Tampoco debes ejecutar comandos que alteren el código, la base de datos o el entorno.
+
+## 1. Información de la tarea
+
+**Descripción y criterios de aceptación:**
+
+[PEGAR AQUÍ EL DETALLE COMPLETO DE LA TAREA, INCLUYENDO TODOS LOS ESCENARIOS GIVEN / WHEN / THEN]
+
+## 2. Ubicación de la implementación
+
+**Ruta de la clase principal:**
+
+[PEGAR AQUÍ LA RUTA COMPLETA DE LA CLASE QUE CONTIENE LA IMPLEMENTACIÓN]
+
+Esta clase es el punto de partida del análisis.
+
+No limites tu revisión a esta clase. Sigue las llamadas y dependencias necesarias para comprender el comportamiento completo, incluyendo servicios, repositorios, interfaces, modelos, consultas SQL, clientes HTTP, configuraciones y cualquier otro componente directamente relacionado.
+
+Evita analizar módulos que no tengan relación con los criterios de aceptación.
+
+## 3. Objetivos del análisis
+
+### A. Verificar cada criterio de aceptación
+
+Analiza individualmente TODOS los escenarios y cada una de sus condiciones Given / When / Then.
+
+Para cada criterio, identifica:
+
+1. Qué comportamiento exige.
+2. Si la implementación actual lo cumple.
+3. Qué clase y método implementan ese comportamiento.
+4. Qué evidencia encontraste en el código.
+5. Qué comportamiento falta o es incorrecto.
+6. Qué cambios serían necesarios para cumplirlo, si corresponde.
+
+Utiliza únicamente los siguientes estados:
+
+- **CUMPLE:** existe evidencia suficiente de que el código implementa el comportamiento requerido.
+- **NO CUMPLE:** existe evidencia de una implementación incorrecta o falta funcionalidad necesaria.
+- **PARCIAL:** algunas condiciones están implementadas, pero otras no.
+- **NO VERIFICABLE:** no existe evidencia suficiente para determinar el cumplimiento.
+
+No confundas la existencia de código con la confirmación de su correcto funcionamiento.
+
+No supongas que una funcionalidad existe si no puedes encontrar evidencia.
+
+### B. Identificar problemas técnicos
+
+Revisa especialmente:
+
+- Selección y filtrado correcto de registros.
+- Procesamiento por lotes y ciclos de ejecución.
+- Actualización de estados y fechas.
+- Formateo y división de notas largas.
+- Integración y respuestas de APIs externas.
+- Manejo de excepciones y timeouts.
+- Reintentos y prevención de duplicados.
+- Manejo de errores individuales sin interrumpir los demás registros.
+- Posibles ciclos infinitos o reprocesamientos incorrectos.
+- Persistencia y consistencia de los resultados.
+
+Estos puntos deben evaluarse conforme a los criterios de aceptación, sin introducir requerimientos adicionales.
+
+### C. Revisar pruebas unitarias existentes
+
+Localiza los proyectos y clases de pruebas relacionados con la implementación.
+
+Identifica:
+
+1. Qué pruebas unitarias existen.
+2. Qué método o comportamiento validan.
+3. Qué criterio de aceptación cubre cada prueba.
+4. Si existen pruebas que no verifican realmente el comportamiento esperado.
+5. Qué escenarios no tienen cobertura suficiente.
+6. Si las pruebas existentes necesitan modificaciones.
+
+No asumas que una prueba cubre un criterio únicamente porque tiene un nombre relacionado.
+
+Revisa sus validaciones (assertions), datos de entrada, mocks y resultados esperados.
+
+Distingue entre pruebas unitarias y pruebas de integración.
+
+### D. Identificar las pruebas unitarias faltantes
+
+Para cada prueba faltante, especifica:
+
+- Nombre sugerido de la prueba en inglés, respetando las convenciones actuales del proyecto.
+- Criterio de aceptación relacionado.
+- Clase o método que debe probarse.
+- Condiciones iniciales y datos de entrada.
+- Dependencias que deben simularse mediante mocks o fakes, cuando corresponda.
+- Comportamiento que debe ejecutarse.
+- Resultado esperado.
+- Assertions necesarias para comprobarlo.
+- Casos límite o errores que deben verificarse.
+- Ubicación sugerida de la prueba dentro del proyecto existente.
+
+Si un criterio necesita una prueba de integración en lugar de una prueba unitaria, indícalo explícitamente y explica por qué.
+
+No generes el código de las pruebas. Solo describe lo que debe probarse.
+
+## 4. Formato obligatorio del reporte
+
+Entrega TODO el análisis en español, siguiendo esta estructura:
+
+### 1. Resumen ejecutivo
+
+Explica brevemente:
+- Qué hace actualmente la implementación.
+- Qué tan alineada está con los criterios de aceptación.
+- Cuáles son los problemas más importantes encontrados.
+- Si existen riesgos que impidan considerar la tarea terminada.
+
+### 2. Matriz de cumplimiento
+
+Presenta una tabla con las siguientes columnas:
+
+| ID | Escenario / Criterio | Estado | Evidencia en código | Problema identificado |
+|---|---|---|---|---|
+
+Incluye todos los escenarios y sus condiciones relevantes. No omitas ninguno.
+
+### 3. Análisis detallado por escenario
+
+Para cada escenario:
+
+**Escenario:** [Nombre]
+
+**Comportamiento esperado:** Explicación sencilla en español.
+
+**Comportamiento actual:** Qué hace realmente el código.
+
+**Estado:** CUMPLE / NO CUMPLE / PARCIAL / NO VERIFICABLE.
+
+**Evidencia:** Ruta del archivo, clase, método y líneas relevantes.
+
+**Diferencias encontradas:** Qué falta o qué es incorrecto.
+
+**Cambio necesario:** Explica qué habría que modificar, en qué archivo y método, sin realizar la modificación.
+
+### 4. Análisis de las pruebas existentes
+
+Presenta una tabla:
+
+| Prueba existente | Archivo | Método probado | Criterio cubierto | Cobertura adecuada |
+|---|---|---|---|---|
+
+Explica las limitaciones identificadas.
+
+### 5. Pruebas unitarias faltantes
+
+Presenta una tabla:
+
+| ID | Prueba sugerida | Criterio de aceptación | Método a probar | Prioridad |
+|---|---|---|---|---|
+
+Después, detalla cada prueba utilizando Arrange / Act / Assert.
+
+Toda la explicación debe estar en español. Los nombres sugeridos de métodos y pruebas pueden estar en inglés.
+
+### 6. Cambios necesarios en el código
+
+Enumera únicamente los cambios realmente necesarios para cumplir los criterios de aceptación.
+
+Para cada cambio indica:
+
+- Archivo.
+- Clase.
+- Método.
+- Problema actual.
+- Modificación recomendada.
+- Criterio de aceptación que resuelve.
+- Prioridad: Alta / Media / Baja.
+
+No propongas refactorizaciones generales ni cambios de arquitectura que no sean necesarios para cumplir la tarea.
+
+### 7. Ambigüedades de los requerimientos
+
+Identifica las condiciones contradictorias, incompletas o poco claras.
+
+Separa claramente:
+
+- Lo que establece explícitamente el requerimiento.
+- Lo que demuestra el código existente.
+- Lo que no se puede determinar.
+- Las preguntas concretas que deben hacerse al responsable funcional.
+
+No inventes reglas de negocio para resolver ambigüedades.
+
+### 8. Conclusión y siguientes pasos
+
+Indica:
+
+1. Qué criterios ya están implementados correctamente.
+2. Qué criterios necesitan correcciones.
+3. Qué pruebas unitarias faltan.
+4. Qué pruebas existentes deben corregirse.
+5. En qué orden conviene abordar los pendientes.
+
+## 5. Reglas estrictas
+
+- Responde exclusivamente en español, excepto identificadores técnicos, nombres de clases, métodos y pruebas.
+- No modifiques ningún archivo.
+- No crees archivos de reporte.
+- No implementes código.
+- No generes pruebas.
+- No ejecutes migraciones ni operaciones contra bases de datos.
+- No realices refactorizaciones.
+- No propongas cambios ajenos al alcance.
+- No afirmes que algo funciona sin evidencia.
+- No inventes rutas, clases, métodos o números de línea.
+- No marques un criterio como CUMPLE si alguna condición obligatoria no está satisfecha.
+- Si existe incertidumbre, identifícala explícitamente.
+- Prioriza el análisis del comportamiento real sobre los comentarios o nombres del código.
+- Presenta los hallazgos de manera clara, precisa y comprensible para un desarrollador que necesita implementar las correcciones posteriormente.
+
+**Realiza primero la investigación del código y de las pruebas existentes. Después entrega el reporte completo. No solicites autorización para modificar archivos porque no está permitido realizar modificaciones en esta actividad.**
