@@ -1,0 +1,84 @@
+
+Unknown speaker 00:02 
+Able to review, uh, what we are going over today. So our demo today is for. Our track guard displaying username instead of welcome undefined. So first scenario last name first is populated during user creation. So given a new user account is being created when the system execute the user creation process. 
+
+Unknown speaker 00:26 
+The last name first field is populated. Before the stored procedure is called and user records created successfully. Last name first is populated during user update. So giving an existing user account is being updated, the system executes the user update process uh, the last name first field is populated uh before the procedure is called and user record is updated successfully. 
+
+Unknown speaker 00:55 
+The welcome message displays correctly to give any user account is a hazard valid last name, first value when the user logs into track guard. The welcome message displays the username correctly and welcome undefined is not displayed. 
+
+Unknown speaker 01:14 
+Authorized users can access search page, give any user successfully logs into track guard. When the user navigates to the search section, the search page loads successfully and user does not receive 403 or 404 error. 
+
+Unknown speaker 01:27 
+That is what we are going through today. Is there any questions? OK. I will hand this over to David then. Hello, good morning. Yeah, deals them is going to be a quick demo, so I'm going to share my screen. 
+
+Unknown speaker 01:58 
+Can you see my screen? Yes OK the the issue is when the a user is created this field last name first is not populated. So basically the fix was the when the user is created or updated this last name also is populated. So let me. 
+
+Unknown speaker 02:22 
+Replicate the the error here with my username. You can see the same welcome on the finance, right? So what I'm going to do now is to update my username. Before the change when I update my user ID. It is the last name, first was not populated, so it's still not now with the fix when I update the user. 
+
+Unknown speaker 03:26 
+I execute. Now it's populated. Correct. So if let me log in again, I'm going to log out. So that null displayed undefined. Is that correct? That's correct. Oops. There you go now. Welcome. With my name. 
+
+Unknown speaker 04:04 
+Any questions? That's uh, I say that was is going to be a quick demo. No question on that. But. And so the user was just trying to log in without not having access to Tricard. Is that the issue? No, currently the when the the user tried to access with undefined, the user has access as well. It's just the OK Yeah, other era where he was giving the impression yeah, so it will say welcome undefined. So they thought they don't have access. 
+
+Unknown speaker 04:42 
+OK, just gave the impression that oh maybe I don't have access. So we just fixed the label so that it's. It doesn't say undefined, it says their name. And that was it for for this ticket. I just want to make sure that was that was it. There was nothing related to TGDI or anything for this one. JP No, because if you look in the applications, that's where you would see all the applications you have access to. 
+
+Unknown speaker 05:09 
+OK, I got you. So but you were still getting this issue. That's why you had to make sure this was fixed because other tickets were closed out as you. As you add your name, right. OK, yeah. So, uh, uh, for the deployment, uh, uh, David, you have to do one final remediation, right? We should not have anything. It does not have a last name, first name. 
+
+Unknown speaker 05:34 
+Yeah, that's correct. Was it just new users that were presenting undefined or I guess 'cause like when I log in and to my knowledge most of my team, it displays our name. So is it a certain population? Correct? OK, thanks JT. 
+
+Unknown speaker 05:54 
+And so when this when this goes in JT, you will make sure that anything with the null has a name. I run a an script to update that information for for those cases. We can run in. As well. Before the deployment. 
+
+Unknown speaker 06:16 
+OK. Thank you. David. Son, did you have a question? Yeah. So there's nothing that we have to do on our end, right? Like this is like we don't have to add the users or anything like that. No, no, no. The addition of users still happening from SSO admin. Perfect. OK And uh so when that user is added. 
+
+Unknown speaker 06:45 
+It should update the first name and last name, that's correct. OK. Thank you. OK, perfect. Thought we missed something there. Thank you for asking that, Sanjay. OK. Does does that meet all the acceptance criteria amended? Did we have anything else in there that we needed to? 
+
+Unknown speaker 07:05 
+To see. Fart takes care of the. User stories. Hey was there any other any other questions, concerns? I saw a scenario #4 about a search page, was that not included here? Ah, good question. Yeah, what is that search? 
+
+Unknown speaker 07:32 
+Page Umm. Asking about JD. It's the last scenario, Amanda, if you can look at that last scenario. David added a lot of it has the last scenario. I I believe that's in in regards to like. Well. The applications. 
+
+Unknown speaker 08:06 
+Umm. I'm not. I'm not sure I understand that. Umm, for what application? Which is a which is a scenario. This one. Correct. Yeah. It log into tracard, no? Yeah, but there's no search function on tracard portal. Yeah. The I think that case was when the the user has in the SSO. 
+
+Unknown speaker 08:47 
+What's the different username? Related to the Active Directory. Do you remember that? When we the Active Directory has different username. 8403 or 404 error. What does that relate to in terms of SSL? 
+
+Unknown speaker 09:06 
+Yeah, when we user does not exist. Yeah, the the the problem. The issue was that the when the the user tried to to log in. The looking of the user has for example the old all all my right, but in the SSO has a different username. 
+
+Unknown speaker 09:26 
+When we they try to get the token say the user doesn't exist. So that was not related to the SSO API. That was, uh, an issue with the data in the database. But this is back end, right? Yeah, actually the back end, that's correct. OK, OK. So that's. 
+
+Unknown speaker 09:50 
+That's a more of a back end. Matt, Sandra. And not so much on the front end. And it is related to that welcome undefined, but that will then get fixed with uh. Making sure that the name is not known. 
+
+Unknown speaker 10:08 
+Any questions there, Matt, Sanjay for that? I don't, I don't think it really impacts us unless I'm missing something with that Sandra. So I mean I have no concern, but I think we're should be good with that part of it. OK, yeah. 
+
+Unknown speaker 10:29 
+Alright, any other items for this demo? Any other questions? Anything from Eduardo or Carla that they want to present here for the user stories as our business coordinators? Uh, no questions for mine. Thank you, Elizabeth. 
+
+Unknown speaker 10:50 
+OK. I think we're good, Amanda. OK, perfect. Thank you guys for joining. You are free to go. Thank you all. Happy Halloween. Yeah, happy Halloween, happy Halloween, happy Halloween. Bye. Bye. Thank you David. If you wanna stay on and then, uh, anybody for parking lot? 
+
+Unknown speaker 11:21 
+So are we doing internal demo now or? Yeah, I was gonna go over to internal demo and then we can do a parking lot. So before that we go for internal demo, David is it? There are various saying that SSO has a ball under score. 
+
+Unknown speaker 11:45 
+Should we join the internal demo meeting then Amanda? Uh, we can move over there if we want to. Yeah, that's fine. OK, OK, so we can go out here and then and join internal demo and we'll do work if you want to come there. 
+
+Unknown speaker 12:00 
+Alright. 
