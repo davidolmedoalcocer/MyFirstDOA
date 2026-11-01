@@ -1,0 +1,336 @@
+
+Unknown speaker 00:00 
+So I wanna know if you have made changes for this one for your US branch endorsement changes. Which release you want me to deploy in lower level environment? Because these two do not exist. Ah ah. Do you want me to redeploy 37? You want me to redeploy at 38? 
+
+Unknown speaker 00:23 
+OK. I think I should redeploy 38 because 39 is a replica of 36. Mm-hmm. Because that was the last production release and that was the big hoop. Like yesterday, I had to redeploy everything that was deployed in production because the Docker base changed. 
+
+Unknown speaker 00:48 
+So I've been redeploying all the. I mean so any everything in K8 is getting redeployed. OK, that's what I did with that so API and and so do you want me to redeploy this one? Yes, it includes uh. Are the changes on that one right? 10/29 that one. So this is what I do 1029.1. 
+
+Unknown speaker 01:12 
+Not a big deal. Been doing this all day long. 29.1. OK. Think this one has your changes right 1029.1. So now your changes will be in dev and then in QA. I'll, I'll watch it for that. Mm-hmm. That's all I wanted to show. Is there any other code that was different from production? You have to reach out to me to deploy your code. Redeploy your code only for the K8 items, not the non K8 items. Everything else is good. WB, last drop, last drop API, they are all good. Not really good. Yeah, alright. 
+
+Unknown speaker 02:17 
+OK, that's all I have. So umm. What's what do we have for David? David Umm I wanted to understand what did you mean by username does not match? Yes, uh, do you remember her when you asked me about some users that received that message? 
+
+Unknown speaker 02:41 
+When they try to log in in a in a solution. And I compare the username that exists. Username always have Val under score. Or the OR the user ID. Yep, when we compare the user ID that exists in SSO. Again, the correct. Yes, yes. 
+
+Unknown speaker 03:07 
+I will tell you this because I will tell you why. There are two types of users we have in our system. Yep, that's one user is internal user which log they log in with their IDs, right? But we don't have password for IID, so we just have their AD login and I will show it with the demo. So uh. 
+
+Unknown speaker 03:29 
+People who are in here at least will remember. So for example 020 and I'll go to T because I don't have production access for anything. And this is SSL. Alright, so two times. The reason I say two types of access is because internal to the company we have ID and we have access to that in all our internal application including track card, portal, TGLDUI and any internal application, you name it. Then we have client source access. Those users do not belong to our Active Directory but they need access to our application. Those users also have access but in that case it's their. 
+
+Unknown speaker 04:15 
+Name. So I will show you both and you will see the difference. At both works and there's subtle difference in each of them. Uh. This is my IID. So this is my 1 axis where my AD login is this and this is the ID we are using to login in all of our internal application. Now by the same token I will have an ID. 
+
+Unknown speaker 05:37 
+OK, do you see how many excess I have here? Right. And then. These axes are coming from client source. So that's why whenever you go to SSO admin and I'll show you guys that there is always two things. This bell under score tells me this is a client store access. 
+
+Unknown speaker 05:55 
+Yup. So these these should not change whenever you see Bryle under score. That means coming from outside. When you see iid it's the internal user. In case of internal user we should not see anything in the user preference table. 
+
+Unknown speaker 06:11 
+Because we cannot reset our username or password from here. And in case of this I should have it, uh. This is called a good one. Later ONS. But yet people I'm not sure uh, for example there are other username like uh. 
+
+Unknown speaker 06:39 
+In the. Good question. In the in OK. So this one when we put it in here, this has no meaning. And this never changes. See see the password changed last time. This this table is not used in any calculation because this user name we only validate against our Active Directory. It never valid them using this preference table but this user. 
+
+Unknown speaker 07:09 
+Things. This user the things change so see it is set to pass change password. The last time the password was changed was in 2023. And so this the one with the ball under score, we keep changing. Now tell me there is another one too. Yeah, tell me. Yeah, ask me another one. The the, uh, the user when I response or I told you about that, it's like a a it looks like the user has a old state user, but in the database in Active Directory, but in this database is using the internal user. 
+
+Unknown speaker 07:51 
+No under score. Yeah, this ID can be the Allstate ID JPRBK because my my ID is JTRBQ. To give me the user ID. I think we did that research but I don't know if I saved it. I don't think I saved that. Give me the user ID to find. 
+
+Unknown speaker 08:34 
+So when we are saying the last name, first name should come, it's it's coming from this column. This is the column we read the last name, first name, last name first, right? OK. So for all the user, as long as we have this filled out we should be good. 
+
+Unknown speaker 08:54 
+And this is what should getting get filled out from. Client source admin from SSO admin. So now I'll go to the SSO admin in QA. I always forget that URL, maybe I saved it here finally. Oh, didn't say that. You are all for sure. 
+
+Unknown speaker 09:33 
+OK. SSO Admiral. Umm, also wanted to, uh, point out again, I I keep all the data in our channel. So if I have any access to admin here, hopefully I. I bet you are earlier. At least the prodigal should be here. 
+
+Unknown speaker 09:58 
+I just got the product. It's called. I will put in this other one too. This is all good. Times. MMM. Because it is called this. So when I login with IID, I can access to. Not everybody has access to that yet to SSO admin. If I log in with my client source admin ID, which is not this, which is going to be something else, it will show me client source admin there. 
+
+Unknown speaker 11:31 
+So I should be happening is when. 80 users are there, so I meant that. What's your ID? 580-6687. So Amanda, exhaust right assignment. These are your assignments. Right now here and uh. You have the last drop access. You are the admin for the tool too, so you should be able to provide access to other people. 
+
+Unknown speaker 12:11 
+And so when we add user for example the user have to exist here and then we go to applications. And let's say I'm adding it to the CSAR, right? So I go roles. Uh, maybe I'm giving your team manager access, right? So if I add user and I search for Amanda. 
+
+Unknown speaker 12:35 
+And then I can do a sign. And save assignment. So now you will have the Seaside management access, but what it means is is Amanda now if you go to UMM. Track guard portal in QA. In that drop down you should see Cesar and your name should already come up as Amanda Mayers on the top. 
+
+Unknown speaker 13:02 
+Mm-hmm. So those that's the the front end change we did. So usually this this ad users should exist. For last name and first name to populate and from what I gather David is the last name and first name was not getting added when a user was getting added through 80 users. So we have to find a user that does not have any access in QA. Who would that be? Leno, You don't have access to anything right? What's your iid? 
+
+Unknown speaker 13:39 
+It is uh. I need to write it down. I-40 21. I'm sorry. Hold on. Yeah. OK, so you are here. So assignments. Oh, you already have a task manager and assignment? Uh oh, David, you probably have access to, right? Uh, Edgar has access. 
+
+Unknown speaker 14:06 
+MMM. Maybe I should do it in dev? Who does not have access to QA? Vanessa has access. Brandy, not Brandy, will have access. 
+
+Unknown speaker 14:26 
+Pues yo le accedes. 
+
+Unknown speaker 14:29 
+Find a person that does not have access. Because when we add access the first time is when we when it adds it to the user table. So a new user comes in and a user does not have. Any. Anything in here? 
+
+Unknown speaker 15:14 
+That's the time the user is added. So now. So David, now I need you to show me the. Show me where was the issue. Why were we not? Why was it becoming null in? Last name and first name. OK. Was it during the update when the user has logged in? Is it wasn't both Let me let me yeah, sure share my screen. Hold on. 
+
+Unknown speaker 15:58 
+OK. I'm always running out of time, am I not? Oh, it's internal demo time, thank God. Can you see my screen? Yup, the issue is this when when the this parameter was not set it. Last night first. That is the. 
+
+Unknown speaker 16:21 
+Realmente. 
+
+Unknown speaker 16:22 
+Where is it called from? When the the user I want to know the control. Now it was called from and I want to know which UI interface it was called from. MMM. Create account. Yeah, create an account. That's correct. 
+
+Unknown speaker 18:10 
+Only one method create int account is calling and which controller is calling create an account in a in account. This is a controller that is called. Admin controller dot CS so SSO admin controller is calling create a intact in account. So that means only. 
+
+Unknown speaker 18:39 
+You SSO admin UI is calling it. Can you see? What is this route and where where is it getting called? In the SSO admin. MMM, we have to do client source admin UI. But. Which method is calling it here? 
+
+Unknown speaker 19:27 
+The method is this one when I create a new one or update it. It depends if the user already exists when I create a user, if the user exists, uh update information. And he's calling that controller, so add user calls it the create int account and that did not put in the last name. Yeah, that's correct. 
+
+Unknown speaker 19:52 
+OK. And then the second part is when? When you were updating. When it's updated, uh, the. Is calling the same procedure. Is calling a procedure where the the is. 
+
+Unknown speaker 20:10 
+Hacen de. 
+
+Unknown speaker 20:11 
+The last name first. Yeah, where is that method? It cannot be create. MMM. So what I'm trying to check check for David is this that for any reason we are not going to screw up the client source piece of it. 
+
+Unknown speaker 20:55 
+So. If in the SSO admin that add user, there's also a AD user in client source admin. How I want to make sure that that's why I said you have to look in the code that both of them are not calling the same route. 
+
+Unknown speaker 21:15 
+Did that make sense? OK so there is one route that creates user which is fine with me, but that create user is that being called by both? Client source admin. And SSO admin because I cannot have client source admin screw up with us. 
+
+Unknown speaker 21:37 
+Because you are only testing on SSO admin thinking that's where the issue is and which is fine because that's where the issue is, but. What method is client source admin calling that when they create user? 
+
+Unknown speaker 21:50 
+Is there another create user? No is the same one or create account but validate the the in the store procedure? Let me let me try to find it. And I will show you. Where OK. OK so when we do the code review on Monday I want to make sure that client source admin. 
+
+Unknown speaker 22:14 
+It's not. It's if it's using the same method, it's not going to, you know, change something for them. OK, yeah, sure. I want to show you that. OK, OK. OK, so I'm I'm good then here. And then you have to send me that user ID that you said oh it was a JPBRBQ and. 
+
+Unknown speaker 22:38 
+Remember the last Test case? MMM. Yes, I want to verify that. Yeah. So I want to know that one too. Yeah, Yep. Those two are your two actions item. We will pick that up in code review. OK. OK. Are we ready to talk about parking lot items? Yeah. 
+
+Unknown speaker 23:14 
+Beatrice, you have risk model items. Yes, sorry, but then. 
+
+Unknown speaker 23:27 
+Me caes. Nota, madre mía. 
+
+Unknown speaker 23:31 
+OK, let me ask. Well, umm, there is one. Umm. Difference the opinion from Malaysia and me about how to. And do something for technical and sign. And we need to know they're helping you. For JD, it's about, uh, when the claim one is changed and we need to update the lottery summary for the columns risk model, umm. 
+
+Unknown speaker 24:06 
+Monitor columns. We need to call something to update those values only that. So military thing the good idea is create Wednesday procedure to date only. Those colors? And and send like parameters the reference ID and then new values for three small monitor. My opinion is use the. 
+
+Unknown speaker 24:35 
+Seriously exactly the USB store procedure sending only that to parameter 3 parameters and get this and use this generic store procedure to to apply the changes. So we didn't decided what is the. Best approach Both use the generic one. Yeah, generic one because I we cannot, uh, keep having multiple SPS. 
+
+Unknown speaker 25:03 
+Because we will have to remove it in a month. Mm-hmm. So the whole idea is whenever we get a chance, we have to use the USPS. And in that USB it also adds, you know, feed log table, right? Mm-hmm. Exactly. Mm-hmm. Yeah. So we, we will already have those changes a lot. So we don't have to do anything. 
+
+Unknown speaker 25:26 
+MMM, OK. Umm. 
+
+Unknown speaker 25:30 
+Puedo ver cuestión we have legislation. 
+
+Unknown speaker 25:33 
+Technically anytime we are updating any values. We need to use the standard USB. MMM. Because one fine day I'm going to delete all the USPS so that USB should only update. Last draft summary, it should not create task notes. All those other things. Yeah, No, only somebody. I feel like I feel log entry, yeah. 
+
+Unknown speaker 26:02 
+So we have to move towards that. OK, we have to trust that it does that. If it doesn't, we gotta fix that SP. And it's necessary to identify, for example, who is calling that new road, right? Because for check service or for connectivity or for documents uploaded to identifying the fellow who is changing the risk model and monitor. 
+
+Unknown speaker 26:29 
+Holi. 
+
+Unknown speaker 26:31 
+Say you update claim and no no no no no user username goes in from where so. I I wanted to say that. Username is always AI mean. Like I know we don't have that in all of the last draft yet, but. Like the assigned user, you know the username is always an input parameter to the stored procedure. What happens is. 
+
+Unknown speaker 27:00 
+It carries through so if if you are clicking an update from TGLD UI. The person who is clicking the update. That person's name should go in. Mm-hmm. OK, OK. If that update is getting called from One Inc, maybe if it's getting called from, uh, that time it should go. 
+
+Unknown speaker 27:25 
+It should go because it would be null and then you have to decide what username your your passing, for example when loan update comes in. It passes in that loan system. You know that I'm a loan update, right? Yeah. So at that time you get to choose it. So username is always input parameter. But the other way to do it is when, uh, when a system does an update. So in in our standard insurance way. 
+
+Unknown speaker 27:56 
+The username is always passed in from from the application from the UI, because those are the only users we care about, right? Whenever it's from the back end, there is a code in the uh. There is a code in a stored procedure that says oh if the user ID is null, get the user ID of of whatever is logged into the database and that's usually the system ID and that system ID is added to to the user right? But for last draft we want to know where the updates are coming from so we have left it open. 
+
+Unknown speaker 28:37 
+For the calling application to send it that user ID. OK. So that that's that's how it's working in last draft right now. Eventually, eventually I'm going to add a user ID column and that would be. That would be either from the UI. 
+
+Unknown speaker 28:58 
+Or from the back end. Either you pass in or it just takes in whatever is there. OK. And in the new umm. Service that we created for for update those values. We are calling the initial claim uh function to execute all the rules to identify if X is a point change or not. But inside of the initial claim function exists the conditions to calculate the waste API again. So we try to avoid it uh, because Amanda told that only once. 
+
+Unknown speaker 29:39 
+There was a P residential. Must be executed once when you share the claim and no later. So we uh thought include one flag to the local. OK, it's from update claim now doesn't execute the voice API. If the call is from initial claim, then ask for the residential API. That is correct this approach. 
+
+Unknown speaker 30:07 
+Or should be changed the uh, let me show you because. There is change. Actually yesterday we discussed right after that actually I made the change, the claims status flag updated. And then? Instead of like calling the 2 routes, I'm just thinking to. 
+
+Unknown speaker 30:30 
+Call it the same route for the check receive process and then update the risk model indicator. If the claim amount is getting updated or not depends on that. MMM, I don't that the reason I the flag is kind of difficult. I'll tell you why the flag is all difficult because there is 3 cases. 
+
+Unknown speaker 31:03 
+OK, there's three cases now. Now you have flagged for everything and it's gonna be very confusing, so. You have a flag, you have a initiate claim, right? When you call the Wise API, OK. But even you when you call the Wise API, the loan has to be eligible first, yes. Now the second thing is you have to call it when they do that GET property, you know that get method in the details screen, there is another mm-hmm. But in the world, right, right. So now that's the second case, you have to call Wise API, yes. 
+
+Unknown speaker 31:39 
+Then there is this third case of update when you don't have to call it. So I don't want to have this complication of when to call, when not to call. It has to be either call or don't call. Not like, oh, if you came from here, I'm calling. If you came from there, I'm not calling because the update is is, uh, is from the details screen. But then you will also getting updates from running can and other places right? At that time. You also have to call the risk model. 
+
+Unknown speaker 32:09 
+But you don't have to call Voice API. So now you see suddenly you have so many flags everywhere. Yes. So it only has to have in in case of flags and everything. I only want 2 approaches when it's more than two flags. If or else and happening then it's too complicated to maintain. We are going to miss something and then that will create more issues. Mm-hmm. OK. So umm. 
+
+Unknown speaker 32:37 
+We we have to come up with something simpler, other option yeah, opines change the OR 4 and here and that will resolve it. Because always asking for reference ID is no, I mean for the new claims, but in that case it will fail again. Uh yeah. For the updates Yeah, for the update, the reference ID will be will exist right in the update clean. So correct never be true. 
+
+Unknown speaker 33:05 
+So it failed, it fails. So in this scenario JT maybe? I'm not sure like how to handle it, but I think we need to have a maybe two weeks, uh, inside again, one or maybe included in the in Slack. Yeah. 
+
+Unknown speaker 33:22 
+Grade one rule 2 to know if execute API. Residential or not? Have even the risk loan. Black value. Include more rules to know. It's getting none or not. Yes, something like that. So like how we need to write the condition, Uh, that is also one question, you know, yes, we don't want to affect the current behavior in because it's working fine. So. 
+
+Unknown speaker 33:57 
+But how can a boy that this is? Not executed again. So first thing first is that either we execute with wise API or we don't execute it right. Those are the only things, yes. Now in the if block. I have. 
+
+Unknown speaker 34:19 
+System source code. Right, I always have system source code, right? Malaysian. Yeah, I always have system source code. So it should be driven by system source code. OK, right. So you are saying? If it's coming from. 
+
+Unknown speaker 34:40 
+System source code 234. Don't call it. Yeah, that is happening already. That is happening in the risk loan eligible rule. OK, we are filled up. Yeah. No, but. The risk clone eligible will be like eligible only if the source code is 1 and other rules you know so. 
+
+Unknown speaker 35:04 
+Eventually that is handling in that road risk loan eligible. Can you move right a little bit? Here source system code 1. No. Loan eligibility and calling wise API is two different things. Loan can be eligible for risk model rules, but why loan is eligible for risk model then only we call the Wise API. No, not all cases. 
+
+Unknown speaker 35:53 
+Loan is eligible for risk model. Just don't call the Wise API do all the other rules. So there is a wise eligibility and there is loan eligibility. So we are risk model for example. Service Mac is risk model eligible. 
+
+Unknown speaker 36:20 
+You should call risk model known and rules whether it comes from 1 ink, whether it comes from TGLDUI, whether it comes from IVR. That. Or or we are saying don't call it. Can can can I look at the requirement again I'm I'm forgetting? 
+
+Unknown speaker 36:40 
+The usual story. Yeah I want to know we have 4 system code source code right for the system for the IVR and one Inc Am I calling the risk model rules or not? TJT weekend call from IVR also. But The thing is like no, no, no, it's based on no, it's based on requirement. It's it's where the clear name is initiated from, right? Yes. If the claim is initiated from TGLD and but the claim is updated from IVR, still it is considered for the risk model because the source system code is 1 that is initiated from TGLD. OK, so only we the only time we are calling this model is when the source system code is 1, yes. 
+
+Unknown speaker 37:25 
+Right, but. That is good. But when the source system code is 1. And the update. And and the update is coming from system code 23 or 4. Mm-hmm. We still need to call. Basically. In the update controller it will call the risk model rules yes, but the only thing it cannot do. 
+
+Unknown speaker 37:52 
+Is get the. Wise. Wise calls right? So hold on. So when I do the wise calls. Oh, if I've already done the vice call, can you can you show me the table? I think there's date or something of the wise call. 
+
+Unknown speaker 38:13 
+Can you show me the table last of summary? Current property value date we have current uprised value. Uh correct correct correct. Does it start with null or is it always filled out? It start, it might start with null also because if you don't call the wise API, meaning like if it if the loan is not eligible for the risk, uh, risk model, then it won't call the wise API. In that case, the current property value date and the current property value will be null, but we get the current appraised value from the repository. 
+
+Unknown speaker 38:51 
+Yeah, here. I I want to uh, so. I want to apply the same rules of current property value, date and the appraised value. If those values are filled up, we don't need to call wise API. The only time you will call the wise API when when the GET. 
+
+Unknown speaker 39:16 
+When the. When they do specific get and I don't know how you figure out on the specific get part. So. That will cover the initiate part because in initiate part. I don't know what we do on the initiate, uh. 
+
+Unknown speaker 39:39 
+Think the some date gets filled up right? Initiate, yeah. Yeah, can you, can you go to the, uh, client code, UA or SM in that query? Uh, Beatrice? Because I I remember, can you, can you OK, Yeah, their client code UA or SM. 
+
+Unknown speaker 40:01 
+I want to check current appraised value is filling up product no the at the end in the where condition. Uh, where? Client code UA? Claim client call. The condition. No, client could not clean L. What is UA? U.S. bank, Yeah. U.S. bank, yeah. 
+
+Unknown speaker 40:40 
+Leche, leche, cuentas. 
+
+Unknown speaker 40:42 
+Order by interdate maybe here. That's 2019. We have very few data in here. Is it production? So here see always current appraised value will be there. A current appraised value date and current appraised value. 
+
+Unknown speaker 41:07 
+Because it comes from repository and whether it might be 0 or something but I think still the date will be there. Is this production? Yes, production OK. Current appraised value I think we are. We are calculating for everything, it just comes from the database. 
+
+Unknown speaker 41:30 
+Yeah, it comes in the course right in in here when whenever you do the wise API call. You fill out the property value. For anything that risk model indicator is why or was why in past you would see current property value date because we have to know I I will tell you the reason why because we have to no current date, current property value might be. 
+
+Unknown speaker 42:02 
+But it will not be done. No, no. I'll tell you why it will not be enough. That's what I was trying to tell you. Because the first time we initiate the claim and it's risk model eligible, we have to make the wise call. And when we make the wise call, we have to update the current property value date even if it's zero. The reason for that is because the business comes in six months later and they can click on get. 
+
+Unknown speaker 42:28 
+Get a property value button so they won't know six month passed if we never put in the date value. So do you see by that logic is why I'm saying that there is no way for any loan that was ever had a risk model indicator why that it would not have the current property value date? OK, I got it. Yeah. So we just can you filter, uh, no with the risk model indicator Y and uh, just remove the client code and remove the top 1000. 
+
+Unknown speaker 43:04 
+OK. And remove the client code also. Yeah, that's right. Holidays. Yeah, just running. And just see the current price, current property value, date. Is sometimes. Sometimes it's not but. You have to find out the cases of. 
+
+Unknown speaker 43:48 
+This why is it? I don't know why it is null. That's the case you have to figure out. Because I personally, I think it should not be now. It should be the day, correct? It should be 0, but it should be, yeah, it should have the date because we did call it. 
+
+Unknown speaker 44:17 
+Umm, maybe that's one more issue, I think. Yeah, I understand we should have the the if it is eligible then requirement, right? You remember that requirement, right? Because it came from that requirement, right. Military, yes, yeah, yeah. So more research is needed. But I am saying that we can premises that we don't have to call the risk model again based on the current property value date because that should tell me. 
+
+Unknown speaker 44:47 
+That when was the last time I called and if and we call it the first time, the loan is eligible anyways. So we might have a gap here and we might have found out a gap here. And we should look into that. 
+
+Unknown speaker 45:03 
+Which is separate then you know, maybe this is the, maybe this is the update case. You know how the when you initiated the claim it was not in the risk model and then later on it became risk model. Mm-hmm, right. But. 
+
+Unknown speaker 45:19 
+But something went wrong and in the property value or something you know, I don't know if if we don't have the current property value, it will take the current upraised value. Yes, yes to calculate but correct. But before it takes the current appraised value, we have already attempted hmm finding the current property value, right? There is no way we are not attempting to find the current property value. 
+
+Unknown speaker 45:46 
+You cannot directly go to the appraised value so we just have to check in our code where we are putting in this null values because it should always have a date and 00 value. Yeah, I think maybe it's getting updated. 
+
+Unknown speaker 45:59 
+Later on on other updates and it's becoming null. See what I'm saying? Loan update, yeah, yeah, something like that is updating it back to null is what I'm trying to say. MMM. I don't know how to tell that yet, because we don't. 
+
+Unknown speaker 46:15 
+We don't put this in the feed log table. MMM. If we please add this change in the feed log table, we will find out very fast is not updating the risk model column. 
+
+Unknown speaker 46:28 
+Ya Karen. 
+
+Unknown speaker 46:31 
+It doesn't, but I'm saying there is a lot of updates that are happening. Oh yes, in in seven parts. Yes, in several parts. I don't know which update is making these values null. Or what is the situation that the value is getting now go again to the original. 
+
+Unknown speaker 46:50 
+Here is not possible include that condition because that so because the coolant stayed in the database, right? I think we just need to remove that summary dot current property value less than 0 and add the condition uh current property value date. 
+
+Unknown speaker 47:06 
+Correct. Does it exist or not? Yeah. So it's it's that current property, uh date not equal to null, yeah. Out equal to no, no, I don't know what which you're sorry logic sorry I I get logic screwed up but yeah, I think we should use the date and I think it should the the only reason it's not working here is because of that value of 0. We should have a date when we last called it and as long as we have that date, this whole logic will just work by itself. Correct yeah. 
+
+Unknown speaker 47:42 
+So let's see, let's figure out this situation why it's making this current property value date now? Huh. And I don't mind the current property value to be 0. Or is there another rule I I don't know? What do they see in the get? 
+
+Unknown speaker 47:59 
+For these ones, what would they see in the get in the page? That we never called wise API. So little bit of that research is left Malaysia. But you got the idea, right? That's where I'm going. I don't want another flag. Flags are very hard to maintain. I already have one risk model flag which which is killing me. Yeah, OK. So which is when it goes, Why? When it goes and when it you know, it's it's killing me. I'm not. I'm not favour of any other flag. We have enough data to figure out when to call it again. 
+
+Unknown speaker 48:37 
+It should be both based on the system source code and some of those values. Yeah, yeah. 
+
+Unknown speaker 48:45 
+Ya o K o k. 
+
+Unknown speaker 48:47 
+Next. And Malaysian, I have another question. No. OK, thank you. Thank you. What else, David? Uh, Lino? Oh, now Amanda is gone. Leno. Just she dropped. OK, so maybe, uh. Maybe you would be able to. To answer my question. 
+
+Unknown speaker 49:12 
+OK, which one is it? I think we're. OK, so recapitulation, uh, quick recapitulation. So when processing a branch endorsement pro right, we're running this rule. Payments type input and we're getting this claim amount. So basically it's a check amount, alright. 
+
+Unknown speaker 49:38 
+Uh, someone when dealing with uh, an approved uh. And and nonexistent reference ID, right? Mm-hmm. Then we are basically. Setting the claim amount, yeah, and and setting the approximate claim amount very good here. OK, So, OK, so when they're when dealing with an approved one and an existing reference ad right are uh, we are calculating the funds activity total and so on and doing some calculation based on that adjustment report and so on. OK. And we are setting that to the claim amount. 
+
+Unknown speaker 50:14 
+So here this line just want to be sure that we were gonna yeah, I mean this one no, we are getting a answer in an e-mail from Laura. Yeah, so I have the comment here specifically this comment says for approximately amount if there's an existing claim and the OK an existing claim and the check received mm-hmm is rejected. Alright, this is this question is out there and let me check if Lauren responded because she was going to. 
+
+Unknown speaker 50:44 
+Respond with the answer. I I I I saw Amanda's e-mail and the comment is this 1 so I just put it here for now. Umm. So the the answer only includes involves rejected branch endorsement. So for for the approved ones, uh. 
+
+Unknown speaker 51:02 
+it seems like if there's an existing the actual greater than 0.
