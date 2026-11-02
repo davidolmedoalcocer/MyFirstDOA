@@ -111,3 +111,204 @@
   
   Si quieres, puedo seguir leyendo el ApplierService y el ManifestService para explicarte exactamente cómo se traduce esta solicitud en algo que corre en
   Kubernetes — esa es la pieza que conecta "lo que el usuario pidió" con "lo que DevOps realmente despliega".
+
+
+No entiendo que son productos, dame ejemplos de productos que maneja la solucion, porque productos pueden ser playeras, servicios, etc       
+                                                                                                                                               
+  Ademas, No entiendo cuando dies usuario crea, no se que es usuario es muy generic ya que soy nuevo en la aplicacion, no la conozco y usuario 
+  es clients, administradores, staff, etc..no entiendo que es usuario para ti                                                                  
+                                                                                                                                               
+  Por ejemplo pones El usuario está armando la solicitud (puede seguir editando)., que es usuario?                                             
+                                                                                                                                               
+                                                                                                                                               
+  Me ayudarias explicandome el flujo con un ejemplo y siendo claro en cosas como usuario quiero saber si es usuario de infios o usuarios de    
+  clients de infios. Quiero un ejemplo de como llega un tenant a estar closed                                                                  
+                                                                                                                                               
+  Tambien quiero entender desde la ui, que pagina debo ingresar y que opciones porque me estas explicando el backend pero no veo nada de front 
+  end                                                                                                                                          
+ 
+• Buenas preguntas. Voy a verificar con el código qué es exactamente un "Producto" y quiénes son los "usuarios" antes de responderte, en lugar
+  de asumir.
+• Read (5 files)
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/Product.cs
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/ProductVersion.cs
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/User.cs, /workspaces/dev-portal/devPortalService/src/Domain/Models/Tenant.cs
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/Customer.cs
+• Read /workspaces/dev-portal/database/liquibase/tables/products.yaml
+
+• Ahora reviso cómo se identifica a un "admin" versus un usuario "customer" en el código (ya lo vimos parcialmente), y busco la vista de
+  frontend donde se crea/envía/aprueba un DeploymentRequest, para darte la ruta exacta en pantalla.
+• Glob "{adminUi,tenantUi}/src/**/*{eployment,Deploy}*.vue"
+  No files found matching pattern: {adminUi,tenantUi}/src/**/*{eployment,Deploy}*.vue
+• Code DeploymentRequest
+    Searched symbols
+    ╰ path=/workspaces/dev-portal/sharedUIComponents
+
+• No hay vistas .vue con "deployment/deploy" en el nombre dentro de adminUi/tenantUi. Busco en qué vistas/componentes se usan esos servicios,
+  para encontrar la pantalla real.
+• Grep "deploymentRequestService|DeploymentRequestStatus|submitDeploymentRequest"
+    ╰ output_mode=files_with_matches, path=/workspaces/dev-portal, include=*.vue
+  12 matches in 4 files
+    → /workspaces/dev-portal/sharedUIComponents/src/components/TenantDashboard.vue (6)
+    → /workspaces/dev-portal/sharedUIComponents/src/components/ConfigurationTabPanel.vue (2)
+    → /workspaces/dev-portal/sharedUIComponents/src/components/SecretsTabPanel.vue (2)
+• Read (2 files)
+    /workspaces/dev-portal/tenantUi/src/views, /workspaces/dev-portal/tenantUi/src/components
+
+• Encontré la pantalla real: TenantDashboard.vue en sharedUIComponents, con pestañas de Productos, Configuración y Secretos. Leo ese componente
+  y el ProductTabPanel.vue para confirmar exactamente qué ve y qué puede hacer el usuario en pantalla.
+• Read (2 files)
+    /workspaces/dev-portal/sharedUIComponents/src/components/TenantDashboard.vue
+    /workspaces/dev-portal/sharedUIComponents/src/components/ProductTabPanel.vue
+
+• Ahora tengo la pantalla real. Te explico todo con tu vocabulario y ejemplos concretos.
+  
+  1. Qué es un "Producto" aquí
+  
+  Confirmé el modelo en devPortalService/src/Domain/Models/Product.cs:
+  
+  public class Product {
+      public string ProductName { get; set; }
+      public string Namespace { get; set; }
+      public Guid? CustomerId { get; set; }
+      public ICollection<ProductVersion> ProductVersions { get; set; }
+  }
+  
+  No son playeras ni mercadería. Son aplicaciones de software desplegables, cada una con:
+  - Un nombre (ProductName).
+  - Un namespace de Kubernetes donde vive (Namespace — literalmente el namespace de K8s).
+  - Varias versiones (ProductVersion), cada una con una imagen Docker (DockerImageTag), opcionalmente un chart de Helm (HelmChartTag), y un
+  número de versión semántica (MajorVersion.MinorVersion.PatchVersion).
+  
+  No hay datos de ejemplo reales en el repositorio (no vi ningún "seed" con nombres de producto concretos), así que te doy ejemplos plausibles
+  según el dominio, marcados como ejemplo, no como dato real del sistema:
+  
+  │ Ejemplo (inventado, no es dato real del repo): si Infios vende un sistema de gestión de almacenes, un "Producto" podría llamarse
+  warehouse-api (el backend) o warehouse-ui (el frontend), cada uno con versiones como 2.3.1, desplegado en el namespace warehouse-prod.
+  
+  En resumen: un Producto es una pieza de software de Infios que un cliente puede tener instalada en su ambiente, no un artículo físico.
+  
+  2. Quién es "el usuario" — aclarando los tres roles
+  
+  Tienes toda la razón en pedir esto, fui impreciso. El código distingue claramente tres tipos de personas, y confirmé en
+  devPortalService/src/Domain/Models/User.cs y en el componente de UI que acabo de leer:
+  
+  ┌─────────────────┬─────────────────────────────────────────┬────────────────────────┬────────────────────────────────────────────────┐
+  │ Rol             │ Quién es en la vida real                │ Dónde entra            │ Evidencia en código                            │
+  ├─────────────────┼─────────────────────────────────────────┼────────────────────────┼────────────────────────────────────────────────┤
+  │ Admin de Infios │ Empleado de Infios (DevOps/soporte) que │ adminUi, puerto 35001  │ isAdmin prop en TenantDashboard.vue; el        │
+  │                 │ gestiona el despliegue de los clientes  │                        │ RequestActorResolver.cs marca IsAdminRequest   │
+  │                 │                                         │                        │ según si entraste por /admin                   │
+  ├─────────────────┼─────────────────────────────────────────┼────────────────────────┼────────────────────────────────────────────────┤
+  │ Usuario del     │ Empleado del cliente que contrató       │ tenantUi, puerto 35002 │ mismo componente TenantDashboard.vue con       │
+  │ Customer        │ Infios, que entra a gestionar sus       │                        │ isAdmin=false; modelo Customer.cs con Tenants, │
+  │ (cliente de     │ propios tenants                         │                        │ Products                                       │
+  │ Infios)         │                                         │                        │                                                │
+  ├─────────────────┼─────────────────────────────────────────┼────────────────────────┼────────────────────────────────────────────────┤
+  │ "Usuario"       │ La fila cacheada en la base de datos de │ Tabla users            │ Comentario textual en User.cs: "Dev Portal     │
+  │ genérico        │ Dev Portal que representa a cualquiera  │                        │ does not own user identity — the Infios Web    │
+  │ (User.cs)       │ de los dos anteriores                   │                        │ Platform is the source of truth"               │
+  └─────────────────┴─────────────────────────────────────────┴────────────────────────┴────────────────────────────────────────────────┘
+  
+  Es decir: tanto el admin de Infios como el empleado del cliente son "usuarios" en la tabla User, pero el sistema los distingue no por un rol
+  guardado en esa tabla, sino por qué puerta usaron para entrar (admin portal vs. customer portal). Esto está confirmado textualmente en el
+  comentario de User.cs: "Admin versus customer access is enforced by the Kong auth plugins and RoutePrefixFilter".
+  
+  Cuando antes dije "el usuario arma la solicitud", me refería al empleado del cliente (Customer), que entra por tenantUi en
+  http://localhost:35002. Un admin de Infios también puede tocar deployment requests desde adminUi, pero con un permiso extra: "Claim"
+  (reclamar), que solo aparece si isAdmin = true (confirmado en TenantDashboard.vue: v-if="canClaimSelected" requiere props.isAdmin).
+  
+  3. La pantalla real donde esto ocurre
+  
+  Encontré el componente exacto: sharedUIComponents/src/components/TenantDashboard.vue. Lo usan tanto adminUi como tenantUi (por eso es
+  "compartido"), pero con comportamiento distinto según el rol.
+  
+  Si entras como empleado del Customer, la ruta es:
+  
+  http://localhost:35002/devportal/tenantui/
+  
+  Esa URL carga tenantUi/src/views/CustomerDashboardView.vue, que a su vez usa tenantUi/src/components/TenantDashboardWrapper.vue, que envuelve
+  al TenantDashboard.vue compartido.
+  
+  Qué ves en pantalla (confirmado en el template de TenantDashboard.vue):
+  
+  1. Un panel lateral izquierdo con la lista de Tenants (ambientes) del cliente, buscable.
+  2. Cada tenant tiene un ícono de color ("pip") que indica si tiene una solicitud de despliegue activa y en qué estado está.
+  3. Al seleccionar un tenant, ves pestañas: Products, Configuration, Secrets (confirmado por los componentes ProductTabPanel.vue,
+  ConfigurationTabPanel.vue, SecretsTabPanel.vue que vimos en la búsqueda).
+  4. En la pestaña Products hay un botón "Actions" con tres opciones: Add New Products, Change Versions, Remove — esto es exactamente donde se
+  arma el DeploymentRequestProductVersion con Action = Add/Update/Remove que vimos en el backend.
+  5. Arriba a la derecha hay dos botones: "Discard" y "Deploy".
+  
+  4. El flujo completo con ejemplo concreto
+  
+  Voy a usar un ejemplo inventado, claramente marcado, para que no lo confundas con datos reales.
+  
+  │ Ejemplo: "Acme Corp" es un cliente de Infios (Customer). Tiene un tenant llamado "Acme-Prod" (Tenant). María trabaja en Acme Corp y tiene
+  acceso al Tenant UI de Infios.
+  
+  Paso 1 — Crear (Draft). María entra a http://localhost:35002/devportal/tenantui/, selecciona el tenant "Acme-Prod" en el panel izquierdo, va
+  a la pestaña Products, pulsa "Actions" → "Add New Products", y agrega el producto warehouse-api versión 2.3.1.
+  
+  En este momento, el backend (confirmado en DeploymentRequestService.Create) crea una fila DeploymentRequest con Status = Draft, CreatedById =
+  María, OwnerId = María. María puede seguir agregando más productos o configuraciones mientras esté en Draft — es el único estado editable
+  (DeploymentRequestStatuses.Editable).
+  
+  Paso 2 — Enviar (Pending). Cuando María termina de armar lo que quiere, pulsa el botón "Deploy" en la esquina superior derecha (lo vi en el
+  template: @click="onRequestDeployment"). Esto llama a deploymentRequestStore.requestDeployment(...), que en el backend ejecuta SubmitAsync:
+  el estado pasa de Draft a Pending, se registra SubmittedById = María, SubmittedAt = ahora.
+  
+  Paso 3 — Revisión por Infios. Un empleado de Infios (DevOps) entra a http://localhost:35001/devportal/adminui/, ve la solicitud "Pending" de
+  Acme-Prod. Puede:
+  - Aprobarla (MarkApprovedAsync): pasa a Approved.
+  - Cerrarla sin aprobar (MarkClosedAsync), con un motivo obligatorio.
+  
+  Paso 4a — Camino exitoso. DevOps despliega realmente los cambios en Kubernetes (lo hace el DeploymentRequestApplierService que mencioné al
+  final de la respuesta anterior, aún no leído en detalle) y marca MarkDeployedAsync: estado pasa a Deployed.
+  
+  Paso 4b — Camino de falla. Si el despliegue falla, DevOps marca MarkFailedAsync: estado pasa a Failed.
+  
+  5. Ejemplo de cómo se llega a Closed
+  
+  Confirmado en el código (DeploymentRequestWorkflowService.MarkClosedAsync y las transiciones permitidas): solo se puede cerrar desde Pending
+  o Approved, nunca desde Draft directamente a Closed por este método (para descartar un Draft existe otra acción: el botón "Discard" que vimos
+  en pantalla, que es distinto a "Closed" — revisa la nota abajo).
+  
+  │ Ejemplo: María envía la solicitud (Pending). DevOps la revisa y descubre que Acme Corp pidió una versión de warehouse-api que ya fue
+  retirada de soporte. En vez de aprobarla, DevOps llama a la acción de cierre con el motivo: "Version 2.3.1 is deprecated, please resubmit
+  with 2.4.0 or later". El backend exige ese texto (UnprocessableEntityException si viene vacío) y guarda ClosedById = DevOps, ClosedAt =
+  ahora, ClosureReason = ese texto. El estado final queda en Closed.
+  
+  Aclaración importante que noté mientras revisaba: el botón "Discard" que ves en pantalla (onDiscard → deploymentRequestStore.discardDraft) no
+  es lo mismo que el estado Closed del backend. Por el nombre y el contexto (solo aparece habilitado cuando hasDraft es verdadero), sospecho
+  que "Discard" borra el Draft directamente en vez de pasar por el flujo de estados — pero no confirmé el código de discardDraft en el backend,
+  así que esto es una inferencia, no un hecho verificado. Si quieres, lo reviso en el siguiente paso.
+  
+  6. Resumen de quién hace qué, en una tabla
+  
+  ┌───────────────────────┬─────────────────────┬───────────────────────────┬────────────────────────────────────────────────────────────┐
+  │ Acción                │ Quién la hace       │ Desde qué URL             │ Botón/menú en pantalla                                     │
+  ├───────────────────────┼─────────────────────┼───────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ Crear/editar Draft    │ Empleado del        │ localhost:35002 (o 35001) │ Pestaña "Products" → "Actions" → "Add New Products"        │
+  │ (agregar productos)   │ Customer (o admin)  │                           │                                                            │
+  ├───────────────────────┼─────────────────────┼───────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ Enviar a revisión     │ Empleado del        │ mismo                     │ Botón "Deploy"                                             │
+  │ (Draft→Pending)       │ Customer (dueño del │                           │                                                            │
+  │                       │ draft)              │                           │                                                            │
+  ├───────────────────────┼─────────────────────┼───────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ Aprobar / Cerrar /    │ Admin de Infios     │ localhost:35001           │ (no vi el botón exacto para esto en el componente leído —  │
+  │ Desplegar / Marcar    │ (DevOps)            │                           │ probablemente en otra vista del adminUi que no he          │
+  │ fallo                 │                     │                           │ explorado)                                                 │
+  ├───────────────────────┼─────────────────────┼───────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ "Claim" (tomar        │ Solo Admin de       │ localhost:35001           │ Diálogo de auditoría → botón "Claim"                       │
+  │ control de un draft   │ Infios              │                           │                                                            │
+  │ ajeno)                │                     │                           │                                                            │
+  ├───────────────────────┼─────────────────────┼───────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ Descartar cambios     │ Dueño del draft     │ ambas                     │ Botón "Discard"                                            │
+  └───────────────────────┴─────────────────────┴───────────────────────────┴────────────────────────────────────────────────────────────┘
+  
+  No encontré todavía en el adminUi la pantalla específica donde DevOps aprueba/despliega/marca fallo — el componente que revisé maneja la
+  creación y el envío, no la aprobación. Si quieres, busco esa pantalla para completar el cuadro.
+
+
+
