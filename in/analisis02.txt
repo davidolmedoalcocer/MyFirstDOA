@@ -1,0 +1,113 @@
+  explica qué es DeploymentRequest en devPortalService, cómo se crea y qué estado puede tener                                                                  
+                                                                                                                                                               
+    Después de leer el análisis, abre los archivos que mencione para confirmar con tu propio ojo lo que el agente explica.                                     
+ 
+• Voy a leer el modelo de dominio, el servicio y los estados definidos para explicarte con precisión.
+• Read (3 files)
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/DeploymentRequest.cs
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/DeploymentRequestStatus.cs
+    /workspaces/dev-portal/devPortalService/src/Domain/Models/DeploymentRequestAction.cs
+
+• Excelente, esto confirma y detalla exactamente lo que te resumí. Ahora leo el servicio de workflow y de creación para explicarte cómo se crea y cómo avanza.
+• Read (2 files)
+    /workspaces/dev-portal/devPortalService/src/Domain.Services/DeploymentRequestWorkflowService.cs
+    /workspaces/dev-portal/devPortalService/src/Domain.Services/DeploymentRequestService.cs
+
+• Tengo lo necesario para una explicación completa y verificada. Aquí está.
+  
+  Qué es DeploymentRequest
+  
+  Confirmé el modelo en devPortalService/src/Domain/Models/DeploymentRequest.cs. Es la "solicitud de despliegue" que mencionó tu jefe: representa el snapshot
+  del estado deseado de productos y configuraciones que un usuario quiere ver desplegados en el Kubernetes de un tenant.
+  
+  Campos clave del modelo:
+  - TenantId: a qué tenant pertenece.
+  - Status: en qué etapa del flujo está (ver abajo).
+  - CreatedById / OwnerId: quién la creó (inmutable) y quién la controla actualmente (puede cambiar vía "claim"/"take ownership").
+  - SubmittedById/At, ApprovedById/At, DeployedById/At, ClosedById/At: quién hizo cada transición y cuándo — es una auditoría completa del ciclo de vida.
+  - PullRequestUrl: confirma que el mecanismo real de despliegue pasa por un Pull Request (probablemente GitOps).
+  - DeploymentRequestProductVersions: la colección de productos/versiones que se quieren Agregar, Actualizar o Quitar (DeploymentRequestAction: Add, Update,
+  Remove — en DeploymentRequestAction.cs).
+  - DeploymentRequestSettings: los cambios de configuración/secretos que viajan junto con esos productos.
+  
+  Los 6 estados posibles
+  
+  Confirmado en devPortalService/src/Domain/Models/DeploymentRequestStatus.cs:
+  
+  ┌──────────┬──────────────────────────────────────────────────────────────────────────────┐
+  │ Estado   │ Significado                                                                  │
+  ├──────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Draft    │ El usuario está armando la solicitud (puede seguir editando).                │
+  ├──────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Pending  │ Enviada para revisión (el "App Developer" ya creó el PR).                    │
+  ├──────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Approved │ DevOps la aprobó (mergeó el PR).                                             │
+  ├──────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Deployed │ DevOps la desplegó con éxito.                                                │
+  ├──────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Failed   │ DevOps intentó desplegar y falló.                                            │
+  ├──────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Closed   │ Cerrada (cancelada o descartada), con un motivo obligatorio (ClosureReason). │
+  └──────────┴──────────────────────────────────────────────────────────────────────────────┘
+  
+  El mismo archivo documenta las transiciones permitidas en un comentario explícito:
+  
+  // Draft -> Pending: App Developer submits (creates PR)
+  // Pending -> Approved: DevOps approves (merges PR)
+  // Pending -> Closed: DevOps or App Developer closes
+  // Approved -> Deployed: DevOps deploys
+  // Approved -> Failed: DevOps reports deployment failure
+  // Approved -> Closed: DevOps closes
+  
+  Esto coincide exactamente con lo que te explicó tu jefe: usuario crea → DevOps revisa/aprueba → se despliega. El código impide saltos inválidos; por ejemplo,
+  no puedes pasar de Draft directo a Deployed. Eso lo garantiza CanTransitionTo en el mismo archivo, usado por el servicio de workflow.
+  
+  Solo Draft es editable (DeploymentRequestStatuses.Editable), y solo hay una solicitud activa por tenant a la vez (Draft, Pending o Approved cuentan como
+  "Active" — ver DeploymentRequestStatuses.Active).
+  
+  Cómo se crea
+  
+  Confirmado en devPortalService/src/Domain.Services/DeploymentRequestService.cs, método Create:
+  
+  1. Busca si el tenant ya tiene un borrador activo (GetActiveDraftForTenantAsync).
+  2. Si existe y pertenece a otro usuario, lanza OwnershipConflictException — nadie puede tocar el borrador de otra persona sin "reclamarlo" primero.
+  3. Si no existe borrador, crea uno nuevo con Status = DeploymentRequestStatus.Draft, OwnerId = CreatedById (el creador es el dueño inicial).
+  4. Si ya existe, fusiona los cambios nuevos dentro del mismo borrador (añade, actualiza o quita productos de la lista) en vez de crear otro.
+  5. Todo esto corre dentro de una transacción de base de datos (BeginTransactionAsync), junto con la población automática de los DeploymentRequestSetting
+  asociados a cada producto añadido.
+  
+  Cómo avanza de estado
+  
+  Confirmado en devPortalService/src/Domain.Services/DeploymentRequestWorkflowService.cs. Hay un método por transición:
+  
+  - SubmitAsync → Draft → Pending. Requiere ser el dueño (RequireOwnership: true). Antes de confirmar, resuelve los valores finales de los settings
+  (ResolveSettingsAsync) — es el punto donde el "estado deseado" se congela para generar el manifiesto de despliegue.
+  - MarkApprovedAsync → Pending → Approved.
+  - MarkDeployedAsync → Approved → Deployed. Antes de confirmar, aplica realmente los cambios al tenant (ApplyRequestToTenantAsync) — este es el paso que
+  efectivamente "hace" el despliegue.
+  - MarkFailedAsync → Approved → Failed.
+  - MarkClosedAsync → cierra desde Pending o Approved, exige un motivo de texto no vacío.
+  
+  Cada transición pasa por el método genérico ExecuteTransitionAsync, que:
+  1. Verifica que la transición sea válida con CanTransitionTo.
+  2. Abre una transacción.
+  3. Ejecuta un paso opcional "pre-commit" (resolver settings, o aplicar al tenant).
+  4. Cambia el Status y guarda.
+  5. Emite un evento (eventService.Broadcast) — probablemente para notificar en tiempo real a la UI vía el IEventBroadcastService que vimos antes en
+  Program.cs.
+  
+  Para seguir investigando tú mismo
+  
+  Archivos para abrir en orden, con lo que vas a encontrar en cada uno:
+  
+  1. devPortalService/src/Domain/Models/DeploymentRequest.cs — ya leído, el modelo.
+  2. devPortalService/src/Domain/Models/DeploymentRequestStatus.cs — ya leído, estados y transiciones.
+  3. devPortalService/src/Domain.Services/DeploymentRequestService.cs — creación y edición del borrador.
+  4. devPortalService/src/Domain.Services/DeploymentRequestWorkflowService.cs — las transiciones de estado.
+  5. devPortalService/src/Domain.Services/DeploymentRequestApplierService.cs — qué pasa exactamente al desplegar (no lo leí en detalle todavía).
+  6. devPortalService/src/Domain.Services/DeploymentRequestManifestService.cs — cómo se genera el manifiesto de K8s (tampoco leído en detalle).
+  7. devPortalService/src/Api/Controllers/OData/DeploymentRequestsController.cs — cómo se expone todo esto por HTTP.
+  8. devPortalService/src/Api/Controllers/TenantDeploymentController.cs — vale la pena mirarlo, suena relacionado a nivel de tenant.
+  
+  Si quieres, puedo seguir leyendo el ApplierService y el ManifestService para explicarte exactamente cómo se traduce esta solicitud en algo que corre en
+  Kubernetes — esa es la pieza que conecta "lo que el usuario pidió" con "lo que DevOps realmente despliega".
