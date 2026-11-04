@@ -1,0 +1,175 @@
+node ➜ /workspaces/dev-portal (develop) $ git --no-pager diff HEAD..origin/develop -- .vscode/tasks.json
+diff --git a/.vscode/tasks.json b/.vscode/tasks.json
+index f7cae7dd..0cfe45de 100644
+--- a/.vscode/tasks.json
++++ b/.vscode/tasks.json
+@@ -1,4 +1,5 @@
+ // .vscode/tasks.json
++// Labels are prefixed so typing "Dev" or "E2E" in the task picker shows one stack.
+ {
+   "version": "2.0.0",
+   "tasks": [
+@@ -13,95 +14,100 @@
+         "focus": true
+       },
+       "problemMatcher": [],
+-      "detail": "Authenticates GitHub/Azure, installs SDLC framework, and pulls team configuration."
++      "detail": "Signs in to GitHub, Azure and Kiro, installs the SDLC framework, and pulls the team configuration."
+     },
+     {
+-      "label": "Database - Remove Postgres Volume",
++      // Prompts default to Development, the common case.
++      "label": "Dev: Start Services",
+       "type": "shell",
+-      "command": "docker volume rm dev-portal_pg_data",
+-      "group": "build",
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_devStart.sh services ${input:mode}",
++      "group": "none",
+       "problemMatcher": [],
+-      "detail": "Deletes the Docker volume used for Postgres data."
++      "detail": "Postgres, migrations, seeder and API. Development opens Swagger when the API is ready."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Start Dev Portal Services (Development)",
++      "label": "Dev: Start UI",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_startDevPortal.sh",
+-      "problemMatcher": []
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_devStart.sh ui ${input:mode}",
++      "group": "none",
++      "problemMatcher": [],
++      "detail": "Admin and tenant UIs. Development installs dependencies and runs them with hot reload."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Start Dev Portal Services (Production)",
++      "label": "Dev: Stop",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_startDevPortalProdService.sh",
+-      "problemMatcher": []
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_devStop.sh ${input:deleteDatabase}",
++      "group": "none",
++      "problemMatcher": [],
++      "detail": "Stops the services and the UIs. Optionally deletes the dev database."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Start UI (Production)",
++      "label": "E2E: Run Tests",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_startDevPortalProdUI.sh",
+-      "problemMatcher": []
++      // The filter is left unquoted on purpose so it splits into Playwright arguments.
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_e2eRun.sh ${input:e2eFilter}",
++      "group": { "kind": "test", "isDefault": true },
++      "problemMatcher": [],
++      "detail": "Starts or refreshes the testing stack, then runs Playwright. Leave the filter blank for the full suite."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Start UI (Development)",
++      "label": "E2E: UI Mode",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_startDevPortalDevUI.sh",
+-      "problemMatcher": []
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_e2eUiMode.sh",
++      "group": "test",
++      "isBackground": true,
++      "problemMatcher": [],
++      "detail": "Playwright UI mode on http://localhost:8082 for running and stepping through single tests."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Stop UI",
++      "label": "E2E: Show Last Report",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_stopUI.sh",
+-      "problemMatcher": []
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_e2eShowReport.sh",
++      "group": "test",
++      "isBackground": true,
++      "problemMatcher": [],
++      "detail": "Serves e2e/playwright-report on port 9323, with traces and videos."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Stop Dev Portal Services",
++      "label": "E2E: Stop",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_stopDevPortal.sh",
+-      "problemMatcher": []
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_e2eStop.sh ${input:deleteDatabase}",
++      "group": "none",
++      "problemMatcher": [],
++      "detail": "Stops the testing stack. Optionally deletes the test database so seed data is reapplied."
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Start Dozzle",
++      "label": "Logs: Dozzle",
+       "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_startDozzle.sh",
+-      "problemMatcher": []
++      "command": "bash ${workspaceFolder}/.workspaceScripts/task_dozzle.sh",
++      "group": "none",
++      "isBackground": true,
++      "problemMatcher": [],
++      "detail": "Live container logs on http://localhost:8888. Ctrl+C in the terminal stops it."
++    }
++  ],
++  "inputs": [
++    {
++      // Plain strings, because VS Code shows each option's value in the picker.
++      // The scripts map these words to what they do.
++      "id": "mode",
++      "type": "pickString",
++      "description": "Mode",
++      "options": ["Development", "Production"],
++      "default": "Development"
+     },
+     {
+-      "group": {
+-        "kind": "none",
+-        "isDefault": false
+-      },
+-      "label": "Stop Dozzle",
+-      "type": "shell",
+-      "command": "bash ${workspaceFolder}/.workspaceScripts/task_stopDozzle.sh",
+-      "problemMatcher": []
++      "id": "deleteDatabase",
++      "type": "pickString",
++      "description": "Delete the database?",
++      "options": ["No", "Yes"],
++      "default": "No"
++    },
++    {
++      "id": "e2eFilter",
++      "type": "promptString",
++      "description": "Playwright filter (blank runs all tests)",
++      "default": ""
+     }
+   ]
+ }
+node ➜ /workspaces/dev-portal (develop) $ 
