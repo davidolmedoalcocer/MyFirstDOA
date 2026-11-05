@@ -1,0 +1,92 @@
+node ➜ /workspaces/dev-portal (develop) $ sed -n '1,90p' .kiro/steering/uikit-foundations.md
+# @infios/uikit — Foundations
+
+Design tokens and foundation utility classes for `@infios/uikit`. Tokens are CSS custom properties (`--infios-*`); foundation utilities are classes (`infios-*`). This file is generated from the token and foundation CSS sources — do not hand-edit.
+
+## Using design tokens
+
+Import the token and theme CSS once in your app entry point, then reference tokens with `var()`:
+
+```css
+@import '@infios/uikit/themes/tokens.css';
+@import '@infios/uikit/themes/light.css';
+/* Optional dark theme: @import '@infios/uikit/themes/dark.css'; */
+
+.my-element {
+  color: var(--infios-color-text);
+  background: var(--infios-color-bg-surface);
+  padding: var(--infios-spacing-sm);
+  border-radius: var(--infios-border-radius-md);
+}
+```
+
+Design tokens are custom properties, so they inherit across the shadow DOM boundary: inside a Lit component you can use `var(--infios-*)` directly in the component's own styles, with nothing to import.
+
+### Semantic token usage rule
+
+Always style with **semantic** tokens (e.g. `--infios-color-text-primary`, `--infios-color-bg-surface`, `--infios-color-border`) — never the raw **primitive** palette tokens (e.g. `--infios-color-acce2`, `--infios-color-neutral1`). Semantic tokens carry intent and are remapped for dark mode in `dark.css`; primitives are theme-agnostic, so using them directly breaks theming. The primitive palette below is listed only so you can see what each semantic token resolves to.
+
+## Spacing
+
+| Token | Value |
+| --- | --- |
+| `--infios-spacing-3xs` | `4px` |
+| `--infios-spacing-2xs` | `8px` |
+| `--infios-spacing-xs` | `12px` |
+| `--infios-spacing-sm` | `16px` |
+| `--infios-spacing-md` | `20px` |
+| `--infios-spacing-lg` | `24px` |
+| `--infios-spacing-xl` | `28px` |
+| `--infios-spacing-2xl` | `32px` |
+| `--infios-spacing-3xl` | `40px` |
+| `--infios-spacing-4xl` | `48px` |
+| `--infios-spacing-5xl` | `64px` |
+
+## Border radius
+
+| Token | Value |
+| --- | --- |
+| `--infios-border-radius-sm` | `2px` |
+| `--infios-border-radius-md` | `4px` |
+| `--infios-border-radius-lg` | `8px` |
+| `--infios-border-radius-xl` | `16px` |
+| `--infios-border-radius-pill` | `9999px` |
+
+## Border width
+
+| Token | Value |
+| --- | --- |
+| `--infios-border-width-sm` | `1px` |
+| `--infios-border-width-md` | `2px` |
+
+## Typography
+
+Font families:
+
+| Token | Value |
+| --- | --- |
+| `--infios-font-family-default` | `'Noto Sans Variable', sans-serif` |
+| `--infios-font-family-code` | `'Noto Sans Mono Variable', monospace` |
+
+Font sizes (each size pairs with a default line height):
+
+| Font size token | Size | Line-height token | Line height |
+| --- | --- | --- | --- |
+| `--infios-text-font-size-sm` | 12px | `--infios-text-line-height-sm` | 16px |
+| `--infios-text-base-font-size` | 14px | `--infios-text-base-line-height` | 20px |
+| `--infios-text-font-size-md` | 16px | `--infios-text-line-height-md` | 24px |
+| `--infios-text-font-size-lg` | 18px | `--infios-text-line-height-lg` | 24px |
+| `--infios-text-font-size-xl` | 20px | `--infios-text-line-height-xl` | 32px |
+| `--infios-text-font-size-2xl` | 24px | `--infios-text-line-height-2xl` | 32px |
+| `--infios-text-font-size-3xl` | 28px | `--infios-text-line-height-3xl` | 40px |
+| `--infios-text-font-size-4xl` | 32px | `--infios-text-line-height-4xl` | 40px |
+
+Font weights:
+
+| Token | Value |
+| --- | --- |
+| `--infios-font-weight-light` | `300` |
+| `--infios-font-weight-regular` | `400` |
+| `--infios-font-weight-bold` | `700` |
+| `--infios-font-weight-black` | `900` |
+node ➜ /workspaces/dev-portal (develop) $ 
