@@ -1,0 +1,274 @@
+No modifiqué nada. Solo lectura de código, configuración y historial de Git.
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  Flujo de carga de tenants
+  
+  AdminDashboardView.vue / CustomerDashboardView.vue
+     └─ TenantDashboardWrapper.vue  (props: customerId)
+         └─ sharedUIComponents/src/components/TenantDashboard.vue   ← único render de la lista
+             └─ useTenantStore().fetchTenantsByCustomer(customerId)
+                 └─ tenantService.getTenants()
+                     └─ odataClient.get('/tenants')   [fetch]
+                         └─ GET {BACKEND}/odata/Tenants
+                              ?$filter=customerId eq <guid>
+                              &$expand=cluster($expand=clusterGroup)
+                              &$orderby=name
+                                  └─ TenantsController (hereda Get())
+                                      └─ ITenantService.ReadAll()
+                                          └─ BaseRepository.CreateQuery() → DbSet<Tenant>.AsNoTracking()
+                                              └─ SELECT ... FROM "Tenant" LEFT JOIN "Cluster" LEFT JOIN "ClusterGroup"
+  
+  La respuesta vuelve como sobre OData { "value": [...] }, se desenvuelve en tenantService.ts:8, se reordena en tenant.ts:23, y la plantilla
+  no itera tenants sino results, la salida del filtro de búsqueda con debounce (TenantDashboard.vue:39, 264-268).
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  HECHOS (confirmados en código/configuración)
+  
+  H1 — La consulta de tenants siempre expande clusterGroup
+  
+  sharedUIComponents/src/stores/tenant.ts:17-22, función fetchTenantsByCustomer:
+  
+  20:  $expand: 'cluster($expand=clusterGroup)',
+  
+  No es opcional ni condicional. Toda carga de la lista, en ambos portales, obliga al backend a leer la tabla ClusterGroup.
+  
+  H2 — El modelo .NET ahora exige la columna ClusterGroup.EnvironmentType
+  - devPortalService/src/Domain/Models/ClusterGroup.cs:10 → public EnvironmentType EnvironmentType { get; set; }
+  - devPortalService/src/Infrastructure/Configurations/ClusterGroupConfiguration.cs:14-17 →
+  .HasConversion<string>().HasMaxLength(20).IsRequired()
+  
+  Al no haber $select, EF Core proyecta todas las columnas de ClusterGroup, incluida "EnvironmentType".
+  
+  H3 — Esa columna llegó con la actualización de Git, no estaba antes
+  - Changeset: database/liquibase/tables/cluster_groups.yaml:39-56, id add-clustergroup-environmenttype.
+  - Commit: b40a41b8 (2026-10-29 20:55:51) feat(api): add EnvironmentType to ClusterGroup (AB#498893).
+  - git merge-base --is-ancestor b40a41b8 8c38ba8c → NO. El commit no existía en el HEAD anterior.
+  
+  H4 — Ventana temporal exacta del desfase
+  
+  git reflog:
+  
+  8c38ba8c  2026-10-29 14:58:23  clone
+  10ff3544  2026-11-05 00:34:00  merge origin/develop: Fast-forward
+  
+  Los contenedores se levantaron con el árbol 8c38ba8c. Liquibase corrió una sola vez con ese changelog.
+  
+  H5 — Liquibase es un contenedor de un solo disparo y nadie lo vuelve a ejecutar
+  
+  docker-compose.yml:27-41:
+  
+  29:    container_name: dev-portal-liquibase-init
+  41:    restart: "no"
+  
+  Y docker-compose.yml:88-89:
+  
+  88:    depends_on:
+  89:      - dev-portal-liquibase
+  
+  Sin condition: service_completed_successfully (contraste: docker-compose-testing.yml:67 sí lo usa). Al no reiniciar el stack, ningún
+  changeset nuevo se aplicó.
+  
+  H6 — El código .NET y el frontend sí se actualizaron en caliente
+  
+  docker-compose.yml:90-91, 99, 113: el código entra por bind mount (devcontainer_workspace:/app), working_dir:
+  /app/dev-portal/devPortalService/src, comando dotnet watch run. Los UI usan Dockerfile.dev con el mismo volumen
+  (docker-compose-devui.yml:12-20, 26-34). Resultado: backend y frontend nuevos, base de datos vieja.
+  
+  H7 — El backend NO filtra tenants de ninguna forma
+  - BaseModelODataControllerGetCollection.cs:56-64 → Ok(GetAllQueryService.ReadAll())
+  - BaseModelService.cs:95-98 → _repository.CreateQuery().AsNoTracking()
+  - BaseRepository.cs:10-13 → return _dbSet;
+  
+  Sin .Where, sin HasQueryFilter (cero ocurrencias en todo devPortalService/src), sin columna de borrado lógico en Tenant
+  (Domain/Models/Tenant.cs:8-12, TenantConfiguration.cs:9-28), sin [Authorize], sin scoping por cliente en lectura. La hipótesis "un filtro
+  oculta los registros" queda descartada.
+  
+  H8 — El fallo de red es invisible en la UI
+  
+  stores/tenant.ts:24-27:
+  
+  24:  } catch (err: any) {
+  25:      error.value = err.message
+  26:      tenants.value = []
+  
+  TenantDashboard.vue nunca enlaza tenantStore.error ni tenantStore.loading. No hay banner de error ni estado vacío. Cualquier 500, 404, 400 o
+  JSON inválido produce exactamente lo que usted observa: lista vacía y silencio.
+  
+  H9 — El flujo de tenants del frontend no cambió
+  
+  git diff --stat 8c38ba8c..HEAD sobre stores/tenant.ts, tenantService.ts, TenantDashboard.vue: sin cambios. El
+  $expand=cluster($expand=clusterGroup) ya existía en 8c38ba8c. Descarta un cambio de contrato de DTO en el frontend como causa.
+  
+  H10 — El portal Admin empieza legítimamente vacío
+  
+  adminUi/src/views/AdminDashboardView.vue:40-41: selectedCustomerId = ref<string>(''). Con customerId indefinido, TenantDashboard.vue:251-253
+   vacía la lista a propósito. Hay que seleccionar un cliente antes de juzgar.
+  
+  H11 — Existen dos instancias de PostgreSQL con el mismo nombre de base
+  
+  ┌──────────────────────────────────┬─────────────────────────────┬─────────────┬─────────────────┬───────────┐
+  │ Stack                            │ Contenedor                  │ Puerto host │ Volumen         │ DB        │
+  ├──────────────────────────────────┼─────────────────────────────┼─────────────┼─────────────────┼───────────┤
+  │ docker-compose.yml:11-23         │ dev-portal-postgres-db      │ 5432        │ pg_data         │ devPortal │
+  ├──────────────────────────────────┼─────────────────────────────┼─────────────┼─────────────────┼───────────┤
+  │ docker-compose-testing.yml:16-31 │ dev-portal-postgres-testing │ 5433        │ pg_data_testing │ devPortal │
+  └──────────────────────────────────┴─────────────────────────────┴─────────────┴─────────────────┴───────────┘
+  
+  Mismo nombre de base y mismo usuario. El nombre no distingue nada; solo el puerto/volumen.
+  
+  H12 — No hay pgAdmin en el repositorio
+  
+  grep -rni pgadmin sobre yml/yaml/json/sh/md: cero resultados. Su pgAdmin es externo y su conexión no está versionada, por lo que no puedo
+  verificar a qué instancia apunta.
+  
+  H13 — El renombrado ProductVersion → ProductBuild fue "in place", sin renameTable
+  
+  git diff --stat 8c38ba8c..HEAD -- database/:
+  
+  tables/{product_versions.yaml => product_builds.yaml}
+  tables/{tenant_product_versions.yaml => tenant_product_builds.yaml}
+  tables/product_version_settings.yaml            |  4 +-
+  database/liquibase/master.yaml                  | 10 +-
+  
+  product_version_settings.yaml conserva el id ya aplicado create-product-version-setting-table pero cambió su cuerpo (FK y
+  referencedTableName → ProductBuild). El mensaje de 78ce4e11 lo dice: "greenfield; dev/QA reset their database volume after merge".
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  INFERENCIAS (causa posible, no verificada contra la BD viva)
+  
+  I1 — La consulta de tenants falla con 42703 undefined_column sobre "EnvironmentType" ★ principal
+  
+  Cadena: H4 + H5 → la BD no tiene la columna. H6 + H2 → el API sí la pide. H1 → cada carga de la lista la toca. H8 → el error no se muestra.
+  
+  El SQL generado incluiría cg."EnvironmentType", que no existe, y Npgsql lanzaría 42703.
+  
+  Detalle importante para el diagnóstico: Ok(query) devuelve un IQueryable (BaseModelODataControllerGetCollection.cs:63), así que la
+  enumeración ocurre durante la serialización, posiblemente después de enviar las cabeceras. Por eso el panel de red del navegador puede
+  mostrar 200 OK con cuerpo truncado, no un 500 limpio. Si ve 200, no descarte esta hipótesis: el res.json() de httpClient.ts fallaría igual y
+  caería en el catch de H8.
+  
+  Encaja con todos los síntomas: ambos portales afectados (código compartido, H1), antes funcionaba (H9 — el frontend no cambió), y los seis
+  tenants siguen en la tabla (H7 — nada los borra ni los filtra).
+  
+  I2 — Cliente equivocado o cliente sin tenants
+  
+  Los seis tenants sembrados pertenecen todos a CustomerId = a0000000-0000-0000-0000-000000000003 ("Test Customer"), según
+  database/liquibase/tables_e2e/test_seed_data.yaml:51-118. El seed también crea a0000000-...-0013 ("Other Customer") sin ningún tenant
+  (:39-49). Si en Admin selecciona "Other Customer", cero resultados es el comportamiento correcto. En el portal de cliente, si
+  /api/users/current falla, stores/user.ts deja user indefinido (el error se absorbe), customerId queda vacío y TenantDashboard.vue:251-253
+  vacía la lista.
+  
+  I3 — Posible deriva adicional por el renombrado ProductBuild
+  
+  La tabla "Tenant" no se tocó, así que esto no explica la lista vacía. Pero sí predice que la pestaña Products falle (relation
+  "TenantProductBuild" does not exist) y, sobre todo (H13), que el próximo arranque de Liquibase aborte por checksum antes de aplicar nada.
+  Relevante para planear el arreglo, no para el síntoma actual.
+  
+  I4 — dotnet watch pudo recompilar parcialmente
+  
+  Decenas de archivos .cs cambiaron bajo un proceso en ejecución. dotnet watch pudo reiniciar bien, fallar el rebuild y quedarse sirviendo el
+  binario anterior, o quedar en un estado mixto. Esto cambia el pronóstico: si el API aún ejecuta el código viejo, I1 todavía no se manifiesta
+  y aparecerá al reiniciar.
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  DESCONOCIDOS (requieren comprobación)
+  
+  ┌─────┬────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ #   │ Qué falta                │ Cómo se resuelve (solo lectura)                                                                    │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D1  │ Si                       │ Consulta a information_schema.columns                                                              │
+  │     │ ClusterGroup."Environmen │                                                                                                    │
+  │     │ tType" existe en la BD   │                                                                                                    │
+  │     │ viva                     │                                                                                                    │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D2  │ Qué changesets registra  │ SELECT id FROM databasechangelog                                                                   │
+  │     │ DATABASECHANGELOG        │                                                                                                    │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D3  │ Status y cuerpo real de  │ Panel de red del navegador                                                                         │
+  │     │ GET /odata/Tenants?...   │                                                                                                    │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D4  │ Si pgAdmin apunta al     │ inet_server_port() en pgAdmin                                                                      │
+  │     │ 5432 o al 5433 (H11/H12) │                                                                                                    │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D5  │ Si el API en ejecución   │ Logs de dev-portal-service                                                                         │
+  │     │ es el código nuevo (I4)  │                                                                                                    │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D6  │ Si los portales corren   │ Ambos stacks publican 35001/35002 (docker-compose-devui.yml:12-14, docker-compose-produi.yml:7-9). │
+  │     │ en modo dev o prod       │ En prod, nginx.conf:8-10 no tiene proxy de API y BACKEND_SERVICE_URL=/devportal/service/admin      │
+  │     │                          │ devolvería index.html con 200                                                                      │
+  ├─────┼──────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ D7  │ Si el Tenant que ve en   │ Comparar conteo en pgAdmin con la respuesta de Swagger                                             │
+  │     │ pgAdmin es el que lee el │                                                                                                    │
+  │     │ API                      │                                                                                                    │
+  └─────┴──────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  Causas más probables, priorizadas
+  
+  1. Deriva de esquema por actualizar Git sin reiniciar contenedores — falta ClusterGroup.EnvironmentType. (I1) Evidencia:
+  H1+H2+H3+H4+H5+H6+H8+H9. Es la única hipótesis que explica los cuatro síntomas simultáneamente. Esta es la respuesta directa a su pregunta
+  6: sí, actualizar Git sin reiniciar produce exactamente esta inconsistencia, porque el código vive en bind mount y se recarga en caliente,
+  mientras que las migraciones corren en un contenedor de un solo disparo (restart: "no") que ya terminó.
+  
+  2. customerId vacío o apuntando a un cliente sin tenants. (I2, H10) Barata de descartar y, en Admin, un falso positivo muy frecuente.
+  
+  3. pgAdmin conectado a la instancia de testing (5433) mientras la app usa la de dev (5432). (H11, H12) Mismo nombre devPortal en ambas.
+  Explicaría ver filas que el API nunca consulta. Menos probable porque usted ya veía tenants antes, pero no verificado.
+  
+  4. Portales en modo producción sin ingress delante. (D6) Produciría 200 con HTML y lista vacía silenciosa. Improbable como regresión (no
+  habría funcionado nunca), pero no descartado.
+  
+  Descartado por evidencia: filtros por cliente/usuario/permisos/estado en el backend (H7) y cambios de contrato en el frontend (H9).
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  Primera comprobación segura recomendada
+  
+  Una sola consulta de solo lectura en pgAdmin, sobre la conexión que ya tiene abierta. No escribe, no migra, no toca contenedores, y
+  discrimina entre las causas 1, 3 y 7 a la vez:
+  
+  SELECT
+      current_database()                                    AS db,
+      inet_server_port()                                    AS puerto_servidor,
+      (SELECT count(*) FROM information_schema.columns
+         WHERE table_name = 'ClusterGroup'
+           AND column_name = 'EnvironmentType')             AS tiene_environmenttype,
+      (SELECT count(*) FROM databasechangelog
+         WHERE id = 'add-clustergroup-environmenttype')     AS changeset_aplicado,
+      (SELECT count(*) FROM information_schema.tables
+         WHERE table_name = 'ProductBuild')                 AS tabla_productbuild,
+      (SELECT count(*) FROM information_schema.tables
+         WHERE table_name = 'ProductVersion')               AS tabla_productversion,
+      (SELECT count(*) FROM public."Tenant")                AS total_tenants;
+  
+  Cómo leer el resultado:
+  
+  - tiene_environmenttype = 0 y changeset_aplicado = 0 → confirma la causa 1. La BD está en el estado previo al pull y el $expand de
+  clusterGroup rompe cada carga de la lista.
+  - tabla_productversion = 1 y tabla_productbuild = 0 → corrobora de forma independiente que el changelog quedó congelado antes de 78ce4e11
+  (H13), y anticipa el fallo de checksum en el próximo arranque de Liquibase.
+  - puerto_servidor → responde su pregunta 7. El API se conecta a Host=dev-portal-postgres;Port=5432;Database=devPortal
+  (devPortalService/src/appsettings.Development.json:9), que corresponde al contenedor dev-portal-postgres-db publicado en el 5432 del host
+  (docker-compose.yml:19-20). Si pgAdmin reporta 5433, está mirando pg_data_testing, un volumen distinto (H11). Como ambas bases se llaman
+  devPortal, el nombre no sirve para distinguirlas: el puerto y el volumen sí.
+  - total_tenants = 6 → reconfirma que los datos están y que el problema está entre el API y el esquema, no en los datos.
+  
+  Si prefiere no tocar pgAdmin, la alternativa igualmente segura es abrir el panel de red del navegador y mirar la petición
+  …/odata/Tenants?$filter=…, con un cliente ya seleccionado en Admin. Fíjese en el cuerpo, no solo en el código de estado: por I1 puede llegar
+  un 200 con JSON truncado. En la consola, useTenantStore().error contiene el mensaje que la UI nunca muestra (H8).
+  
+  Como verificación cruzada posterior, también de solo lectura: en Swagger (http://localhost:35000/swagger/index.html) ejecute GET
+  /odata/Tenants sin $expand y luego con $expand=cluster($expand=clusterGroup). Si la primera devuelve los seis tenants y la segunda falla, la
+  causa 1 queda probada de extremo a extremo.
+ 
+▸ Credits: turn 29.15 • session 29.15 | Time: 9m 57s
+• agent "sdlc" not found, using "default"
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Default · claude-opus-5 · thinking · high · ◔ 11%                                                           /workspaces/dev-portal · (develop)
+
+›  ask a question or describe a task ↵
