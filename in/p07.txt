@@ -1,0 +1,7 @@
+Realiza la comprobación setup-check del SDLC Framework de Infios.
+
+Verifica los agentes, las configuraciones y las conexiones MCP disponibles.
+
+No modifiques archivos ni configuraciones. No instales ni actualices herramientas. Si alguna operación requiere cambios, detente y solicítame autorización.
+
+Responde en español indicando qué funciona, qué presenta advertencias y qué falta configurar.
