@@ -1,0 +1,246 @@
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  Qué ejecuta exactamente Dev: Start Services
+  
+  .vscode/tasks.json:21-23   label "Dev: Start Services"
+    → task_devStart.sh services Development
+        .workspaceScripts/task_devStart.sh:11-12  case "services:Development"
+          → .workspaceScripts/task_startDevPortal.sh:2  source configure-k8s-services.sh
+          → .workspaceScripts/task_startDevPortal.sh:3  docker compose -f ./docker-compose.yml up -d --build
+          → .workspaceScripts/task_startDevPortal.sh:7-8 espera /readyz y abre Swagger
+  
+  El --build reconstruye la imagen de dev-portal-liquibase (docker-compose.yml:28 → build: ./database), y database/Dockerfile:44 hace COPY
+  liquibase/ /liquibase/changelog/. Los changelogs viven dentro de la imagen, no en bind mount. Por eso este comando sí intentaría aplicar las
+  migraciones nuevas, a diferencia de un up -d sin --build.
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  HECHOS
+  
+  H1 — La tarea no elimina datos ni volúmenes
+  
+  task_startDevPortal.sh:3 es up -d --build. No hay down, no hay -v, no hay --renew-anon-volumes. El volumen pg_data (docker-compose.yml:2,
+  montado en :21-22 como pg_data:/var/lib/postgresql/data) sobrevive.
+  
+  La única ruta destructiva del repositorio es otra tarea: Dev: Stop (.vscode/tasks.json:37-39) con el input deleteDatabase = "Yes", que en
+  task_devStop.sh:11 añade -v a docker compose down. El default es "No" (.vscode/tasks.json:100-105). Son dos entradas contiguas en el
+  selector de tareas; conviene no equivocarse.
+  
+  H2 — El volumen de datos es el mismo (no hay riesgo de "proyecto nuevo")
+  
+  .env:1 → COMPOSE_PROJECT_NAME=dev-portal. task_startDevPortal.sh:3 no pasa -p, pero Docker Compose lee .env automáticamente, y
+  task_devStop.sh:18 usa -p dev-portal explícitamente. Mismo proyecto, mismo volumen. No se crearía un pg_data paralelo que simule pérdida de
+  datos.
+  
+  H3 — docker-compose.yml no cambió entre los dos commits
+  
+  git diff --stat 8c38ba8c..HEAD -- docker-compose.yml → sin cambios. Todo el delta de infraestructura está en .vscode/tasks.json y
+  .workspaceScripts/. La topología de contenedores y volúmenes es idéntica, así que up -d no recrearía Postgres por cambio de configuración.
+  
+  H4 — Rotura de checksum confirmada en un changeset ya aplicado
+  
+  database/liquibase/tables/product_version_settings.yaml:
+  - id create-product-version-setting-table (línea 3), author infios (línea 4)
+  - Ruta del archivo sin cambios (sigue incluido en master.yaml:38)
+  - Cuerpo modificado en las líneas 29-30:
+  
+  -            constraintName: FK_ProductVersionSetting_ProductVersion_ProductVersionId
+  -            referencedTableName: ProductVersion
+  +            constraintName: FK_ProductVersionSetting_ProductBuild_ProductVersionId
+  +            referencedTableName: ProductBuild
+  
+  Misma identidad (id, author, filename), contenido distinto. Es el escenario canónico de ValidationFailedException de Liquibase.
+  
+  H5 — No existe ninguna válvula de escape para checksums
+  
+  grep -rn 'logicalFilePath\|validCheckSum\|runOnChange\|runAlways' database/liquibase/ → cero resultados. Las únicas directivas de tolerancia
+  en todo el changelog son preConditions con onFail: MARK_RAN en tables/tenant_settings.yaml:112-113 y
+  tables/drop_legacy_config_secret_tables.yaml (nueve bloques), ninguna relacionada con los archivos renombrados.
+  
+  Sin logicalFilePath, el renombrado de archivo cambia la identidad del changeset. Sin validCheckSum, el cambio de cuerpo de H4 no está
+  autorizado.
+  
+  H6 — 33 changesets adquieren identidad nueva
+  
+  Cuatro archivos renombrados (git diff --stat 8c38ba8c..HEAD -- database/), con id y ruta cambiados a la vez:
+  
+  ┌───────────────────────────────────────────────┬───────────────┬─────────────────────────────────────────────────┐
+  │ Archivo nuevo                                 │ Changesets    │ Registrado en BD como                           │
+  ├───────────────────────────────────────────────┼───────────────┼─────────────────────────────────────────────────┤
+  │ tables/product_builds.yaml                    │ 5             │ tables/product_versions.yaml                    │
+  ├───────────────────────────────────────────────┼───────────────┼─────────────────────────────────────────────────┤
+  │ tables/tenant_product_builds.yaml             │ 3             │ tables/tenant_product_versions.yaml             │
+  ├───────────────────────────────────────────────┼───────────────┼─────────────────────────────────────────────────┤
+  │ tables/template_product_builds.yaml           │ 3             │ tables/template_product_versions.yaml           │
+  ├───────────────────────────────────────────────┼───────────────┼─────────────────────────────────────────────────┤
+  │ tables/deployment_request_product_builds.yaml │ 1             │ tables/deployment_request_product_versions.yaml │
+  ├───────────────────────────────────────────────┼───────────────┼─────────────────────────────────────────────────┤
+  │ tables_e2e/test_seed_data.yaml                │ 21 ids nuevos │ ids test-seed-product-version*                  │
+  ├───────────────────────────────────────────────┼───────────────┼─────────────────────────────────────────────────┤
+  │ Total                                         │ 33            │                                                 │
+  └───────────────────────────────────────────────┴───────────────┴─────────────────────────────────────────────────┘
+  
+  Ejemplo: la BD tiene tables/product_versions.yaml :: create-product-versions-table; el changelog nuevo ofrece tables/product_builds.yaml ::
+  create-product-builds-table. Para Liquibase son dos changesets sin relación.
+  
+  H7 — No hay ninguna operación renameTable
+  
+  Los changesets renombrados siguen siendo createTable con tableName: ProductBuild, TenantProductBuild, TemplateProductBuild,
+  DeploymentRequestProductBuild. No existe ruta de migración de datos desde las tablas antiguas. El commit 78ce4e11 lo declara: "in place
+  (greenfield; dev/QA reset their database volume after merge)".
+  
+  H8 — La migración que usted necesita está al principio del changelog
+  
+  master.yaml:6 incluye tables/cluster_groups.yaml, cuyo changeset add-clustergroup-environmenttype está en las líneas 39-56. Se procesaría
+  antes de master.yaml:24-57 (los renombrados) y de master.yaml:38 (el checksum roto).
+  
+  Esto importa por el orden: Liquibase valida todo el changelog antes de ejecutar nada, así que la posición temprana no lo protege.
+  
+  H9 — La versión de Liquibase es idéntica antes y después
+  
+  database/Dockerfile:18 → FROM liquibase/liquibase:4.31.1, versión fijada. Último cambio del archivo: 3176706a (2026-10-27), anterior al clon
+  del 2026-10-29. Y database/ no lo lista entre los archivos modificados en el rango. Mismo algoritmo de checksum en ambos lados; descarta un
+  falso positivo por cambio de versión.
+  
+  H10 — Si Liquibase falla, la API arranca igual
+  
+  docker-compose.yml:88-89:
+  
+  88:    depends_on:
+  89:      - dev-portal-liquibase
+  
+  Sin condition: service_completed_successfully (contraste con docker-compose-testing.yml:67, que sí lo tiene). El fallo de migración sería
+  silencioso a nivel de stack: dev-portal-service se recrea y sigue sirviendo contra el esquema viejo.
+  
+  H11 — El seeder no toca la base de datos de Dev Portal
+  
+  docker-compose.yml:43-80: dev-portal-seeder solo recibe PRIVATE_TENANT, USER_SESSION_MODEL, CONFIGURE_CUSTOMER_PORTAL,
+  CONFIGURE_ADMIN_PORTAL y PLATFORM_API_URL: http://host.docker.internal:35003. No tiene cadena de conexión a Postgres; habla con la API de
+  Platform. restart: "no". No es un vector de pérdida de datos.
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  INFERENCIAS
+  
+  I1 — Dev: Start Services abortaría la migración por validación, sin aplicar nada ★
+  
+  Liquibase ejecuta update en dos fases: primero recorre el changelog con el ValidatingVisitor, comparando el MD5SUM almacenado en
+  DATABASECHANGELOG de cada changeset ya aplicado; solo si la validación pasa entra el UpdateVisitor que ejecuta DDL.
+  
+  Con H4 + H5 + H9, la comparación de create-product-version-setting-table falla → ValidationFailedException → salida distinta de cero antes
+  de ejecutar el primer changeset.
+  
+  Consecuencias:
+  - Sus datos no se tocan. No se ejecuta DDL ni DML. Los seis tenants, ProductVersion, TenantProductVersion y todo lo demás quedan intactos.
+  - El problema no se arregla. add-clustergroup-environmenttype (H8) nunca se aplica, aunque esté antes en el orden.
+  - El 500 / 42703 persiste, y la API vuelve a levantarse encima del esquema viejo (H10).
+  
+  Confianza: alta para el comportamiento de Liquibase; condicionada a que el changeset esté efectivamente registrado (ver D1).
+  
+  I2 — La rama peligrosa: si la validación no abortara, habría orfandad silenciosa de datos
+  
+  Escenario hipotético (alguien añade validCheckSum, o usa --contexts distinto, o borra la fila conflictiva de DATABASECHANGELOG): los 33
+  changesets de H6 se considerarían nuevos y se ejecutarían. Como ProductBuild, TenantProductBuild, TemplateProductBuild y
+  DeploymentRequestProductBuild no existen, los createTable tendrían éxito.
+  
+  Resultado: esquema duplicado. Tablas nuevas vacías convivirían con las antiguas, que conservan los datos.
+  FK_ProductVersionSetting_ProductBuild_ProductVersionId apuntaría a la tabla nueva vacía. El API, que mapea a los nombres nuevos, leería cero
+  productos. Los datos no se borran, pero quedan inalcanzables — y no hay renameTable que los traiga (H7).
+  
+  Es decir: el único camino por el que esta migración "funciona" es también el camino que abandona sus datos de productos. Esto no es un bug
+  del changelog, es su diseño declarado: se escribió asumiendo volumen recreado (H7).
+  
+  I3 — Riesgo menor y acotado: escritura de metadatos y candado
+  
+  update sí escribe en DATABASECHANGELOGLOCK para adquirir el candado antes de validar. En un fallo limpio por validación lo libera. Si el
+  contenedor muriera a medias, podría quedar un candado obsoleto que bloquee ejecuciones posteriores y exija intervención manual. Es metadato
+  de Liquibase, no datos de negocio, pero conviene saberlo: contradice parcialmente un "no escribe absolutamente nada".
+  
+  I4 — La tarea sí tiene un efecto colateral útil y otro neutro
+  
+  up -d --build recrearía dev-portal-service, lo que garantizaría que la API ejecuta el código nuevo (elimina la duda I4 del diagnóstico
+  anterior sobre un dotnet watch en estado mixto). Y reconstruiría la imagen de Liquibase, dejándola lista. Ninguno de los dos efectos arregla
+  el esquema.
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  DESCONOCIDOS
+  
+  ┌─────┬─────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────┐
+  │ #   │ Qué falta confirmar                     │ Por qué importa                                                                     │
+  ├─────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+  │ D1  │ Que                                     │ Es la premisa de I1. Si no estuviera registrado, no habría conflicto de checksum y  │
+  │     │ create-product-version-setting-table    │ caeríamos en I2, el escenario con orfandad de datos                                 │
+  │     │ esté en DATABASECHANGELOG con su MD5SUM │                                                                                     │
+  ├─────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+  │ D2  │ Qué otros changesets registrados        │ Podrían existir más roturas de checksum además de H4; solo revisé el rango de       │
+  │     │ difieren del changelog nuevo            │ commits indicado                                                                    │
+  ├─────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+  │ D3  │ Si DATABASECHANGELOGLOCK tiene un       │ Un candado retenido haría fallar la ejecución por una causa distinta y confundiría  │
+  │     │ candado obsoleto ahora mismo            │ el diagnóstico (I3)                                                                 │
+  ├─────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+  │ D4  │ Si las tablas ProductVersion* antiguas  │ Determina si la ruta "recrear volumen" es aceptable o si hace falta un plan de      │
+  │     │ contienen datos que le importen         │ migración de datos. En dev suelen ser datos de seed, pero no puedo saberlo sin      │
+  │     │                                         │ consultar                                                                           │
+  ├─────┼─────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+  │ D5  │ Comportamiento exacto de validación en  │ Documentado y estable, pero no verificado en su entorno; no ejecuté nada            │
+  │     │ Liquibase 4.31.1 ejecutándose           │                                                                                     │
+  └─────┴─────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────┘
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  Veredicto: ¿es segura Dev: Start Services para su ambiente existente?
+  
+  Para sus datos: sí, es segura. No borra el volumen, no ejecuta down, no pasa -v, usa el mismo proyecto y volumen, y el seeder no escribe en
+  esa base (H1, H2, H3, H11). La única escritura esperable es el candado de Liquibase (I3).
+  
+  Para resolver su problema: no sirve. Abortaría por checksum antes de aplicar add-clustergroup-environmenttype (I1, H4, H5, H8). Volvería al
+  mismo estado: HTTP 500 con 42703, porque la API se reinicia con el código nuevo sobre el esquema viejo (H10).
+  
+  La advertencia de fondo: este changelog no admite migración incremental sobre su base actual. Los 33 changesets renombrados sin renameTable
+  ni logicalFilePath (H6, H7) fueron escritos bajo el supuesto explícito de volumen recreado. Cualquier intento de forzar la validación para
+  "desbloquear" la migración le dará la columna que necesita, pero al precio de dejar sus datos de productos en tablas huérfanas (I2). No hay
+  una tercera vía dentro del repositorio tal como está.
+  
+  Dicho de otro modo: ejecutar la tarea es inofensivo pero inútil; forzarla es efectivo pero costoso. La decisión real no es técnica sobre
+  Liquibase, es si los datos de ProductVersion* de su entorno valen algo (D4).
+  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  
+  Primera comprobación adicional de solo lectura
+  
+  Una consulta en pgAdmin, sobre la base del puerto 5432. Valida D1, que es la premisa que separa el escenario inofensivo (I1) del escenario
+  con orfandad (I2):
+  
+  SELECT orderexecuted, id, author, filename, md5sum, dateexecuted
+  FROM databasechangelog
+  WHERE filename LIKE '%product_version%'
+     OR filename LIKE '%cluster_groups%'
+  ORDER BY orderexecuted;
+  
+  Cómo interpretar:
+  
+  - Aparece tables/product_version_settings.yaml :: create-product-version-setting-table con un md5sum no nulo → confirma I1. Dev: Start
+  Services abortará en validación sin tocar datos, y sin arreglar nada. Es el resultado esperado.
+  - Aparecen tables/product_versions.yaml, tables/tenant_product_versions.yaml, etc. con los ids *-product-versions-* → confirma H6 desde el
+  lado de la base: las 33 identidades nuevas no tienen contrapartida registrada y se ejecutarían como nuevas si la validación se saltara.
+  - No aparece add-clustergroup-environmenttype → ya confirmado por usted; esta consulta lo deja en el mismo informe, junto a su causa.
+  
+  Conviene añadir, en la misma sesión de solo lectura, la verificación de D3:
+  
+  SELECT id, locked, lockgranted, lockedby FROM databasechangeloglock;
+  
+  Con locked = false el candado está libre y I3 no aplica hoy.
+  
+  Si prefiere evidencia directa del motor en lugar de inferirla, existe liquibase status --verbose y liquibase validate, que son operaciones
+  de lectura y reportarían el conflicto de checksum textualmente. No lo recomiendo como primera comprobación porque requiere levantar un
+  contenedor efímero desde database/, y usted pidió explícitamente no iniciar contenedores. Las dos consultas SQL anteriores dan la misma
+  certeza sin salir de pgAdmin.
+ 
+▸ Credits: turn 7.86 • session 37.01 | Time: 3m 46s
+• agent "sdlc" not found, using "default"
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Default · claude-opus-5 · thinking · high · ◔ 14%                                                           /workspaces/dev-portal · (develop)
+
+›  ask a question or describe a task ↵
+                                          
