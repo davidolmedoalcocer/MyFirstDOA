@@ -1,0 +1,82 @@
+node ➜ /workspaces/dev-portal (develop) $ docker logs --tail 80 dev-portal-liquibase-init
+Running Changeset: tables/template_settings.yaml::create-template-setting-table::infios
+Running Changeset: tables/template_settings.yaml::create-template-setting-unique-index::infios
+Running Changeset: tables/template_settings.yaml::create-template-setting-foreign-keys::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-deployment-request-secret-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-deployment-request-config-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-template-secret-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-template-config-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-tenant-secret-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-tenant-config-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-secret-definition-table::infios
+Running Changeset: tables/drop_legacy_config_secret_tables.yaml::drop-config-definition-table::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-cluster-group::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-cluster::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-customer::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-customer-other::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-devportal::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-alpha::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-beta::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-zeta::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-clean::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-draft::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-product-build::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-billing-portal::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-billing-portal-100::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-billing-portal-110::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-carrier-gateway::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-carrier-gateway-320::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-carrier-gateway-330::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-warehouse-core::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-warehouse-core-100::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-warehouse-core-120::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-product-build-clean-warehouse-core::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-product-build-clean-test-product::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-empty-catalog::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-northwind-planner::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-northwind-planner-100::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-no-customer::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-no-customer-100::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-product-build-clean-no-customer-product::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-product-build-zeta-billing-portal::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-product-build-zeta-no-customer-product::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-inventory-insights::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-inventory-insights-090::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-inventory-insights-100::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-routing-engine::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-build-routing-engine-201::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-user::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-draft-deployment-request::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-draft-deployment-request-product-build::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-customer-public-tenant::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-customer-public-tenant-other::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-customer-public-tenant-KoerberRealm::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-templates::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-template-product-builds::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-settings::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-setting-versions::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-setting-versions-placement-casing::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-product-version-settings::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-settings::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-tenant-settings-zeta::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-template-settings::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-draft-deployment-request-settings::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-draft-deployment-request-setting-versions::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-settings-additional::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-setting-versions-additional::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-setting-references-additional::infios
+Running Changeset: tables_e2e/test_seed_data.yaml::test-seed-cluster-group-environment-type::infios
+
+UPDATE SUMMARY
+Run:                        129
+Previously run:               0
+Filtered out:                 0
+-------------------------------
+Total change sets:          129
+
+Liquibase: Update has been successful. Rows affected: 253
+Liquibase command 'update' was executed successfully.
+Liquibase complete. Exiting.
+node ➜ /workspaces/dev-portal (develop) $ 
