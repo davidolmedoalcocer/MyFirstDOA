@@ -1,0 +1,22 @@
+Continuemos con el diagnóstico anterior de Dev Portal.
+
+Ya confirmamos mediante PostgreSQL y los logs de .NET que:
+
+- La tabla Tenant conserva seis registros.
+- La columna ClusterGroup.EnvironmentType no existe.
+- La migración add-clustergroup-environmenttype no aparece en databasechangelog.
+- La API devuelve HTTP 500 con PostgreSQL 42703 al consultar tenants incluyendo ClusterGroup.
+
+Necesito que analices exclusivamente las migraciones de Liquibase y la tarea Dev: Start Services.
+
+**Objetivo:** Determinar si es seguro ejecutar las migraciones sobre mi base de datos actual sin eliminar datos ni reconstruir el ambiente.
+
+Revisa los archivos docker-compose.yml, database/liquibase/master.yaml y los changesets afectados entre los commits 8c38ba8c y 10ff3544.
+
+Identifica si hay cambios de checksums, renombrados de tablas o migraciones que requieran reinicializar la base de datos.
+
+No modifiques archivos, no ejecutes migraciones, no reinicies contenedores, no borres volúmenes y no cambies la base de datos.
+
+Responde en español, separando HECHOS, INFERENCIAS y DESCONOCIDOS, con rutas y líneas exactas.
+
+Termina indicando si la tarea Dev: Start Services es segura para mi ambiente existente y cuál sería la primera comprobación adicional de solo lectura, si fuera necesaria.
