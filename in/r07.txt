@@ -1,0 +1,43 @@
+node ➜ /workspaces/dev-portal (develop) $ cat .workspaceScripts/task_e2eRun.sh
+#!/usr/bin/env bash
+# Runs the Playwright suite in the e2e container against the testing stack.
+# Arguments are passed to `playwright test`; none runs the full suite. Examples:
+#   --project=api            only the API tests
+#   -g "509994"              tests whose title matches (titles include the work item ID)
+#   ui/tests/tenantUi/AddProducts.test.ts
+source "$(dirname "$0")/e2e-common.sh"
+
+# Start or refresh the stack first, so tests always run against the current source.
+bash .workspaceScripts/task_e2eStart.sh || exit 1
+
+# Test files are copied into the e2e image, so rebuild it to pick up edits (cached
+# layers make this quick when nothing changed).
+echo ""
+echo "Building the test runner..."
+"${E2E_COMPOSE[@]}" --profile e2e build e2e || exit 1
+
+# Paths inside the container are relative to e2e/, so accept repo-relative paths too.
+args=()
+for a in "$@"; do args+=("${a#e2e/}"); done
+
+RUN_NAME=dev-portal-e2e-run
+docker rm -f "$RUN_NAME" >/dev/null 2>&1
+echo ""
+echo "Running: playwright test ${args[*]:-(full suite)}"
+"${E2E_COMPOSE[@]}" --profile e2e run --no-deps --name "$RUN_NAME" e2e \
+  pnpm exec playwright test "${args[@]}"
+status=$?
+
+# The dev container talks to the host's Docker, so a bind mount would point at a host
+# folder instead of this workspace. Copy the results out of the container instead.
+rm -rf e2e/playwright-report e2e/test-results
+docker cp "$RUN_NAME:/e2e/playwright-report" e2e/playwright-report >/dev/null 2>&1
+docker cp "$RUN_NAME:/e2e/test-results" e2e/test-results >/dev/null 2>&1
+docker rm "$RUN_NAME" >/dev/null 2>&1
+
+echo ""
+if [ -f e2e/playwright-report/index.html ]; then
+  echo "HTML report copied to e2e/playwright-report. Open it with the 'E2E: Show Last Report' task."
+fi
+exit $status
+node ➜ /workspaces/dev-portal (develop) $ 
