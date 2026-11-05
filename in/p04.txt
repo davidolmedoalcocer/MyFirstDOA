@@ -1,0 +1,13 @@
+SELECT
+    current_database() AS base_de_datos,
+    (
+        SELECT COUNT(*)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'ClusterGroup'
+          AND column_name = 'EnvironmentType'
+    ) AS existe_environmenttype,
+    (
+        SELECT COUNT(*)
+        FROM public."Tenant"
+    ) AS total_tenants;
