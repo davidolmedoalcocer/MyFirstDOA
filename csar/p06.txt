@@ -1,0 +1,35 @@
+Vamos a realizar la última validación local de la Etapa B.
+
+No repitas las investigaciones anteriores sobre CSARWeb ni las consultas de logs históricos en Datadog.
+
+**Objetivo:** comprobar mediante una prueba aislada si la instrumentación automática del .NET Tracer de Datadog puede inyectar identificadores de correlación en eventos de Serilog utilizando RenderedCompactJsonFormatter.
+
+Condiciones:
+
+1. No modifiques archivos existentes del repositorio.
+2. No ejecutes CSARWeb ni realices despliegues.
+3. No hagas commits.
+4. Utiliza un proyecto temporal fuera del repositorio.
+5. Utiliza versiones compatibles con las dependencias actuales de CSARWeb.
+6. Comprueba primero que dispones del mecanismo real de auto-instrumentación de Datadog. No asumas que agregar Datadog.Trace como paquete equivale a habilitarla.
+7. Garantiza que no se envíen trazas ni logs a servicios remotos. Si no puedes asegurar ese aislamiento, detén la prueba y explica por qué.
+8. Configura exclusivamente la salida Console en formato JSON.
+9. Genera una traza activa y emite un evento Information y otro Error dentro de ella.
+10. Comprueba si se inyectan automáticamente los identificadores de traza y span sin agregarlos manualmente.
+11. Compara los identificadores emitidos con los de la traza activa.
+12. Emite otro evento sin traza activa y documenta la diferencia.
+
+Al terminar:
+
+- Indica si la inyección automática funcionó realmente.
+- Muestra un ejemplo del JSON generado.
+- Identifica las propiedades utilizadas para trace ID y span ID.
+- Explica si esta prueba aporta evidencia suficiente para conservar únicamente los dos archivos modificados.
+- Confirma que el repositorio no tuvo cambios adicionales.
+- Indica qué deberá validarse posteriormente en Datadog.
+
+Si la prueba no puede realizarse por falta de auto-instrumentación o por restricciones del entorno, no improvises otra implementación. Documenta la limitación.
+
+No agregues middleware ni modifiques el código de CSARWeb.
+
+Responde completamente en español.
