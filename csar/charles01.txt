@@ -1,0 +1,7 @@
+Hi Charles, I checked CSAR UI logging in Datadog and confirmed that logs are reaching Datadog in both QA and Stage.
+
+However, I noticed that the logs are being sent as plain text instead of structured JSON. Some errors are classified as INFO, and the logs are not correlated with APM traces, which makes troubleshooting more difficult.
+
+CSARApi already uses structured JSON logging, so we could follow a similar approach in CSARWeb to improve this.
+
+Let me know if you'd like me to make these changes.
