@@ -1,1 +1,1 @@
-docker compose -f docker-compose-devui.yml up -d --no-build --force-recreate
+docker exec dev-portal-admin-ui id && docker exec dev-portal-tenant-ui id
