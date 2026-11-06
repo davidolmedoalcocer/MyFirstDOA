@@ -1,0 +1,14 @@
+Sí: pude consultar los pipelines actuales mediante MCP. Existe un pipeline C# habilitado, con filtro source:csharp, que contempla explícitamente los campos del formatter utilizado por CSARWeb y CSARApi.
+
+Propiedad	Resultado verificado en el pipeline C#	¿Configuración adicional?
+@t	Incluido en el remapeo de fecha oficial del log	No, para logs que entren en este pipeline
+@m	Incluido en el remapeo del mensaje oficial	No
+@l	Incluido en el remapeo del nivel oficial	No. Su omisión para Information es normal
+@x	Se remapea a error.stack; también existe un procesador de excepciones	No para conservar la excepción. La extracción de sus detalles debe comprobarse con un evento real
+dd.trace_id / dd_trace_id	Ambos están incluidos en el remapeo del trace ID oficial	No, si el tracer los genera correctamente
+dd.span_id / dd_span_id	No encontré un remapeador específico para CSAR en el pipeline C#	No pude confirmar su reconocimiento como span oficial. Esto no impide el enlace por trace ID; el campo puede conservarse como atributo JSON
+Distinción importante: verifiqué la configuración de los procesadores, no la ejecución del JSON nuevo de CSARWeb en Datadog. Los logs de CSARWeb previamente identificados tienen source:csharp, por lo que coinciden con el filtro. Queda comprobar que, tras el despliegue autorizado, el JSON llegue correctamente y no sea alterado por otro procesamiento.
+
+Conclusión: los dos cambios de la Etapa A son suficientes para generar logs estructurados, y el pipeline actual ya contempla @t, @m, @l y @x. No encontré una necesidad concreta de configuración adicional para esos campos. La generación automática de IDs y la correlación efectiva con APM siguen pendientes de validación y son un objetivo separado.
+
+No modifiqué código, pipelines ni configuraciones; Git conserva únicamente los dos cambios de la Etapa A.
