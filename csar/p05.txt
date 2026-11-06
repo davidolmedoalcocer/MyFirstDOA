@@ -1,0 +1,32 @@
+Vamos a ajustar nuestra estrategia de validación.
+
+IMPORTANTE: Cada despliegue requiere revisiones y autorizaciones, por lo que NO podemos desplegar continuamente en Dev, QA o Stage para realizar pruebas.
+
+Nuestro objetivo es completar y validar todos los cambios posibles localmente, para solicitar posteriormente una sola revisión y un único despliegue autorizado.
+
+La Etapa A ya está implementada y validada. No repitas su análisis.
+
+Tienes acceso a Datadog mediante MCP, así que utiliza ese acceso para investigar los logs y las trazas existentes, sin modificar nada.
+
+Necesito que:
+
+1. Revises los logs actuales de CSARWeb y determines si alguno contiene identificadores de traza de Datadog, aunque todavía utilicen texto plano.
+2. Consultes las trazas APM existentes para identificar si hay evidencia de correlación de logs.
+3. Comparares los resultados con los logs y trazas de CSARApi, que ya utiliza JSON estructurado.
+4. Revises si existe evidencia suficiente para determinar que la inyección automática de IDs de Datadog está funcionando.
+5. Si no puedes confirmar la configuración efectiva del tracer, indícalo claramente y evita suposiciones.
+6. Identifiques si es indispensable modificar código adicional antes de solicitar el despliegue.
+7. Propongas las pruebas locales adicionales que realmente sean necesarias para reducir el riesgo.
+
+Restricciones:
+- No modifiques archivos.
+- No ejecutes CSARWeb.
+- No realices despliegues.
+- No hagas commits.
+- No cambies configuraciones de Datadog.
+- No repitas análisis ya completados.
+- No propongas despliegues intermedios para validar cada cambio.
+
+Entrega un reporte breve, en español, separando HECHOS, INFERENCIAS y PENDIENTES DE VERIFICAR.
+
+Termina indicando si recomiendas mantener únicamente los dos archivos modificados en la Etapa A o si existe evidencia concreta que justifique cambios adicionales.
