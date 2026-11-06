@@ -1,0 +1,1 @@
+find . -maxdepth 4 \( -name node_modules -o -name .git \) -prune -o -name Dockerfile.dev -print -exec sed -n '1,160p' {} \;
