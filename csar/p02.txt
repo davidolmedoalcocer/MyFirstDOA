@@ -1,0 +1,33 @@
+Vamos a implementar exclusivamente la Etapa A, utilizando el análisis que acabas de realizar.
+
+**Objetivo:** configurar CSARWeb para generar logs JSON estructurados mediante RenderedCompactJsonFormatter, siguiendo el enfoque existente en CSARApi.
+
+Instrucciones:
+
+1. Trabaja únicamente sobre los dos archivos identificados:
+   - appsettings.json
+   - CSAR.Web.csproj
+
+2. Agrega la configuración del formatter al Console sink existente en appsettings.json, conservando el resto de la configuración.
+
+3. Agrega la referencia explícita a Serilog.Formatting.Compact versión 3.0.0, siempre que sea compatible con la administración de paquetes del repositorio.
+
+4. No modifiques el sink de Elasticsearch, los niveles de logging, los enriquecimientos, Program.cs ni los archivos de configuración específicos de los ambientes.
+
+5. No implementes todavía correlación adicional con APM, middleware ni cambios en Blazor.
+
+6. Después de modificar los archivos, restaura y compila el proyecto. Si falla, investiga la causa antes de proponer otro cambio. No modifiques archivos adicionales sin mi autorización.
+
+7. No ejecutes la aplicación ni envíes logs a Elasticsearch o Datadog. No despliegues en ningún ambiente.
+
+8. Al finalizar, presenta:
+   - Archivos modificados.
+   - Cambios exactos realizados.
+   - Resultado de la restauración y compilación.
+   - Cualquier advertencia o problema encontrado.
+   - Confirmación de que no se modificó el sink de Elasticsearch.
+   - Resultado de git diff y git status.
+
+No continúes con la Etapa B hasta que revisemos los resultados.
+
+Responde completamente en español.
