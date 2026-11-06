@@ -1,4 +1,1 @@
-sed -i \
-  -e '/container_name: dev-portal-admin-ui/a\    user: "1000:1000"' \
-  -e '/container_name: dev-portal-tenant-ui/a\    user: "1000:1000"' \
-  docker-compose-devui.yml
+docker compose -f docker-compose-devui.yml config --quiet
