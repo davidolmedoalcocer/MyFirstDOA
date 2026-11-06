@@ -1,0 +1,11 @@
+Utilizando tu acceso MCP a Datadog y el código de CSARApi y CSARWeb, verifica si Datadog está preparado para interpretar correctamente el JSON que genera RenderedCompactJsonFormatter.
+
+Revisa específicamente el procesamiento de @t, @m, @l y @x, así como los identificadores de correlación de trazas.
+
+Determina si los pipelines actuales ya interpretan estos campos o si requieren alguna configuración adicional.
+
+No modifiques código, pipelines ni configuraciones. No repitas las investigaciones anteriores.
+
+Quiero una respuesta breve en español con una tabla que indique por cada propiedad si Datadog la reconoce correctamente, si necesita configuración adicional o si no pudiste verificarlo.
+
+Termina indicando si los dos cambios que ya implementamos son suficientes para el objetivo de los logs estructurados.
