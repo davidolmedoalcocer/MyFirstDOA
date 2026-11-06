@@ -1,1 +1,1 @@
-docker exec dev-portal-admin-ui id && docker exec dev-portal-tenant-ui id
+git restore -- docker-compose-devui.yml && docker compose -f docker-compose-devui.yml up -d --no-build --force-recreate
