@@ -1,1 +1,1 @@
-docker compose -f docker-compose-devui.yml config --quiet
+docker compose -f docker-compose-devui.yml up -d --no-build --force-recreate
