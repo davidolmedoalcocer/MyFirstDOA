@@ -1,0 +1,32 @@
+Vamos a comenzar la Etapa B: correlación de logs de CSARWeb con trazas de Datadog APM.
+
+La Etapa A ya fue implementada y validada satisfactoriamente. No repitas ese análisis.
+
+**IMPORTANTE: No modifiques código ni archivos de configuración. No ejecutes la aplicación, no realices despliegues ni hagas commits.**
+
+Necesito que investigues:
+
+1. Cómo está configurada actualmente la instrumentación de Datadog APM para CSARWeb.
+2. Si se utiliza inyección automática de identificadores de traza en los logs de Serilog.
+3. Si existen configuraciones relacionadas con DD_LOGS_INJECTION, DD_SERVICE, DD_ENV y DD_VERSION.
+4. Si los logs generados por CSARWeb pueden incluir automáticamente los identificadores de traza y span, utilizando la configuración actual.
+5. Cómo implementa CSARApi su correlación y qué partes de esa implementación son aplicables a CSARWeb.
+6. Si hace falta modificar código o si es suficiente una configuración existente.
+7. Qué diferencias existen entre las solicitudes HTTP tradicionales y las operaciones realizadas dentro de circuitos Blazor Server respecto a la correlación de trazas.
+
+Revisa el código del repositorio y las configuraciones de despliegue disponibles. Si no tienes acceso a la configuración efectiva del clúster, indícalo como pendiente de verificar. No supongas que una variable está habilitada por el simple hecho de existir una traza en Datadog.
+
+**Quiero que me entregues:**
+
+- Qué funciona actualmente.
+- Qué falta por comprobar.
+- Si realmente es necesario hacer cambios.
+- Qué archivos serían afectados, únicamente si los cambios resultan necesarios.
+- La solución más sencilla que preserve el comportamiento actual de CSARWeb.
+- Cómo validar posteriormente la correlación en Datadog.
+
+Separa HECHOS, INFERENCIAS y PENDIENTES DE VERIFICAR.
+
+No propongas middleware adicional si la instrumentación automática existente puede resolver el problema.
+
+Responde completamente en español y detente al terminar el análisis, sin implementar nada.
