@@ -1,1 +1,4 @@
-grep -n -C 4 -E 'volumes:|/app|node_modules|sharedUIComponents' docker-compose-devui.yml
+sed -i \
+  -e '/container_name: dev-portal-admin-ui/a\    user: "1000:1000"' \
+  -e '/container_name: dev-portal-tenant-ui/a\    user: "1000:1000"' \
+  docker-compose-devui.yml
