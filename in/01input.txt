@@ -1,333 +1,100 @@
-# INFIOS DEV PORTAL — CASO 03: PUERTOS Y APERTURA INCORRECTA DEL NAVEGADOR
-
-Actúa como Principal Software Engineer y Software Architect, especializado en VS Code, Dev Containers, Docker Compose, redes, port forwarding, Bash, Node.js y aplicaciones web.
-
-## OBJETIVO
-
-Quiero resolver completamente el Caso 03 del ejercicio personal de aprendizaje sobre Infios Dev Portal.
-
-**Debes realizar en esta misma tarea:**
-
-1. Investigar por qué ocurre el problema.
-2. Identificar la causa real con evidencia del código y del comportamiento.
-3. Implementar una corrección mínima y técnicamente justificada, si corresponde.
-4. Ejecutar pruebas ANTES y DESPUÉS.
-5. Crear scripts reproducibles de demostración.
-6. Generar un único conjunto de documentación HTML en español, con explicación del código.
-7. Preparar un ZIP para copiarlo a mi laptop Windows.
-
-No quiero que termines el análisis y me pidas otro prompt para implementar la solución. Continúa automáticamente mientras puedas realizar el trabajo de manera segura.
-
-## 1. CONTEXTO
-
-Repositorio:
-
-`/workspaces/dev-portal`
-
-Rama actual:
-
-`fix/dev-portal-setup-improvements`
-
-Ya terminamos el Caso 01, relacionado con EACCES. **No debes modificar, revertir ni alterar esa corrección.**
-
-No trabajaremos ahora en el Caso 02, relacionado con PostgreSQL y Liquibase.
-
-### Problema observado — Caso 03
-
-Al ejecutar tareas de desarrollo desde VS Code, el navegador en ocasiones abre direcciones o puertos que no corresponden con la aplicación esperada.
-
-Puertos esperados del proyecto:
-
-- Backend API: `35000`
-- Admin UI: `35001`
-- Tenant UI: `35002`
-
-Durante las pruebas se observaron aperturas o redirecciones hacia otros puertos, incluyendo `55400` y `35003`.
-
-Estos antecedentes son observaciones, NO una causa comprobada.
-
-Debes determinar si existe realmente un defecto y dónde ocurre:
-
-- Definición de tareas VS Code.
-- Scripts Bash que inician aplicaciones.
-- Scripts que abren el navegador.
-- Variables de entorno, especialmente `BROWSER`.
-- Configuración de Dev Containers.
-- Docker Compose y publicación de puertos.
-- Port forwarding de VS Code.
-- Diferencia entre los puertos dentro del contenedor, del host Docker y del navegador de Windows.
-
-No asumas que un puerto reenviado dinámicamente es incorrecto: comprueba si la URL abierta realmente conduce al servicio esperado.
-
-## 2. INVESTIGACIÓN DIRIGIDA
-
-Revisa primero los archivos que intervienen directamente en la apertura del navegador y los puertos.
-
-Identifica con precisión:
-
-- Qué tarea ejecuta el usuario.
-- Qué script llama esa tarea.
-- Qué otros scripts se ejecutan.
-- Qué instrucción intenta abrir el navegador.
-- Qué URL construye.
-- De dónde obtiene el puerto.
-- Qué hace VS Code con esa URL.
-- Qué servicio escucha en cada puerto.
-- En qué punto se produce el comportamiento incorrecto.
-
-Para cada conclusión importante, identifica:
-
-**Archivo + número de línea + código exacto + explicación.**
-
-Distingue:
-
-- HECHO COMPROBADO.
-- INFERENCIA.
-- DESCONOCIDO.
-
-No confundas una respuesta HTTP correcta dentro de Docker con una prueba de que el navegador de Windows abrió la dirección correcta.
-
-No repitas investigaciones que no estén relacionadas con este caso.
-
-## 3. CORRECCIÓN
-
-Si identificas la causa y existe una solución adecuada:
-
-**IMPLEMENTA LA CORRECCIÓN DIRECTAMENTE.**
-
-La solución debe:
-
-- Funcionar para otros desarrolladores, no solamente en mi laptop.
-- Ser compatible con el flujo normal de VS Code y Dev Containers.
-- Evitar direcciones o puertos incorrectos.
-- Mantener las aplicaciones y sus puertos funcionales.
-- Evitar valores fijos que dependan de una configuración particular de Windows.
-- No introducir scripts o configuraciones innecesarias.
-- No cambiar el comportamiento de servicios ajenos al problema.
-
-Modifica exclusivamente los archivos indispensables para el Caso 03.
-
-Antes de modificarlos, conserva una referencia verificable de su contenido original para demostrar el ANTES.
-
-Después muestra el `git diff` exacto y explica por qué cada modificación es necesaria.
-
-**No corrijas algo que no hayas demostrado que está mal.**
-
-Si el comportamiento depende exclusivamente de una característica de VS Code que no se puede controlar desde el repositorio, explícalo y no inventes una corrección.
-
-## 4. DEMOSTRACIÓN ANTES Y DESPUÉS
-
-Quiero poder presentar el problema a Eli de forma práctica.
-
-### ANTES — `before.sh`
-
-Demuestra el comportamiento original utilizando las tareas, scripts y aplicaciones reales de Dev Portal.
-
-Debe mostrar:
-
-- Qué aplicación se intenta iniciar.
-- Qué puerto debería utilizar.
-- Qué URL intenta abrir la configuración original.
-- Qué servicio responde realmente.
-- En qué consiste el fallo y cómo se observa.
-
-### DESPUÉS — `after.sh`
-
-Repite el mismo procedimiento con la solución implementada.
-
-Debe mostrar:
-
-- Qué cambió.
-- Qué URL se construye ahora.
-- Qué servicio responde.
-- Por qué el navegador debe abrir la aplicación correcta.
-- Qué evidencia demuestra que el defecto fue corregido.
-
-**No acepto un proyecto web de ejemplo ni una simulación genérica de puertos como sustituto de Dev Portal.**
-
-Utiliza los archivos, tareas y aplicaciones reales.
-
-Si la prueba requiere interacción con VS Code o con el navegador de Windows que no puedes automatizar desde Kiro CLI, prepara la parte automatizable y documenta exactamente qué acción manual debo realizar.
-
-No declares que comprobaste la apertura del navegador si únicamente comprobaste el contenido de un script o una respuesta HTTP.
-
-Los scripts deben poder ejecutarse varias veces, utilizando recursos temporales cuando sean necesarios y sin alterar los servicios existentes.
-
-Si el ANTES no puede reproducirse de forma segura, indícalo y conserva la evidencia realmente comprobada. No fabriques un resultado exitoso.
-
-## 5. RESTRICCIONES
-
-- Mantén la rama actual.
-- No hagas commit, push ni Pull Request.
-- No cambies de rama ni crees worktrees.
-- No modifiques los cambios del Caso 01.
-- No modifiques archivos de Kiro/SDLC ajenos a este caso.
-- No modifiques bases de datos ni migraciones.
-- No borres ni reconstruyas volúmenes existentes.
-- No elimines `node_modules`.
-- No modifiques credenciales.
-- No detengas ni reconstruyas mi Dev Container.
-- No alteres las aplicaciones reales si puedes verificar el comportamiento sin hacerlo.
-- No utilices `git reset`, `git clean` ni restauraciones generales.
-- No solicites ayuda ni permisos de otros desarrolladores.
-
-Antes de modificar cualquier archivo, inspecciona el estado de Git y preserva los cambios previos.
-
-No consumas recursos innecesarios recreando toda la infraestructura.
-
-## 6. ENTREGABLES
-
-Guarda exclusivamente los archivos personales de demostración y documentación fuera del repositorio:
-
-`/tmp/infios-caso-03-real/`
-
-Estructura:
-
-```text
-/tmp/infios-caso-03-real/
-├── before.sh
-├── after.sh
-├── README.html
-└── guia-para-presentacion.html
-```
-
-Los archivos `.sh`, incluyendo código, comentarios y mensajes, deben estar en INGLÉS.
-
-Los archivos HTML deben estar completamente en ESPAÑOL.
-
-Los dos HTML deben funcionar sin conexión a Internet, abriéndolos directamente en Chrome o Edge.
-
-No utilices librerías ni recursos externos.
-
-### README.html — Documentación técnica
-
-Debe incluir:
-
-**1. Título del problema.**
-
-**2. Descripción del problema.**
-
-Qué observamos, qué debería suceder y qué sucede realmente.
-
-**3. Causa comprobada.**
-
-Explicación técnica respaldada por código.
-
-**4. Descripción de la solución.**
-
-Qué se cambió y por qué corrige el problema.
-
-**5. Tabla de archivos modificados.**
-
-Columnas obligatorias:
-
-- Nombre y ruta del archivo.
-- Cómo estaba ANTES.
-- Qué código se modificó.
-- Cómo quedó DESPUÉS.
-- Por qué se modificó.
-
-**6. Demostración ANTES/DESPUÉS.**
-
-Pasos reproducibles, resultados esperados y resultados efectivamente comprobados.
-
-### guia-para-presentacion.html — Explicación didáctica
-
-Esta guía es especialmente importante.
-
-Quiero entender todo como una persona que está aprendiendo estos conceptos.
-
-**Cada explicación técnica debe estar vinculada al código que la realiza.**
-
-Por ejemplo, no escribas simplemente:
-
-"El script abre el navegador".
-
-Debes mostrar:
-
-- Archivo donde se realiza.
-- Número de línea.
-- Instrucción exacta que abre el navegador.
-- Explicación de la instrucción y sus argumentos.
-- De dónde obtiene la URL.
-- Por qué esa instrucción producía el comportamiento anterior.
-- Qué cambió después de la corrección.
-
-Aplica este mismo nivel de detalle a todos los pasos importantes de `before.sh`, `after.sh` y los archivos modificados del repositorio.
-
-Explica también desde cero:
-
-- Qué es un puerto.
-- Qué significa localhost.
-- Qué es port forwarding.
-- Qué diferencia existe entre el puerto de Docker, el Dev Container y Windows.
-- Qué hace una tarea de VS Code.
-- Cómo una tarea ejecuta un script Bash.
-- Cómo Bash intenta abrir el navegador.
-- Qué variables intervienen.
-- Por qué se producía el error.
-- Por qué la solución lo corrige.
-- Cómo demostrarlo personalmente.
-- Qué debo mostrar y decir a Eli.
-
-Incluye un recorrido de las llamadas entre archivos, desde que selecciono la tarea hasta que se intenta abrir el navegador.
-
-Incluye los scripts completos en anexos, numerados por línea, para poder comprobar las explicaciones.
-
-**No quiero solamente conclusiones: quiero poder rastrear cada explicación hasta el código real.**
-
-## 7. VALIDACIÓN
-
-Antes de declarar terminado el Caso 03:
-
-- Ejecuta las pruebas que realmente estén disponibles.
-- Comprueba la configuración original.
-- Comprueba la configuración corregida.
-- Verifica que las aplicaciones sigan funcionando.
-- Comprueba el estado de Git y la ausencia de modificaciones ajenas.
-- Comprueba que los scripts sean reproducibles y seguros.
-- Distingue entre pruebas automatizadas y pruebas que requieren interacción manual con VS Code.
-- No declares que el navegador abrió la dirección correcta si no observaste esa acción.
-
-Si la solución requiere una validación manual en VS Code, proporciona las instrucciones exactas para que yo la haga, sin pedirme otro análisis.
-
-## 8. ZIP PARA WINDOWS
-
-Genera:
-
-`/tmp/infios-caso-03-real.zip`
-
-Debe contener los cuatro archivos anteriores y ninguna credencial, paquete privado ni dato sensible.
-
-Confirma si `/tmp/host-home/Downloads/` está disponible para copiar el ZIP a mi laptop Windows.
-
-No elimines los entregables hasta que confirme que los copié.
-
-## 9. RESPUESTA FINAL
-
-Si lograste diagnosticar, corregir y probar el problema, responde:
-
-**CASO 03 — CORRECCIÓN IMPLEMENTADA Y VALIDADA**
-
-E incluye:
-
-1. Causa real del problema.
-2. Archivos que modificaste.
-3. Qué cambiaste y por qué.
-4. Resultado ANTES.
-5. Resultado DESPUÉS.
-6. Qué comprobaste automáticamente.
-7. Qué debo comprobar manualmente, si corresponde.
-8. Comandos exactos para ejecutar la demostración.
-9. Ubicación del ZIP.
-10. Confirmación de que no alteraste los cambios del Caso 01.
-
-Si no encuentras una causa comprobada o no puedes implementar una corrección segura, responde:
-
-**CASO 03 — NO RESUELTO**
-
-Explica el impedimento exacto y entrega la evidencia disponible, sin inventar resultados ni soluciones.
-
-**Completa todo lo posible en esta misma tarea. No me devuelvas solamente un plan para que después tenga que pedirte otro prompt.**
-
-Responde en español.
+CASO 03 — CORRECCIÓN IMPLEMENTADA Y VALIDADA
+  
+  Diagnostiqué la causa, corregí el helper que abre el navegador y lo probé con las aplicaciones reales. Queda una comprobación que solo puedes hacer tú: mirar
+  las pestañas, porque yo no veo tu navegador.
+  
+  1. Causa real Las tareas pasan URLs http://localhost:3500x/ a "$BROWSER". VS Code convierte cualquier URL localhost:N en un túnel hacia el puerto N dentro
+  del Dev Container. Pero Docker publica esos puertos en Windows, no en el Dev Container, así que el túnel no lleva a nada.
+  
+  ┌────────────────────────┬──────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
+  │ Paso                   │ Archivo y línea                      │ Qué pasa                                                                          │
+  ├────────────────────────┼──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Tarea                  │ .vscode/tasks.json:31                │ Ejecuta task_devStart.sh ui ${input:mode}                                         │
+  ├────────────────────────┼──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Distribuidor           │ task_devStart.sh:13                  │ Llama a task_startDevPortalDevUI.sh                                               │
+  ├────────────────────────┼──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Construcción de la URL │ task_startDevPortalDevUI.sh:28 y :30 │ open-when-ready.sh http://localhost:35001/ …                                      │
+  ├────────────────────────┼──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Apertura               │ open-when-ready.sh:23                │ timeout 10 "$BROWSER" "$BROWSER_URL" … || true, que además oculta cualquier error │
+  └────────────────────────┴──────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
+  
+  En el código de VS Code de tu versión exacta (commit 16507d91):
+  - browser.sh envía la URL con --openExternal, que se procesa con allowTunneling: true.
+  - Toda URL que cumpla la regex /^(localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)$/ se convierte en un túnel.
+  - Si el puerto local ya está ocupado, VS Code usa otro puerto local. Es probable que de ahí saliera el 55400, aunque ese número no queda registrado en el Dev
+  Container.
+  
+  Hechos comprobados:
+  - Dentro del Dev Container nada escucha en 35000-35002 (refused).
+  - El registro de VS Code (remoteagent.log) tiene 70 errores reales Failed to connect tunnel to localhost:3500x … ECONNREFUSED entre el 30-10 y el 07-11.
+  - El 35003 solo aparece en docker-compose.yml:80, como dirección de Platform que usa la API. Ningún script lo abre y no hay túneles hacia él, así que su
+  origen está fuera del repositorio. No lo toqué.
+  
+  2. Archivos modificados Solo .workspaceScripts/open-when-ready.sh. El original queda como referencia en el blob bb780560 de HEAD (SHA-256 a631af97…).
+  
+  3. Qué cambié y por qué
+  - Líneas 24-25 (nuevas): reescriben localhost, 127.0.0.1 o 0.0.0.0 como dev-portal.localhost, conservando esquema, puerto y ruta. Esa URL no cumple la regex
+  de VS Code, así que se abre sin túnel. Chrome, Edge y Firefox resuelven *.localhost al loopback de tu propia máquina, que es donde Docker publicó el puerto.
+  - Líneas 30 y 33: imprimen y abren la URL nueva.
+  - Variable DEV_PORTAL_BROWSER_HOST: permite usar otro nombre si algún navegador no resuelve *.localhost.
+  - Por qué funciona en las tres apertura del navegador: las aperturas de Admin UI y Tenant UI (Development y Production) y de Swagger pasan por este mismo
+  helper.
+  - Por qué las aplicaciones aceptan el nombre nuevo: Vite tiene allowedHosts: true, la API tiene AllowedHosts: * y las llamadas al backend usan rutas
+  relativas.
+  
+  4. Resultado ANTES
+  - Las URLs http://localhost:45001/ y http://localhost:45002/ se tunelizaron.
+  - Al abrirse las pestañas aparecieron errores nuevos en el registro: Failed to connect tunnel to localhost:45001 … ECONNREFUSED.
+  - Las aplicaciones sí respondían en el host: 302 → /devportal/adminui, títulos "Admin Portal" y "Customer Portal", y el puerto publicado como 0.0.0.0:45001.
+  
+  5. Resultado DESPUÉS
+  - Las URLs http://dev-portal.localhost:45011/ y :45012/ no se tunelizaron y no apareció ningún error de túnel.
+  - Las mismas aplicaciones respondieron igual.
+  - Los dos scripts terminaron con código 0.
+  
+  6. Comprobaciones automáticas
+  - bash -n sobre el helper y los dos scripts.
+  - La regla de reescritura con 7 URLs distintas.
+  - before.sh y after.sh con copias temporales de las UIs reales: imágenes de los Dockerfile.dev, código versionado y dependencias reales instaladas sin red.
+  Usan el $BROWSER real y vigilan el registro de VS Code.
+  - El ambiente real no cambió y no quedan recursos infios-caso03*.
+  
+  Durante las pruebas también encontré esto: un túnel antiguo de VS Code puede acaparar el puerto aunque la URL ya no se tunelice. Por eso cada fase usa
+  puertos distintos.
+  
+  7. Comprobación manual que debes hacer
+  1. En el panel PORTS de VS Code, aplica "Stop Forwarding Port" a 35000, 35001, 35002, 45001 y 45002. Mis pruebas dejaron reenvíos en 45001 y 45002.
+  2. Ejecuta Terminal → Run Task → Dev: Start UI → Development.
+  3. Comprueba que la terminal muestre Ready: http://dev-portal.localhost:35001/ y que las pestañas abran Admin Portal y Customer Portal en los puertos 35001 y
+  35002.
+  
+  La guía (sección 11) tiene el detalle. Safari no está probado.
+  
+  8. Comandos de la demostración Desde una terminal de VS Code dentro del Dev Container:
+  
+  bash /tmp/infios-caso-03-real/before.sh
+  # En PORTS, Stop Forwarding Port en 45001 y 45002
+  bash /tmp/infios-caso-03-real/after.sh
+  
+  Cada script abre dos pestañas. Con NO_BROWSER=1 delante no abre ninguna.
+  
+  9. ZIP El paquete está en /tmp/infios-caso-03-real.zip (SHA-256 f6bee58a…). Contiene los cuatro archivos, sin credenciales. /tmp/host-home/Downloads/ existe
+  y se puede escribir:
+  
+  cp /tmp/infios-caso-03-real.zip /tmp/host-home/Downloads/
+  
+  No eliminé nada.
+  
+  10. Caso 01 intacto
+  - El hash del git diff de sus dos archivos es el mismo antes y después (9f3d9fa5…).
+  - Sigo en fix/dev-portal-setup-improvements y no hice commit.
+  
+  De paso, el reinicio de tu Dev Container de hoy (18:23) regeneró .env automáticamente con DEV_UID=1000 y DEV_GID=1000, como confirma detect_volume_debug.log.
+  Eso cierra la validación que había quedado pendiente en el Caso 01.
+ 
+▸ Credits: turn 97.04 • session 101.88 | Time: 23m 20s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◑ 41%                                                            /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+
+›  ask a question or describe a task ↵
