@@ -1,44 +1,333 @@
-NO. Con las restricciones actuales, la tarea original Dev: Start UI no puede redirigirse a un ambiente temporal. No preparé nada ni construí otra simulación.
-  
-  Revisé .vscode/tasks.json, .workspaceScripts/task_devStart.sh y .workspaceScripts/task_startDevPortalDevUI.sh. Estos son los impedimentos:
-  
-  1. La tarea siempre trabaja en el repositorio real.
-    - tasks.json:31 ejecuta bash ${workspaceFolder}/.workspaceScripts/task_devStart.sh ui ${input:mode}, y ${workspaceFolder} es /workspaces/dev-portal.
-    - task_devStart.sh hace cd "$(dirname "$0")/..", es decir, vuelve a la raíz del repositorio.
-    - Ningún script lee una variable que permita elegir otro directorio, volumen o archivo Compose. La única entrada es Development/Production.
-  
-  2. El pnpm install de la tarea escribe en los node_modules reales. task_startDevPortalDevUI.sh:15-22 ejecuta pnpm -C sharedUIComponents|adminUi|tenantUi
-  install con rutas relativas al repositorio. Para que el ANTES muestre EACCES, tendría que dejar archivos de root en esos node_modules reales. Eso está
-  prohibido.
-  
-  3. El docker compose de la tarea actúa sobre los contenedores y el volumen reales.
-    - La línea 24 ejecuta docker compose -f ./docker-compose-devui.yml up -d --build.
-    - Usa el .env real, con DEVCONTAINER_VOLUME apuntando al volumen real.
-    - Los nombres de contenedor están fijos (dev-portal-admin-ui, dev-portal-tenant-ui) y también los puertos 35001 y 35002.
-    - Cualquier ejecución actúa sobre los contenedores reales, y en el ANTES los recrearía como root.
-  
-  4. El ANTES necesita el Compose original en su sitio. La tarea lee ./docker-compose-devui.yml, que hoy es la versión corregida. Para ejecutarla con la
-  configuración original habría que modificar ese archivo versionado o usar git stash/checkout. Las dos cosas están prohibidas.
-  
-  5. Todas las formas de redirigirla violan alguna restricción:
-    - Editar tasks.json: es un archivo versionado.
-    - Añadir una tarea o variables en la configuración de VS Code (settings.json de usuario o máquina): es modificar configuración existente.
-    - Abrir una copia del repositorio como espacio de trabajo: es duplicar el repositorio. Además, el Dev Container está ligado a /workspaces/dev-portal.
-    - Variables como COMPOSE_PROJECT_NAME: no sirven, porque container_name está fijo y -f indica el archivo explícitamente.
-  
-  Qué sí es posible: el DESPUÉS por sí solo es la ejecución normal de Dev: Start UI en el ambiente real con el fix actual, y ustedes ya lo ejecutaron sin
-  EACCES. Lo que no puede hacerse sin tocar el ambiente real es el ANTES.
-  
-  Qué haría falta para cumplir el flujo completo. Las dos alternativas requieren levantar una de tus restricciones, y no las he aplicado:
-  - Un segundo Dev Container sobre una copia temporal del repositorio, desde el que ejecutarías Dev: Start UI. Requiere permitir clonar o copiar el
-  repositorio.
-  - Usar el ambiente real con reversión: restaurar temporalmente el Compose original, dejar archivos de root en los node_modules reales y recrear los
-  contenedores reales. Después habría que restaurar el fix, ejecutar chown y recrear los contenedores. Requiere permitir modificar archivos versionados,
-  node_modules y contenedores.
- 
-▸ Credits: turn 4.84 • session 4.84 | Time: 1m 24s
+# INFIOS DEV PORTAL — CASO 03: PUERTOS Y APERTURA INCORRECTA DEL NAVEGADOR
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◑ 26%                                                            /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Actúa como Principal Software Engineer y Software Architect, especializado en VS Code, Dev Containers, Docker Compose, redes, port forwarding, Bash, Node.js y aplicaciones web.
 
-›  ask a question or describe a task ↵
+## OBJETIVO
+
+Quiero resolver completamente el Caso 03 del ejercicio personal de aprendizaje sobre Infios Dev Portal.
+
+**Debes realizar en esta misma tarea:**
+
+1. Investigar por qué ocurre el problema.
+2. Identificar la causa real con evidencia del código y del comportamiento.
+3. Implementar una corrección mínima y técnicamente justificada, si corresponde.
+4. Ejecutar pruebas ANTES y DESPUÉS.
+5. Crear scripts reproducibles de demostración.
+6. Generar un único conjunto de documentación HTML en español, con explicación del código.
+7. Preparar un ZIP para copiarlo a mi laptop Windows.
+
+No quiero que termines el análisis y me pidas otro prompt para implementar la solución. Continúa automáticamente mientras puedas realizar el trabajo de manera segura.
+
+## 1. CONTEXTO
+
+Repositorio:
+
+`/workspaces/dev-portal`
+
+Rama actual:
+
+`fix/dev-portal-setup-improvements`
+
+Ya terminamos el Caso 01, relacionado con EACCES. **No debes modificar, revertir ni alterar esa corrección.**
+
+No trabajaremos ahora en el Caso 02, relacionado con PostgreSQL y Liquibase.
+
+### Problema observado — Caso 03
+
+Al ejecutar tareas de desarrollo desde VS Code, el navegador en ocasiones abre direcciones o puertos que no corresponden con la aplicación esperada.
+
+Puertos esperados del proyecto:
+
+- Backend API: `35000`
+- Admin UI: `35001`
+- Tenant UI: `35002`
+
+Durante las pruebas se observaron aperturas o redirecciones hacia otros puertos, incluyendo `55400` y `35003`.
+
+Estos antecedentes son observaciones, NO una causa comprobada.
+
+Debes determinar si existe realmente un defecto y dónde ocurre:
+
+- Definición de tareas VS Code.
+- Scripts Bash que inician aplicaciones.
+- Scripts que abren el navegador.
+- Variables de entorno, especialmente `BROWSER`.
+- Configuración de Dev Containers.
+- Docker Compose y publicación de puertos.
+- Port forwarding de VS Code.
+- Diferencia entre los puertos dentro del contenedor, del host Docker y del navegador de Windows.
+
+No asumas que un puerto reenviado dinámicamente es incorrecto: comprueba si la URL abierta realmente conduce al servicio esperado.
+
+## 2. INVESTIGACIÓN DIRIGIDA
+
+Revisa primero los archivos que intervienen directamente en la apertura del navegador y los puertos.
+
+Identifica con precisión:
+
+- Qué tarea ejecuta el usuario.
+- Qué script llama esa tarea.
+- Qué otros scripts se ejecutan.
+- Qué instrucción intenta abrir el navegador.
+- Qué URL construye.
+- De dónde obtiene el puerto.
+- Qué hace VS Code con esa URL.
+- Qué servicio escucha en cada puerto.
+- En qué punto se produce el comportamiento incorrecto.
+
+Para cada conclusión importante, identifica:
+
+**Archivo + número de línea + código exacto + explicación.**
+
+Distingue:
+
+- HECHO COMPROBADO.
+- INFERENCIA.
+- DESCONOCIDO.
+
+No confundas una respuesta HTTP correcta dentro de Docker con una prueba de que el navegador de Windows abrió la dirección correcta.
+
+No repitas investigaciones que no estén relacionadas con este caso.
+
+## 3. CORRECCIÓN
+
+Si identificas la causa y existe una solución adecuada:
+
+**IMPLEMENTA LA CORRECCIÓN DIRECTAMENTE.**
+
+La solución debe:
+
+- Funcionar para otros desarrolladores, no solamente en mi laptop.
+- Ser compatible con el flujo normal de VS Code y Dev Containers.
+- Evitar direcciones o puertos incorrectos.
+- Mantener las aplicaciones y sus puertos funcionales.
+- Evitar valores fijos que dependan de una configuración particular de Windows.
+- No introducir scripts o configuraciones innecesarias.
+- No cambiar el comportamiento de servicios ajenos al problema.
+
+Modifica exclusivamente los archivos indispensables para el Caso 03.
+
+Antes de modificarlos, conserva una referencia verificable de su contenido original para demostrar el ANTES.
+
+Después muestra el `git diff` exacto y explica por qué cada modificación es necesaria.
+
+**No corrijas algo que no hayas demostrado que está mal.**
+
+Si el comportamiento depende exclusivamente de una característica de VS Code que no se puede controlar desde el repositorio, explícalo y no inventes una corrección.
+
+## 4. DEMOSTRACIÓN ANTES Y DESPUÉS
+
+Quiero poder presentar el problema a Eli de forma práctica.
+
+### ANTES — `before.sh`
+
+Demuestra el comportamiento original utilizando las tareas, scripts y aplicaciones reales de Dev Portal.
+
+Debe mostrar:
+
+- Qué aplicación se intenta iniciar.
+- Qué puerto debería utilizar.
+- Qué URL intenta abrir la configuración original.
+- Qué servicio responde realmente.
+- En qué consiste el fallo y cómo se observa.
+
+### DESPUÉS — `after.sh`
+
+Repite el mismo procedimiento con la solución implementada.
+
+Debe mostrar:
+
+- Qué cambió.
+- Qué URL se construye ahora.
+- Qué servicio responde.
+- Por qué el navegador debe abrir la aplicación correcta.
+- Qué evidencia demuestra que el defecto fue corregido.
+
+**No acepto un proyecto web de ejemplo ni una simulación genérica de puertos como sustituto de Dev Portal.**
+
+Utiliza los archivos, tareas y aplicaciones reales.
+
+Si la prueba requiere interacción con VS Code o con el navegador de Windows que no puedes automatizar desde Kiro CLI, prepara la parte automatizable y documenta exactamente qué acción manual debo realizar.
+
+No declares que comprobaste la apertura del navegador si únicamente comprobaste el contenido de un script o una respuesta HTTP.
+
+Los scripts deben poder ejecutarse varias veces, utilizando recursos temporales cuando sean necesarios y sin alterar los servicios existentes.
+
+Si el ANTES no puede reproducirse de forma segura, indícalo y conserva la evidencia realmente comprobada. No fabriques un resultado exitoso.
+
+## 5. RESTRICCIONES
+
+- Mantén la rama actual.
+- No hagas commit, push ni Pull Request.
+- No cambies de rama ni crees worktrees.
+- No modifiques los cambios del Caso 01.
+- No modifiques archivos de Kiro/SDLC ajenos a este caso.
+- No modifiques bases de datos ni migraciones.
+- No borres ni reconstruyas volúmenes existentes.
+- No elimines `node_modules`.
+- No modifiques credenciales.
+- No detengas ni reconstruyas mi Dev Container.
+- No alteres las aplicaciones reales si puedes verificar el comportamiento sin hacerlo.
+- No utilices `git reset`, `git clean` ni restauraciones generales.
+- No solicites ayuda ni permisos de otros desarrolladores.
+
+Antes de modificar cualquier archivo, inspecciona el estado de Git y preserva los cambios previos.
+
+No consumas recursos innecesarios recreando toda la infraestructura.
+
+## 6. ENTREGABLES
+
+Guarda exclusivamente los archivos personales de demostración y documentación fuera del repositorio:
+
+`/tmp/infios-caso-03-real/`
+
+Estructura:
+
+```text
+/tmp/infios-caso-03-real/
+├── before.sh
+├── after.sh
+├── README.html
+└── guia-para-presentacion.html
+```
+
+Los archivos `.sh`, incluyendo código, comentarios y mensajes, deben estar en INGLÉS.
+
+Los archivos HTML deben estar completamente en ESPAÑOL.
+
+Los dos HTML deben funcionar sin conexión a Internet, abriéndolos directamente en Chrome o Edge.
+
+No utilices librerías ni recursos externos.
+
+### README.html — Documentación técnica
+
+Debe incluir:
+
+**1. Título del problema.**
+
+**2. Descripción del problema.**
+
+Qué observamos, qué debería suceder y qué sucede realmente.
+
+**3. Causa comprobada.**
+
+Explicación técnica respaldada por código.
+
+**4. Descripción de la solución.**
+
+Qué se cambió y por qué corrige el problema.
+
+**5. Tabla de archivos modificados.**
+
+Columnas obligatorias:
+
+- Nombre y ruta del archivo.
+- Cómo estaba ANTES.
+- Qué código se modificó.
+- Cómo quedó DESPUÉS.
+- Por qué se modificó.
+
+**6. Demostración ANTES/DESPUÉS.**
+
+Pasos reproducibles, resultados esperados y resultados efectivamente comprobados.
+
+### guia-para-presentacion.html — Explicación didáctica
+
+Esta guía es especialmente importante.
+
+Quiero entender todo como una persona que está aprendiendo estos conceptos.
+
+**Cada explicación técnica debe estar vinculada al código que la realiza.**
+
+Por ejemplo, no escribas simplemente:
+
+"El script abre el navegador".
+
+Debes mostrar:
+
+- Archivo donde se realiza.
+- Número de línea.
+- Instrucción exacta que abre el navegador.
+- Explicación de la instrucción y sus argumentos.
+- De dónde obtiene la URL.
+- Por qué esa instrucción producía el comportamiento anterior.
+- Qué cambió después de la corrección.
+
+Aplica este mismo nivel de detalle a todos los pasos importantes de `before.sh`, `after.sh` y los archivos modificados del repositorio.
+
+Explica también desde cero:
+
+- Qué es un puerto.
+- Qué significa localhost.
+- Qué es port forwarding.
+- Qué diferencia existe entre el puerto de Docker, el Dev Container y Windows.
+- Qué hace una tarea de VS Code.
+- Cómo una tarea ejecuta un script Bash.
+- Cómo Bash intenta abrir el navegador.
+- Qué variables intervienen.
+- Por qué se producía el error.
+- Por qué la solución lo corrige.
+- Cómo demostrarlo personalmente.
+- Qué debo mostrar y decir a Eli.
+
+Incluye un recorrido de las llamadas entre archivos, desde que selecciono la tarea hasta que se intenta abrir el navegador.
+
+Incluye los scripts completos en anexos, numerados por línea, para poder comprobar las explicaciones.
+
+**No quiero solamente conclusiones: quiero poder rastrear cada explicación hasta el código real.**
+
+## 7. VALIDACIÓN
+
+Antes de declarar terminado el Caso 03:
+
+- Ejecuta las pruebas que realmente estén disponibles.
+- Comprueba la configuración original.
+- Comprueba la configuración corregida.
+- Verifica que las aplicaciones sigan funcionando.
+- Comprueba el estado de Git y la ausencia de modificaciones ajenas.
+- Comprueba que los scripts sean reproducibles y seguros.
+- Distingue entre pruebas automatizadas y pruebas que requieren interacción manual con VS Code.
+- No declares que el navegador abrió la dirección correcta si no observaste esa acción.
+
+Si la solución requiere una validación manual en VS Code, proporciona las instrucciones exactas para que yo la haga, sin pedirme otro análisis.
+
+## 8. ZIP PARA WINDOWS
+
+Genera:
+
+`/tmp/infios-caso-03-real.zip`
+
+Debe contener los cuatro archivos anteriores y ninguna credencial, paquete privado ni dato sensible.
+
+Confirma si `/tmp/host-home/Downloads/` está disponible para copiar el ZIP a mi laptop Windows.
+
+No elimines los entregables hasta que confirme que los copié.
+
+## 9. RESPUESTA FINAL
+
+Si lograste diagnosticar, corregir y probar el problema, responde:
+
+**CASO 03 — CORRECCIÓN IMPLEMENTADA Y VALIDADA**
+
+E incluye:
+
+1. Causa real del problema.
+2. Archivos que modificaste.
+3. Qué cambiaste y por qué.
+4. Resultado ANTES.
+5. Resultado DESPUÉS.
+6. Qué comprobaste automáticamente.
+7. Qué debo comprobar manualmente, si corresponde.
+8. Comandos exactos para ejecutar la demostración.
+9. Ubicación del ZIP.
+10. Confirmación de que no alteraste los cambios del Caso 01.
+
+Si no encuentras una causa comprobada o no puedes implementar una corrección segura, responde:
+
+**CASO 03 — NO RESUELTO**
+
+Explica el impedimento exacto y entrega la evidencia disponible, sin inventar resultados ni soluciones.
+
+**Completa todo lo posible en esta misma tarea. No me devuelvas solamente un plan para que después tenga que pedirte otro prompt.**
+
+Responde en español.
