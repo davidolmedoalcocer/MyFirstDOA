@@ -1,1 +1,5 @@
-for d in sharedUIComponents adminUi tenantUi; do printf '%s: ' "$d"; find "$d/node_modules" -xdev -uid 0 -print | wc -l; done
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ for d in sharedUIComponents adminUi tenantUi; do printf '%s: ' "$d"; find "$d/node_modules" -xdev -uid 0 -print | wc -l; done
+sharedUIComponents: 0
+adminUi: 0
+tenantUi: 0
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ 
