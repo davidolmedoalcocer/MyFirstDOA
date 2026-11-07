@@ -1,1 +1,7 @@
-grep -nE '^(DEV_UID|DEV_GID|DEVCONTAINER_VOLUME)=' .env.template .env
+# Use the Dev Container user's UID/GID for shared-volume writers
+DEV_UID="$(id -u)"
+DEV_GID="$(id -g)"
+
+printf 'DEV_UID=%s\nDEV_GID=%s\n' "$DEV_UID" "$DEV_GID" >> "$ENV_FILE"
+
+echo "Wrote DEV_UID=$DEV_UID DEV_GID=$DEV_GID to $ENV_FILE" >> "$LOG"
