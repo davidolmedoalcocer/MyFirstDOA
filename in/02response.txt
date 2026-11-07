@@ -1,1 +1,72 @@
-sed -n '1,110p' .devcontainer/detect-and-write-volume.sh
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ sed -n '1,110p' .devcontainer/detect-and-write-volume.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="/workspaces/dev-portal/.env"
+LOG="$HOME/detect_volume_debug.log"
+
+# Reset log for this run
+: > "$LOG"
+echo "detect-and-write-volume start: $(date)" >> "$LOG"
+
+#############################################
+# STEP 1: Find the /workspaces mount path
+#############################################
+find_mount() {
+    local path
+
+    # Try likely workspace mounts first
+    for mp in "/workspaces" \
+              "/workspaces/dev-portal" \
+              "/workspaces/$(basename "$(pwd)")"; do
+        path=$(awk -v m="$mp" '$5==m { print $4; exit }' /proc/self/mountinfo || true)
+        echo "Checked mountpoint $mp -> '$path'" >> "$LOG"
+        [[ -n "$path" ]] && { echo "$path"; return; }
+    done
+
+    # Fallback: first mount under /workspaces
+    path=$(awk 'index($5, "/workspaces")==1 { print $4; exit }' /proc/self/mountinfo || true)
+    echo "Fallback mount -> '$path'" >> "$LOG"
+
+    echo "$path"
+}
+
+VOL_PATH=$(find_mount)
+
+if [[ -z "$VOL_PATH" ]]; then
+    echo "ERROR: Could not detect /workspaces mount. See $LOG" >&2
+    exit 1
+fi
+
+echo "Detected volume root path: $VOL_PATH" >> "$LOG"
+
+#############################################
+# STEP 2: Extract the Docker volume name
+#############################################
+VOL_NAME=$(sed -E 's#.*/volumes/([^/]+)/.*#\1#' <<< "$VOL_PATH" || true)
+echo "Parsed VOL_NAME='$VOL_NAME'" >> "$LOG"
+
+if [[ -z "$VOL_NAME" ]]; then
+    echo "ERROR: Unable to parse Docker volume name. Path was: $VOL_PATH" >> "$LOG"
+    echo "ERROR: See $LOG" >&2
+    exit 1
+fi
+
+#############################################
+# STEP 3: Copy the .env.template to .env file
+#############################################
+cp /workspaces/dev-portal/.env.template "$ENV_FILE"
+
+if grep -q '^DEVCONTAINER_VOLUME=' "$ENV_FILE"; then
+    sed -i "s|^DEVCONTAINER_VOLUME=.*|DEVCONTAINER_VOLUME=$VOL_NAME|" "$ENV_FILE"
+else
+    echo "DEVCONTAINER_VOLUME=$VOL_NAME" >> "$ENV_FILE"
+fi
+
+echo "Wrote DEVCONTAINER_VOLUME=$VOL_NAME to $ENV_FILE" >> "$LOG"
+
+#############################################
+# STEP 4: Output result to the console
+#############################################
+echo "DEVCONTAINER_VOLUME=$VOL_NAME"
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ 
