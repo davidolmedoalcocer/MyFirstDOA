@@ -1,67 +1,117 @@
-# CASO 01 — PREPARAR DEMOSTRACIÓN ANTES Y DESPUÉS
+Preparé los dos scripts y los ejecuté. before.sh reproduce el EACCES con el docker-compose-devui.yml original de Git y after.sh completa la misma operación sin error con el archivo
+  corregido de tu rama. En las tres ejecuciones el entorno real quedó intacto y no quedaron recursos temporales.
+  
+  1. Archivos creados
+  
+  ┌───────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Archivo                                       │ Contenido                                                                                      │
+  ├───────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ /tmp/infios-caso-01/before.sh                 │ Demostración ANTES (inglés)                                                                    │
+  ├───────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ /tmp/infios-caso-01/after.sh                  │ Demostración DESPUÉS (inglés)                                                                  │
+  ├───────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ /tmp/infios-caso-01/README.md                 │ El caso en seis apartados, con los resultados reales (español)                                 │
+  ├───────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ /tmp/infios-caso-01/guia-para-presentacion.md │ Cada instrucción explicada, qué observar y guion para Eli (español)                            │
+  ├───────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ /tmp/infios-caso-01.zip                       │ Los cuatro archivos. SHA-256: e9551d137168584ac48cf7ce5537b6b8abd7071770a72b8e27a1b1dff8885f5f │
+  └───────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+  
+  También quedaron en /tmp, fuera de la carpeta pedida, las salidas en bruto de las ejecuciones (/tmp/infios-caso-01-*-raw.txt) y la carpeta /tmp/case01/ de la sesión anterior. No
+  borré nada, como pediste.
+  
+  2. Resultado de before.sh (código de salida 0)
+  
+  User that Docker Compose resolves for dev-portal-admin-ui: '' (empty = image default)
+  Image infios-caso01-before-dev-portal-admin-ui runs as: '' (empty = root)
+  container user: uid=0(root) gid=0(root) ...
+  0:0  node_modules
+  0:0  node_modules/.bin
+  0:0  node_modules/@tsconfig/node22
+  root-owned entries in node_modules: 416
+  page served, vite running as: uid=0(root) ...
+  0:0  node_modules/.vite (Vite cache written by the running UI)
+   EACCES  EACCES: permission denied, unlink '/app/dev-portal/adminUi/node_modules/semver'
+  pnpm exit code: 243
+  Existing environment unchanged (containers, volumes, git status, .env, node_modules).
+  BEFORE RESULT: EACCES reproduced.
+  
+  El paquete que aparece en el EACCES depende del orden en que trabaja pnpm. En pruebas anteriores apareció @tsconfig/node22; el mecanismo es el mismo.
+  
+  3. Resultado de after.sh (código de salida 0)
+  
+  Values in the real .env (read only): DEV_UID=1000 DEV_GID=1000
+  User that Docker Compose resolves for dev-portal-admin-ui: '1000:1000'
+  If .env had no DEV_UID/DEV_GID, Compose would resolve: '1000:1000' (fallback, never root)
+  container user: uid=1000(node) gid=1000(node)
+  1000:1000  node_modules / .bin / @tsconfig/node22   (root-owned entries: 0)
+  page served on port 80, vite running as: uid=1000(node)
+  1000:1000  node_modules/.vite
+  pnpm exit code: 0
+  entries NOT owned by 1000: 0
+  Existing environment unchanged (containers, volumes, git status, .env, node_modules).
+  AFTER RESULT: no EACCES.
+  
+  También lo ejecuté con DEMO_UID=1001 DEMO_GID=1001, que simula un host Linux o WSL con otro UID. Compose resolvió 1001:1001, todo quedó con ese propietario y pnpm terminó con código
+  0.
+  
+  Después de las tres ejecuciones comprobé el entorno:
+  - Rama sin cambiar y git status igual que antes.
+  - .env con la misma fecha (01:45:40).
+  - dev-portal-admin-ui y dev-portal-tenant-ui siguen activos desde hace 3 horas.
+  - Cero contenedores, volúmenes, imágenes o redes infios-caso01* restantes.
+  
+  4. Cómo ejecutarlos
+  
+  Desde una terminal del Dev Container, primero uno y luego el otro, no a la vez:
+  
+  bash /tmp/infios-caso-01/before.sh
+  bash /tmp/infios-caso-01/after.sh
+  DEMO_UID=1001 DEMO_GID=1001 bash /tmp/infios-caso-01/after.sh   # opcional
+  
+  - Cada uno tarda entre 30 y 90 segundos.
+  - Con KEEP=1 delante, conserva los recursos temporales para inspeccionarlos. La guía indica cómo borrarlos después.
+  - Necesitan Docker y el repositorio, así que no se ejecutan directamente en Windows. En la laptop sirven como material de lectura y presentación.
+  
+  5. Qué es real y qué es reproducción controlada
+  
+  Demuestra la corrección del código real:
+  - before.sh usa el docker-compose-devui.yml original extraído con git show HEAD:, sin cambios. after.sh usa el archivo corregido de tu rama.
+  - La imagen se construye desde el adminUi/Dockerfile.dev real.
+  - El usuario del contenedor es el que Docker Compose resuelve con cada archivo: root en el ANTES, DEV_UID:DEV_GID en el DESPUÉS, y el valor por defecto 1000 cuando falta la variable.
+  - El paso 4 ejecuta el comando real del contenedor (pnpm dev). Ese comando escribe node_modules/.vite como root con el archivo original y como 1000 con el corregido.
+  
+  Es preparación controlada:
+  - Un volumen temporal con un proyecto público mínimo sustituye al volumen real. Las UIs reales necesitan los feeds privados de ADO.
+  - Un override solo cambia el nombre del contenedor y quita los puertos publicados, para no chocar con los contenedores reales.
+  - El paso 3 fuerza un pnpm install dentro del contenedor de UI para crear archivos con el propietario que impone el Compose. El Dockerfile.dev hacía esa instalación hasta el
+  2026-03-31, pero no es la causa histórica demostrada. Ese proceso sigue sin identificarse, y los scripts lo dicen en su salida.
+  - El usuario del Dev Container se simula con un contenedor del mismo UID/GID, porque el Dev Container no puede montar un volumen nuevo.
+  
+  6. Cómo copiar el ZIP a Windows sin tocar el repositorio
+  
+  Opción A, la más simple. El Dev Container monta tu carpeta de usuario de Windows en /tmp/host-home (devcontainer.json:38). Desde la terminal del Dev Container:
+  
+  cp /tmp/infios-caso-01.zip /tmp/host-home/Downloads/
+  
+  El archivo aparece en C:\Users\<tu usuario>\Downloads\. Esto escribe en tu carpeta de Windows, no en el repositorio.
+  
+  Opción B, desde PowerShell en Windows:
+  
+  docker ps --format "{{.Names}}  {{.Image}}"      # busca la imagen vsc-dev-portal-...; hoy el nombre es quirky_pasteur
+  docker cp quirky_pasteur:/tmp/infios-caso-01.zip "$env:USERPROFILE\Downloads\"
+  
+  Para comprobar la copia en PowerShell:
+  
+  Get-FileHash "$env:USERPROFILE\Downloads\infios-caso-01.zip"
+  
+  Debe coincidir con E9551D13...8885F5F.
+  
+  Cópialo antes de reconstruir el Dev Container: un rebuild borra /tmp, aunque un reinicio normal no. Cuando confirmes que lo copiaste, puedo eliminar los archivos temporales.
+ 
+▸ Credits: turn 22.01 • session 62.27 | Time: 13m 20s
 
-Kiro, ya investigaste el error EACCES y validaste la corrección. NO vuelvas a investigar desde cero.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 20%                                                                                     /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
 
-Necesito una demostración que pueda ejecutar personalmente para aprender y mostrar a Eli.
-
-## Objetivo
-
-Preparar dos scripts independientes:
-
-- `before.sh`: demuestra el problema con la configuración original.
-- `after.sh`: demuestra el comportamiento con la configuración corregida.
-
-Utiliza la configuración original de `docker-compose-devui.yml` recuperada de Git y la configuración corregida que actualmente existe en mi rama `fix/dev-portal-setup-improvements`.
-
-La demostración debe estar vinculada a esas configuraciones reales. No quiero únicamente un ejemplo genérico de permisos.
-
-Para reproducir EACCES, puedes preparar intencionalmente archivos con propietario root en el volumen temporal. Debes explicar claramente qué parte reproduce el mecanismo original y qué parte es una preparación artificial de la prueba. No inventes que identificaste al proceso histórico responsable.
-
-## Restricciones obligatorias
-
-1. NO cambies de rama.
-2. NO clones ni dupliques el repositorio.
-3. NO modifiques ningún archivo del repositorio.
-4. NO modifiques los contenedores, volúmenes, bases de datos ni `node_modules` actuales.
-5. Utiliza solamente recursos temporales mínimos de Docker, con nombres exclusivos.
-6. NO ejecutes acciones destructivas sobre recursos preexistentes.
-7. NO hagas commit ni push.
-8. Si no puedes realizar una prueba respetando estas restricciones, detenla y explica por qué.
-
-## Ubicación de los entregables
-
-Crea exclusivamente esta carpeta, fuera del repositorio:
-
-`/tmp/infios-caso-01/`
-
-Su contenido será:
-
-- `before.sh` — código, mensajes y comentarios en INGLÉS.
-- `after.sh` — código, mensajes y comentarios en INGLÉS.
-- `README.md` — documentación en ESPAÑOL, con los seis apartados del caso.
-- `guia-para-presentacion.md` — explicación en ESPAÑOL de cada instrucción de ambos scripts, cómo ejecutarlos, qué resultados debo observar y cómo explicárselos a Eli.
-
-Genera también `/tmp/infios-caso-01.zip` para que pueda copiarlo a mi laptop Windows.
-
-## Validación
-
-Ejecuta personalmente ambos scripts en recursos temporales, verifica que el ANTES produzca el EACCES esperado y que el DESPUÉS complete la misma operación correctamente.
-
-Verifica también que la demostración no haya alterado el ambiente actual.
-
-## Respuesta final
-
-No quiero un plan ni otra investigación.
-
-Entrégame:
-
-1. Los archivos que creaste.
-2. El resultado de ejecutar `before.sh`.
-3. El resultado de ejecutar `after.sh`.
-4. Cómo ejecutar cada uno personalmente.
-5. Qué parte demuestra realmente la corrección del código y qué parte es una reproducción controlada.
-6. Cómo copiar el ZIP a Windows sin modificar el repositorio.
-
-NO elimines los archivos temporales hasta que yo confirme que los copié.
-
-Responde completamente en español.
+›  ask a question or describe a task ↵
