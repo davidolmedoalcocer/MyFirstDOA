@@ -1,1 +1,29 @@
-for d in sharedUIComponents adminUi tenantUi; do printf '%s: ' "$d"; find "$d/node_modules" -xdev -uid 0 -print | wc -l; done
+Actúa como arquitecto sénior especializado en Docker, Docker Desktop para Windows, Linux y Dev Containers.
+
+Estoy trabajando en el caso 01 de Infios Dev Portal: errores EACCES en node_modules.
+
+**Estado actual:**
+- Rama: fix/dev-portal-setup-improvements.
+- El Dev Container ejecuta comandos como node (UID/GID 1000).
+- Los contenedores Admin UI y Tenant UI originalmente se ejecutaban como root.
+- Comparten el volumen devcontainer_workspace.
+- Ya agregamos user: "1000:1000" a ambos servicios en docker-compose-devui.yml.
+- Las interfaces funcionan con ese cambio.
+- No quiero descartar ni modificar ese fix sin una justificación técnica.
+
+**Necesito una verificación arquitectónica concreta:**
+
+1. Examina cómo se establece el UID/GID del usuario del Dev Container y si se modifica según la computadora anfitriona.
+2. Determina si el UID/GID 1000 está garantizado por esta arquitectura, incluso cuando otros desarrolladores utilizan Docker Desktop en Windows.
+3. Comprueba qué procesos de inicialización o ejecución pueden escribir en node_modules mediante el volumen compartido y si existen otros escritores con UID 0.
+4. Determina si user: "1000:1000" es una corrección portable y suficiente para el mecanismo identificado, o si requiere algún ajuste adicional.
+
+Revisa únicamente los archivos relevantes: configuración del Dev Container, Dockerfiles, docker-compose-devui.yml y scripts de inicialización e instalación de dependencias.
+
+**Entrega:**
+- Hechos comprobados, con archivo y línea.
+- Riesgos reales, si existen.
+- Conclusión explícita: ¿conservamos el fix actual o necesitamos cambiarlo? ¿Por qué?
+- Distingue la prevención técnicamente demostrable de la causa histórica que aún no se ha identificado.
+
+No modifiques archivos, no ejecutes tareas, no hagas instalaciones y no propongas una investigación general. Responde en español, de forma concreta.
