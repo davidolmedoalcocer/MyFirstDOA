@@ -1,30 +1,44 @@
-Kiro, necesito corregir un requisito fundamental de la demostración del caso 01.
+NO. Con las restricciones actuales, la tarea original Dev: Start UI no puede redirigirse a un ambiente temporal. No preparé nada ni construí otra simulación.
+  
+  Revisé .vscode/tasks.json, .workspaceScripts/task_devStart.sh y .workspaceScripts/task_startDevPortalDevUI.sh. Estos son los impedimentos:
+  
+  1. La tarea siempre trabaja en el repositorio real.
+    - tasks.json:31 ejecuta bash ${workspaceFolder}/.workspaceScripts/task_devStart.sh ui ${input:mode}, y ${workspaceFolder} es /workspaces/dev-portal.
+    - task_devStart.sh hace cd "$(dirname "$0")/..", es decir, vuelve a la raíz del repositorio.
+    - Ningún script lee una variable que permita elegir otro directorio, volumen o archivo Compose. La única entrada es Development/Production.
+  
+  2. El pnpm install de la tarea escribe en los node_modules reales. task_startDevPortalDevUI.sh:15-22 ejecuta pnpm -C sharedUIComponents|adminUi|tenantUi
+  install con rutas relativas al repositorio. Para que el ANTES muestre EACCES, tendría que dejar archivos de root en esos node_modules reales. Eso está
+  prohibido.
+  
+  3. El docker compose de la tarea actúa sobre los contenedores y el volumen reales.
+    - La línea 24 ejecuta docker compose -f ./docker-compose-devui.yml up -d --build.
+    - Usa el .env real, con DEVCONTAINER_VOLUME apuntando al volumen real.
+    - Los nombres de contenedor están fijos (dev-portal-admin-ui, dev-portal-tenant-ui) y también los puertos 35001 y 35002.
+    - Cualquier ejecución actúa sobre los contenedores reales, y en el ANTES los recrearía como root.
+  
+  4. El ANTES necesita el Compose original en su sitio. La tarea lee ./docker-compose-devui.yml, que hoy es la versión corregida. Para ejecutarla con la
+  configuración original habría que modificar ese archivo versionado o usar git stash/checkout. Las dos cosas están prohibidas.
+  
+  5. Todas las formas de redirigirla violan alguna restricción:
+    - Editar tasks.json: es un archivo versionado.
+    - Añadir una tarea o variables en la configuración de VS Code (settings.json de usuario o máquina): es modificar configuración existente.
+    - Abrir una copia del repositorio como espacio de trabajo: es duplicar el repositorio. Además, el Dev Container está ligado a /workspaces/dev-portal.
+    - Variables como COMPOSE_PROJECT_NAME: no sirven, porque container_name está fijo y -f indica el archivo explícitamente.
+  
+  Qué sí es posible: el DESPUÉS por sí solo es la ejecución normal de Dev: Start UI en el ambiente real con el fix actual, y ustedes ya lo ejecutaron sin
+  EACCES. Lo que no puede hacerse sin tocar el ambiente real es el ANTES.
+  
+  Qué haría falta para cumplir el flujo completo. Las dos alternativas requieren levantar una de tus restricciones, y no las he aplicado:
+  - Un segundo Dev Container sobre una copia temporal del repositorio, desde el que ejecutarías Dev: Start UI. Requiere permitir clonar o copiar el
+  repositorio.
+  - Usar el ambiente real con reversión: restaurar temporalmente el Compose original, dejar archivos de root en los node_modules reales y recrear los
+  contenedores reales. Después habría que restaurar el fix, ejecutar chown y recrear los contenedores. Requiere permitir modificar archivos versionados,
+  node_modules y contenedores.
+ 
+▸ Credits: turn 4.84 • session 4.84 | Time: 1m 24s
 
-NO quiero que el usuario ejecute before.sh o after.sh para simular la tarea.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◑ 26%                                                            /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
 
-**QUIERO EJECUTAR MANUALMENTE LA TAREA ORIGINAL `Dev: Start UI` DESDE EL MENÚ DE TAREAS DE VS CODE.**
-
-La demostración debe funcionar así:
-
-1. Preparas el estado ANTES.
-2. Me indicas que seleccione `Terminal > Run Task > Dev: Start UI` en VS Code.
-3. La tarea ejecuta las aplicaciones y dependencias reales de Dev Portal y muestra el error EACCES.
-4. Preparas el estado DESPUÉS.
-5. Ejecuto nuevamente `Terminal > Run Task > Dev: Start UI`.
-6. La misma tarea funciona correctamente gracias a la corrección.
-
-Primero revisa el archivo de definición de tareas de VS Code y `.workspaceScripts/task_startDevPortalDevUI.sh` para determinar si es posible cumplir este flujo sin afectar el ambiente actual.
-
-No acepto como resultado ejecutar manualmente comandos equivalentes ni scripts que sustituyan la tarea de VS Code.
-
-Puedes aprovechar el material real y los recursos temporales que ya desarrollaste, pero no modifiques `node_modules`, contenedores, volúmenes, credenciales ni configuración existente de mi ambiente.
-
-No cambies de rama, no clones el repositorio y no modifiques archivos versionados.
-
-Si puedes preparar el flujo solicitado de forma segura, impleméntalo, verifica su funcionamiento y entrégame las instrucciones exactas para realizar personalmente ambas ejecuciones desde VS Code. Los scripts y comentarios deben estar en inglés; las explicaciones y documentación en HTML deben estar en español, fuera del repositorio.
-
-Si la tarea original no puede redirigirse a un ambiente temporal sin violar esas restricciones, responde NO y explica concretamente por qué. No construyas otra simulación.
-
-**No declares que la opción A está resuelta si no puedo ejecutar personalmente `Dev: Start UI` desde VS Code para ver ambos resultados.**
-
-No repitas investigaciones históricas ni modifiques el fix existente.
+›  ask a question or describe a task ↵
