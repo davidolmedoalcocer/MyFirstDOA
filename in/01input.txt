@@ -1,1 +1,4 @@
-docker exec dev-portal-admin-ui id && docker exec dev-portal-tenant-ui id
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ docker exec dev-portal-admin-ui id && docker exec dev-portal-tenant-ui id
+uid=1000(node) gid=1000(node) groups=1000(node)
+uid=1000(node) gid=1000(node) groups=1000(node)
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ 
