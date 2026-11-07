@@ -1,255 +1,80 @@
-# INFIOS DEV PORTAL — CASO 01: DEMOSTRACIÓN REAL ANTES Y DESPUÉS
-
-Actúa como Principal Software Engineer y Software Architect, especializado en Docker, Dev Containers, Linux, Windows/WSL, Node.js, pnpm y Git.
-
-**OBJETIVO: resolver completamente esta tarea en una sola ejecución. No quiero otro diagnóstico general, planes, prompts adicionales ni pruebas sustitutas.**
-
-Estoy realizando un ejercicio personal de aprendizaje. Mi jefe Eli NO solicitó este trabajo. No voy a subir cambios a GitHub ni presentar una implementación oficial.
-
-Quiero demostrar personalmente, con las aplicaciones REALES de Infios Dev Portal, cómo ocurría el error `EACCES` ANTES y cómo funciona la solución DESPUÉS. También necesito entender cada paso para poder explicarlo técnicamente.
-
-## 1. Contexto confirmado
-
-Repositorio: `/workspaces/dev-portal`
-
-Rama actual: `fix/dev-portal-setup-improvements`
-
-Error original: al ejecutar la tarea `Dev: Start UI`, `pnpm install` fallaba por permisos al modificar archivos dentro de `node_modules`, incluyendo:
-
-- `sharedUIComponents/node_modules/.bin`
-- `adminUi/node_modules/@tsconfig/node22`
-
-Se encontraron archivos propiedad de `root`, mientras el Dev Container ejecutaba instalaciones como el usuario `node` (UID 1000).
-
-El `chown` aplicado anteriormente reparó esos archivos, pero no se identificó con certeza qué proceso histórico los creó como root.
-
-La corrección actual consiste en:
-
-**`docker-compose-devui.yml`**
-
-Ambos servicios UI utilizan:
-
-`user: "${DEV_UID:-1000}:${DEV_GID:-1000}"`
-
-**`.devcontainer/detect-and-write-volume.sh`**
-
-Detecta `id -u` e `id -g` y escribe `DEV_UID` y `DEV_GID` en `.env` durante el ciclo de inicialización del Dev Container.
-
-Ya comprobaste anteriormente que esta configuración previene el conflicto en pruebas aisladas con UID 1000 y UID 1001.
-
-También creaste `/tmp/infios-caso-01/`, pero sus demostraciones usan un proyecto mínimo de prueba con dependencias públicas. **Ese proyecto sustituto NO cumple mi objetivo actual. No lo reutilices como evidencia de que ejecutaste las aplicaciones reales.**
-
-## 2. Resultado exacto que necesito
-
-### ANTES — `before.sh`
-
-Quiero ejecutar las aplicaciones REALES de Dev Portal, con su código, estructura y dependencias reales, utilizando la configuración anterior a nuestra corrección.
-
-Necesito mostrar:
-
-- Qué usuario ejecuta los servicios UI.
-- Qué archivos y volúmenes comparten los procesos.
-- Cómo se producen archivos con propietarios incompatibles.
-- Cómo falla la operación real de `pnpm` con `EACCES`.
-- Si es viable sin afectar el ambiente actual, que la aplicación real inicia y sirve peticiones.
-
-Puedes preparar deliberadamente las condiciones de permisos que existían en el incidente original, pero únicamente sobre almacenamiento temporal.
-
-Distingue claramente la preparación deliberada de la prueba de cualquier causa histórica que no esté demostrada.
-
-### DESPUÉS — `after.sh`
-
-Quiero ejecutar esas MISMAS aplicaciones reales y dependencias reales, con la configuración corregida de mi rama.
-
-Repite una operación equivalente y demuestra:
-
-- El UID/GID utilizado por los servicios.
-- Que los archivos se crean con propietarios compatibles.
-- Que `pnpm` completa correctamente su operación.
-- Que el error `EACCES` desaparece.
-- Que la aplicación real inicia y responde, si esa validación es viable.
-
-No acepto una aplicación de ejemplo, paquetes sustitutos ni una simulación genérica como prueba de la aplicación completa.
-
-## 3. Verifica la viabilidad y continúa automáticamente
-
-Primero verifica de forma concreta si puedes ejecutar ambas demostraciones con las aplicaciones reales, respetando todas las restricciones de seguridad indicadas más adelante.
-
-Revisa lo estrictamente necesario: Docker Compose, Dockerfiles, scripts de inicio, dependencias, volúmenes y configuración existente.
-
-No repitas la investigación histórica que ya realizaste.
-
-**Si es viable, NO te detengas a solicitar otra instrucción. Implementa los scripts, ejecútalos, valida los resultados y genera los documentos completos.**
-
-Si existe un impedimento técnico real, no lo ocultes ni sustituyas las aplicaciones por un ejemplo. En ese caso, detente y responde:
-
-`NO ES POSIBLE BAJO ESTAS CONDICIONES`
-
-Identifica el impedimento concreto y qué condición lo causa.
-
-No confundas falta de evidencia con imposibilidad técnica, pero tampoco declares éxito sin ejecutar las pruebas exigidas.
-
-## 4. Restricciones de seguridad obligatorias
-
-- Mantén la rama actual `fix/dev-portal-setup-improvements`.
-- No crees otras ramas, clones ni worktrees.
-- No modifiques archivos del repositorio.
-- No modifiques los `node_modules` reales.
-- No alteres `.env` ni las credenciales existentes.
-- No detengas, reinicies ni reconstruyas el Dev Container actual.
-- No detengas ni modifiques contenedores o volúmenes existentes.
-- No modifiques bases de datos ni datos reales.
-- No expongas, copies a entregables ni imprimas credenciales privadas.
-- No publiques puertos que entren en conflicto con los existentes.
-- No hagas commit, push ni Pull Request.
-- No solicites permisos administrativos ni ayuda de otros desarrolladores.
-- No elimines recursos preexistentes.
-
-Puedes utilizar exclusivamente recursos temporales de Docker creados para esta demostración, con nombres exclusivos.
-
-No dupliques toda la infraestructura de Dev Portal. Si necesitas preparar material temporal basado en los archivos reales, utiliza únicamente los elementos indispensables y explica qué se copia y por qué. No modifiques sus originales.
-
-Antes y después de las pruebas, verifica que el ambiente real conserve su estado.
-
-## 5. Entregables obligatorios
-
-Guarda TODOS los entregables fuera del repositorio, exclusivamente en:
-
-`/tmp/infios-caso-01-real/`
-
-La estructura debe ser:
-
-```text
-/tmp/infios-caso-01-real/
-├── before.sh
-├── after.sh
-├── README.html
-└── guia-para-presentacion.html
-```
-
-**`before.sh`**
-
-Script Bash que permita ejecutar personalmente la demostración ANTES. Todo el código, comentarios y mensajes del script deben estar en inglés.
-
-**`after.sh`**
-
-Script Bash para ejecutar personalmente la demostración DESPUÉS. Todo el código, comentarios y mensajes del script deben estar en inglés.
-
-Los dos scripts deben ser reproducibles y ejecutarse de manera secuencial, no simultánea.
-
-Deben limpiar exclusivamente los recursos temporales que ellos mismos crearon. Si ocurre un error inesperado, deben informar claramente la causa y preservar la seguridad del ambiente actual.
-
-### `README.html` — Español
-
-Documento HTML completo con estos seis apartados:
-
-1. **Título del caso.**
-2. **Descripción del error original.**
-3. **Qué provocaba el error**, separando hechos comprobados y causa histórica desconocida.
-4. **Solución final implementada**, incluyendo archivos modificados, código relevante y justificación técnica.
-5. **Cómo reproducir el ANTES**, con pasos ejecutables, comandos, resultados esperados y resultados realmente observados.
-6. **Cómo ejecutar el DESPUÉS**, con pasos ejecutables, comandos, resultados esperados y resultados realmente observados.
-
-Debe explicar la diferencia entre la configuración original y la corregida.
-
-### `guia-para-presentacion.html` — Español
-
-Quiero una guía didáctica para una persona que está aprendiendo Docker y Dev Containers.
-
-Incluye:
-
-- Requisitos para ejecutar las demostraciones.
-- Desde qué terminal debo ejecutar cada comando.
-- Instrucciones exactas, en orden, para ANTES y DESPUÉS.
-- Explicación de cada comando importante de ambos scripts.
-- Qué son UID, GID, root, node, volumen y `node_modules`.
-- Cómo participa Docker Compose en el problema.
-- Qué hace exactamente nuestra corrección.
-- Qué resultados debo observar en cada etapa.
-- Cómo explicar a Eli la causa, la corrección y las evidencias.
-- Qué hace la demostración para proteger el ambiente real.
-- Qué parte reproduce las condiciones originales de manera controlada y qué parte es ejecución real de las aplicaciones.
-- Cómo repetir las demostraciones y qué recursos temporales se crean y eliminan.
-
-**Quiero comprender los scripts, no solamente ejecutarlos.**
-
-### Requisitos de ambos HTML
-
-- Todo el contenido explicativo en español.
-- Diseño profesional, ordenado y fácil de leer.
-- Navegación, secciones, tablas y bloques de comandos.
-- Sin dependencias externas.
-- Deben abrirse directamente en Chrome o Edge desde mi laptop Windows, sin servidor web ni conexión a Internet.
-- No generes archivos `.md`.
-
-## 6. Ejecuta y valida ANTES de entregar
-
-No basta con escribir los scripts.
-
-Ejecuta `before.sh` y comprueba:
-
-- Que utiliza la configuración original real.
-- Que utiliza el código y las dependencias reales de Dev Portal.
-- Que la aplicación real se ejecuta conforme al alcance exigido.
-- Que aparece el `EACCES` esperado en la operación correspondiente.
-- Que muestra los usuarios y propietarios involucrados.
-
-Ejecuta `after.sh` y comprueba:
-
-- Que utiliza la configuración corregida real.
-- Que utiliza el mismo código y dependencias.
-- Que la operación correspondiente de `pnpm` finaliza correctamente.
-- Que la aplicación se ejecuta conforme al alcance exigido.
-- Que no quedan archivos con propietarios incompatibles.
-
-En ambos casos verifica que los contenedores, volúmenes, configuración y archivos reales del ambiente original permanezcan intactos.
-
-Si cualquiera de estas pruebas obligatorias falla, **no declares la demostración terminada ni generes un documento que la presente como exitosa**.
-
-## 7. Crear ZIP para Windows
-
-Únicamente cuando ambas demostraciones se hayan validado, genera:
-
-`/tmp/infios-caso-01-real.zip`
-
-Debe incluir:
-
-- `before.sh`
-- `after.sh`
-- `README.html`
-- `guia-para-presentacion.html`
-
-No incluyas archivos privados, credenciales, `node_modules` ni otros elementos de Dev Portal.
-
-El ZIP será para estudiar y conservar la documentación en Windows. Los scripts deben poder ejecutarse desde el Dev Container que tiene Docker y acceso al proyecto.
-
-Indica un comando exacto para copiar el ZIP a la carpeta Descargas de Windows, aprovechando el montaje `/tmp/host-home` si está realmente disponible y es escribible.
-
-No elimines los archivos entregables hasta que confirme que los copié.
-
-## 8. Respuesta final
-
-**Si completaste y validaste ambas demostraciones**, responde:
-
-`SÍ — DEMOSTRACIÓN REAL ANTES/DESPUÉS COMPLETADA`
-
-E informa brevemente:
-
-1. Qué aplicaciones reales utilizaste.
-2. Qué dependencias y archivos reales utilizaste.
-3. Resultado concreto del ANTES.
-4. Resultado concreto del DESPUÉS.
-5. Comandos exactos para que yo ejecute ambos scripts.
-6. Ubicación de los cuatro archivos y el ZIP.
-7. Cómo copiar el ZIP a Windows.
-8. Confirmación de que mi ambiente original no fue alterado.
-
-**Si no puedes cumplir todos los requisitos**, responde:
-
-`NO ES POSIBLE BAJO ESTAS CONDICIONES`
-
-Explica exactamente qué impidió hacerlo, sin fabricar una demostración alternativa ni solicitar otro prompt.
-
-No cambies el alcance. No uses proyectos sustitutos. No declares éxito basándote únicamente en configuraciones teóricas o pruebas anteriores.
-
-**Todas tus explicaciones deben estar en español. Los scripts Bash, sus comentarios y sus mensajes deben estar en inglés.**
+ SÍ — DEMOSTRACIÓN REAL ANTES/DESPUÉS COMPLETADA
+  
+  Ejecuté before.sh y after.sh con las aplicaciones y dependencias reales, y los dos dieron el resultado esperado. El ambiente original no cambió.
+  
+  1. Aplicaciones reales. adminUi, tenantUi y sharedUIComponents. Las dos UIs se construyeron con sus Dockerfile.dev reales y arrancaron con su comando real (pnpm dev --host).
+  Respondieron a la página principal y a src/main.ts, lo que obliga a Vite a compilar el punto de entrada real.
+  
+  2. Archivos y dependencias reales.
+  - El docker-compose-devui.yml original sale de Git (HEAD). El corregido es el de tu rama, que solo se lee.
+  - Se copiaron a un volumen temporal los 280 archivos versionados de las tres aplicaciones, con sus lockfiles reales. No se copió ningún node_modules.
+  - Las dependencias se instalaron sin red desde una copia del almacén pnpm real (359 MB), incluidos los paquetes privados @infios/*. No se usaron credenciales.
+  - El paso del Dev Container usa su imagen real, con tu UID/GID, y el mismo pnpm -C <dir> install --frozen-lockfile de Dev: Start UI. Le añadí tres opciones, explicadas en los
+  documentos:
+    - --offline, para no usar red ni credenciales;
+    - --reporter=append-only, para que la salida se lea sin terminal;
+    - --config.confirm-modules-purge=false, para que acepte recrear node_modules sin preguntar.
+  
+  Preparación deliberada. Ejecuté a propósito pnpm install dentro de los contenedores de UI, como lo hacía su ENTRYPOINT hasta el 2026-03-31. Esto recrea la condición del incidente. No
+  es la causa histórica, que sigue sin identificarse, y los scripts y documentos lo indican.
+  
+  3. Resultado del ANTES.
+  - Compose resuelve el usuario vacío, es decir, root.
+  - docker top muestra el proceso vite.js con UID 0 en las dos UIs.
+  - .bin y @tsconfig/node22 quedan como 0:0, con miles de entradas de root.
+  - El pnpm install del Dev Container (1000:1000) termina con código 243 en las tres carpetas: EACCES: permission denied, rmdir '.../sharedUIComponents/node_modules/.bin'.
+  - Las UIs responden igualmente, como root, y dejan node_modules/.vite como 0:0.
+  
+  4. Resultado del DESPUÉS.
+  - Compose resuelve 1000:1000; sin las variables en .env también resolvería 1000:1000.
+  - Los contenedores y Vite corren como UID 1000, y todo queda 1000:1000.
+  - El mismo pnpm install termina con código 0 en las tres carpetas.
+  - Las UIs responden y no queda ninguna entrada con otro propietario.
+  - Con DEMO_UID=1001 DEMO_GID=1001, que simula un host Linux o WSL con otro UID, el resultado es el mismo con 1001.
+  
+  5. Comandos para ejecutarlos. Desde la terminal del Dev Container, uno después del otro, nunca a la vez:
+  
+  bash /tmp/infios-caso-01-real/before.sh
+  bash /tmp/infios-caso-01-real/after.sh
+  DEMO_UID=1001 DEMO_GID=1001 bash /tmp/infios-caso-01-real/after.sh   # opcional
+  
+  Cada uno tarda entre 2 y 3 minutos y termina con código 0 si el resultado es el esperado. Con KEEP=1 delante conserva los recursos temporales para inspeccionarlos.
+  
+  6. Ubicación de los archivos.
+  - /tmp/infios-caso-01-real/before.sh
+  - /tmp/infios-caso-01-real/after.sh
+  - /tmp/infios-caso-01-real/README.html
+  - /tmp/infios-caso-01-real/guia-para-presentacion.html
+  - /tmp/infios-caso-01-real.zip (SHA-256 4a9f674626bd2fa437b609d154cd11a526a8d6409f7cafc921fbfdda1cb78552)
+  
+  El ZIP solo contiene esos cuatro archivos. Revisé que no incluyan credenciales, URLs de feeds ni dependencias externas.
+  
+  Fuera de esa carpeta también quedaron, sin datos privados:
+  - las salidas de mis ejecuciones (/tmp/infios-caso01-real-*-output.txt);
+  - /tmp/infios-caso01-style.txt.
+  
+  7. Copiar el ZIP a Windows. /tmp/host-home/Downloads existe y es escribible. Desde la terminal del Dev Container:
+  
+  cp /tmp/infios-caso-01-real.zip /tmp/host-home/Downloads/
+  
+  El archivo aparece en C:\Users\<tu usuario>\Downloads\. Los HTML se abren con doble clic en Chrome o Edge, sin conexión.
+  
+  8. Ambiente original sin cambios. Cada script compara al final una huella del entorno con la del inicio, y las tres ejecuciones mostraron Real environment unchanged. La verificación
+  final confirma:
+  - La rama sigue siendo fix/dev-portal-setup-improvements y git status es igual que antes.
+  - .env conserva su fecha (01:45:40) y su hash.
+  - dev-portal-admin-ui y dev-portal-tenant-ui siguen activos sin reinicio (iniciados el 2026-11-06 a las 23:55) y como 1000:1000.
+  - Los tres node_modules reales tienen 0 entradas de root.
+  - No quedan contenedores, volúmenes, imágenes ni redes infios-caso01*.
+  
+  Sigue pendiente reiniciar el Dev Container real para confirmar que .env se regenera solo con DEV_UID y DEV_GID.
+  
+  No borraré nada hasta que confirmes que copiaste los archivos.
+ 
+▸ Credits: turn 50.86 • session 113.13 | Time: 25m 45s
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◑ 29%                                                                                     /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+
+›  ask a question or describe a task ↵
+                                       
