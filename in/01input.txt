@@ -1,1 +1,1 @@
-for c in dev-portal-admin-ui dev-portal-tenant-ui; do echo "===== $c ====="; docker logs --tail 60 "$c" 2>&1; done
+for d in sharedUIComponents adminUi tenantUi; do printf '%s: ' "$d"; find "$d/node_modules" -xdev -uid 0 -print | wc -l; done
