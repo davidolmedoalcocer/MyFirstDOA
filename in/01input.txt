@@ -1,80 +1,30 @@
- SÍ — DEMOSTRACIÓN REAL ANTES/DESPUÉS COMPLETADA
-  
-  Ejecuté before.sh y after.sh con las aplicaciones y dependencias reales, y los dos dieron el resultado esperado. El ambiente original no cambió.
-  
-  1. Aplicaciones reales. adminUi, tenantUi y sharedUIComponents. Las dos UIs se construyeron con sus Dockerfile.dev reales y arrancaron con su comando real (pnpm dev --host).
-  Respondieron a la página principal y a src/main.ts, lo que obliga a Vite a compilar el punto de entrada real.
-  
-  2. Archivos y dependencias reales.
-  - El docker-compose-devui.yml original sale de Git (HEAD). El corregido es el de tu rama, que solo se lee.
-  - Se copiaron a un volumen temporal los 280 archivos versionados de las tres aplicaciones, con sus lockfiles reales. No se copió ningún node_modules.
-  - Las dependencias se instalaron sin red desde una copia del almacén pnpm real (359 MB), incluidos los paquetes privados @infios/*. No se usaron credenciales.
-  - El paso del Dev Container usa su imagen real, con tu UID/GID, y el mismo pnpm -C <dir> install --frozen-lockfile de Dev: Start UI. Le añadí tres opciones, explicadas en los
-  documentos:
-    - --offline, para no usar red ni credenciales;
-    - --reporter=append-only, para que la salida se lea sin terminal;
-    - --config.confirm-modules-purge=false, para que acepte recrear node_modules sin preguntar.
-  
-  Preparación deliberada. Ejecuté a propósito pnpm install dentro de los contenedores de UI, como lo hacía su ENTRYPOINT hasta el 2026-03-31. Esto recrea la condición del incidente. No
-  es la causa histórica, que sigue sin identificarse, y los scripts y documentos lo indican.
-  
-  3. Resultado del ANTES.
-  - Compose resuelve el usuario vacío, es decir, root.
-  - docker top muestra el proceso vite.js con UID 0 en las dos UIs.
-  - .bin y @tsconfig/node22 quedan como 0:0, con miles de entradas de root.
-  - El pnpm install del Dev Container (1000:1000) termina con código 243 en las tres carpetas: EACCES: permission denied, rmdir '.../sharedUIComponents/node_modules/.bin'.
-  - Las UIs responden igualmente, como root, y dejan node_modules/.vite como 0:0.
-  
-  4. Resultado del DESPUÉS.
-  - Compose resuelve 1000:1000; sin las variables en .env también resolvería 1000:1000.
-  - Los contenedores y Vite corren como UID 1000, y todo queda 1000:1000.
-  - El mismo pnpm install termina con código 0 en las tres carpetas.
-  - Las UIs responden y no queda ninguna entrada con otro propietario.
-  - Con DEMO_UID=1001 DEMO_GID=1001, que simula un host Linux o WSL con otro UID, el resultado es el mismo con 1001.
-  
-  5. Comandos para ejecutarlos. Desde la terminal del Dev Container, uno después del otro, nunca a la vez:
-  
-  bash /tmp/infios-caso-01-real/before.sh
-  bash /tmp/infios-caso-01-real/after.sh
-  DEMO_UID=1001 DEMO_GID=1001 bash /tmp/infios-caso-01-real/after.sh   # opcional
-  
-  Cada uno tarda entre 2 y 3 minutos y termina con código 0 si el resultado es el esperado. Con KEEP=1 delante conserva los recursos temporales para inspeccionarlos.
-  
-  6. Ubicación de los archivos.
-  - /tmp/infios-caso-01-real/before.sh
-  - /tmp/infios-caso-01-real/after.sh
-  - /tmp/infios-caso-01-real/README.html
-  - /tmp/infios-caso-01-real/guia-para-presentacion.html
-  - /tmp/infios-caso-01-real.zip (SHA-256 4a9f674626bd2fa437b609d154cd11a526a8d6409f7cafc921fbfdda1cb78552)
-  
-  El ZIP solo contiene esos cuatro archivos. Revisé que no incluyan credenciales, URLs de feeds ni dependencias externas.
-  
-  Fuera de esa carpeta también quedaron, sin datos privados:
-  - las salidas de mis ejecuciones (/tmp/infios-caso01-real-*-output.txt);
-  - /tmp/infios-caso01-style.txt.
-  
-  7. Copiar el ZIP a Windows. /tmp/host-home/Downloads existe y es escribible. Desde la terminal del Dev Container:
-  
-  cp /tmp/infios-caso-01-real.zip /tmp/host-home/Downloads/
-  
-  El archivo aparece en C:\Users\<tu usuario>\Downloads\. Los HTML se abren con doble clic en Chrome o Edge, sin conexión.
-  
-  8. Ambiente original sin cambios. Cada script compara al final una huella del entorno con la del inicio, y las tres ejecuciones mostraron Real environment unchanged. La verificación
-  final confirma:
-  - La rama sigue siendo fix/dev-portal-setup-improvements y git status es igual que antes.
-  - .env conserva su fecha (01:45:40) y su hash.
-  - dev-portal-admin-ui y dev-portal-tenant-ui siguen activos sin reinicio (iniciados el 2026-11-06 a las 23:55) y como 1000:1000.
-  - Los tres node_modules reales tienen 0 entradas de root.
-  - No quedan contenedores, volúmenes, imágenes ni redes infios-caso01*.
-  
-  Sigue pendiente reiniciar el Dev Container real para confirmar que .env se regenera solo con DEV_UID y DEV_GID.
-  
-  No borraré nada hasta que confirmes que copiaste los archivos.
- 
-▸ Credits: turn 50.86 • session 113.13 | Time: 25m 45s
+Kiro, necesito corregir un requisito fundamental de la demostración del caso 01.
 
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◑ 29%                                                                                     /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+NO quiero que el usuario ejecute before.sh o after.sh para simular la tarea.
 
-›  ask a question or describe a task ↵
-                                       
+**QUIERO EJECUTAR MANUALMENTE LA TAREA ORIGINAL `Dev: Start UI` DESDE EL MENÚ DE TAREAS DE VS CODE.**
+
+La demostración debe funcionar así:
+
+1. Preparas el estado ANTES.
+2. Me indicas que seleccione `Terminal > Run Task > Dev: Start UI` en VS Code.
+3. La tarea ejecuta las aplicaciones y dependencias reales de Dev Portal y muestra el error EACCES.
+4. Preparas el estado DESPUÉS.
+5. Ejecuto nuevamente `Terminal > Run Task > Dev: Start UI`.
+6. La misma tarea funciona correctamente gracias a la corrección.
+
+Primero revisa el archivo de definición de tareas de VS Code y `.workspaceScripts/task_startDevPortalDevUI.sh` para determinar si es posible cumplir este flujo sin afectar el ambiente actual.
+
+No acepto como resultado ejecutar manualmente comandos equivalentes ni scripts que sustituyan la tarea de VS Code.
+
+Puedes aprovechar el material real y los recursos temporales que ya desarrollaste, pero no modifiques `node_modules`, contenedores, volúmenes, credenciales ni configuración existente de mi ambiente.
+
+No cambies de rama, no clones el repositorio y no modifiques archivos versionados.
+
+Si puedes preparar el flujo solicitado de forma segura, impleméntalo, verifica su funcionamiento y entrégame las instrucciones exactas para realizar personalmente ambas ejecuciones desde VS Code. Los scripts y comentarios deben estar en inglés; las explicaciones y documentación en HTML deben estar en español, fuera del repositorio.
+
+Si la tarea original no puede redirigirse a un ambiente temporal sin violar esas restricciones, responde NO y explica concretamente por qué. No construyas otra simulación.
+
+**No declares que la opción A está resuelta si no puedo ejecutar personalmente `Dev: Start UI` desde VS Code para ver ambos resultados.**
+
+No repitas investigaciones históricas ni modifiques el fix existente.
