@@ -1,1 +1,1 @@
-bash -n .devcontainer/detect-and-write-volume.sh && DEV_UID="$(id -u)" DEV_GID="$(id -g)" docker compose -f docker-compose-devui.yml config --quiet
+printf 'DEV_UID=%s\nDEV_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
