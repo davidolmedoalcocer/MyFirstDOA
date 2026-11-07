@@ -1,177 +1,62 @@
-# INFIOS DEV PORTAL — RESOLUCIÓN DEFINITIVA DEL CASO 01
-
-Actúa como **Principal Software Engineer y Software Architect**, experto en Docker, Dev Containers, Docker Desktop para Windows, Linux, WSL, Node.js, pnpm y Git.
-
-**Necesito que resuelvas el caso 01 directamente. No quiero otro diagnóstico general, un plan extenso ni una sucesión de comandos para que yo los ejecute.**
-
-Tienes acceso al código. Haz tú mismo el análisis dirigido, las modificaciones justificadas, las comprobaciones seguras y la documentación.
-
-## Contexto histórico confirmado
-
-Repositorio: `/workspaces/dev-portal`
-
-Rama de trabajo: `fix/dev-portal-setup-improvements`
-
-Error original: la tarea `Dev: Start UI` fallaba con `EACCES` cuando `pnpm install` intentaba modificar:
-
-- `sharedUIComponents/node_modules/.bin`
-- `adminUi/node_modules/@tsconfig/node22`
-
-Existían archivos `root:root` mientras que el usuario del Dev Container era `node`, UID 1000.
-
-En la investigación inicial se repararon los permisos usando `chown`. Eso permitió iniciar las aplicaciones, pero no identificó el proceso histórico que creó dichos archivos como root.
-
-## Cambios que ya existen en la rama
-
-**1. `docker-compose-devui.yml`**
-
-Admin UI y Tenant UI utilizan:
-
-`user: "${DEV_UID}:${DEV_GID}"`
-
-Originalmente esos servicios no tenían `user:` y podían ejecutar procesos como root.
-
-**2. `.devcontainer/detect-and-write-volume.sh`**
-
-Agregamos:
-
-```bash
-DEV_UID="$(id -u)"
-DEV_GID="$(id -g)"
-
-printf 'DEV_UID=%s\nDEV_GID=%s\n' "$DEV_UID" "$DEV_GID" >> "$ENV_FILE"
-
-echo "Wrote DEV_UID=$DEV_UID DEV_GID=$DEV_GID to $ENV_FILE" >> "$LOG"
-```
-
-El script regenera `.env` desde `.env.template` y se invoca mediante `postCreateCommand.sh` y `postStartCommand.sh`.
-
-**3. `.env` local**
-
-Se agregaron manualmente `DEV_UID=1000` y `DEV_GID=1000` para comprobar la configuración actual. Esta intervención manual NO debe ser requisito para otros desarrolladores.
-
-## Pruebas ya realizadas
-
-- Sintaxis Bash válida.
-- Docker Compose acepta la configuración.
-- Compose resuelve ambos servicios como UID/GID 1000.
-- Ambos contenedores reportaron `uid=1000(node) gid=1000(node)`.
-- `Dev: Start UI` se ejecutó sin reportar EACCES.
-- Los tres `node_modules` examinados tenían cero entradas con UID 0.
-- Las interfaces funcionaron con el backend disponible.
-
-**Problemas pendientes conocidos:**
-
-- No está identificado el proceso histórico que creó los archivos afectados como root.
-- Vite puede escribir en `.vite`, pero eso no demuestra que creara `.bin` o `@tsconfig/node22`.
-- Las variables sin definir pueden provocar una configuración Compose inválida.
-- La generación automática del `.env` modificado todavía no se ha demostrado mediante un nuevo inicio.
-- El caso de UID diferente de 1000 no se ha probado dinámicamente.
-- Las URLs y los puertos incorrectos corresponden a otro hallazgo y están fuera de alcance.
-
-## TU TRABAJO — TOMA LAS DECISIONES TÉCNICAS
-
-### A. Determina la solución correcta
-
-Analiza únicamente los archivos y el historial Git relacionados con las instalaciones de dependencias, los usuarios de los contenedores y el volumen compartido.
-
-Determina si nuestras dos modificaciones son necesarias, suficientes y apropiadas para la arquitectura.
-
-No conserves código innecesario por el hecho de que ya exista. No reviertas código útil simplemente porque no se identificó el proceso histórico.
-
-Distingue entre:
-
-- La causa inmediata comprobada de EACCES.
-- El proceso histórico responsable, si puede identificarse.
-- Los mecanismos que permiten que vuelva a suceder.
-- La corrección que efectivamente podemos garantizar.
-
-**Si no existe evidencia para identificar al proceso histórico, dilo explícitamente. No inventes una causa ni simules haberla demostrado.**
-
-### B. Implementa la corrección mínima
-
-Puedes modificar los archivos directamente relacionados con el caso cuando la evidencia lo justifique.
-
-La solución debe:
-
-- Funcionar automáticamente para desarrolladores nuevos.
-- Contemplar Windows con Docker Desktop y otros hosts compatibles con Dev Containers, incluidos WSL y Linux.
-- No exigir editar `.env` ni ejecutar `chown` manualmente durante una instalación normal.
-- No introducir una dependencia frágil de variables ausentes.
-- No agregar scripts auxiliares o complejidad innecesaria.
-- Evitar que procesos de este flujo creen archivos con propietarios incompatibles en el volumen compartido.
-
-Si una modificación actual está injustificada, retírala de manera selectiva y explica por qué.
-
-### C. Ejecuta pruebas seguras
-
-Ejecuta autónomamente las comprobaciones de solo lectura y las pruebas aisladas necesarias.
-
-Puedes utilizar contenedores o volúmenes de prueba **nuevos y exclusivamente temporales**, siempre que no afecten los servicios ni los datos actuales.
-
-No alteres los `node_modules` reales para reproducir el error. No toques bases de datos ni elimines volúmenes existentes.
-
-Para demostrar el ANTES/DESPUÉS, reproduce el mecanismo de permisos en un entorno aislado equivalente cuando sea viable. No presentes esa demostración como reproducción histórica del incidente.
-
-Si alguna prueba requiere reiniciar o recrear los contenedores actuales, no lo hagas sin mi autorización. En ese caso, termina las demás verificaciones y señala exactamente la prueba funcional que queda pendiente.
-
-### D. Protege mi trabajo
-
-No cambies de rama. No crees worktrees.
-
-No hagas commit, push ni Pull Request.
-
-No modifiques los seis archivos o grupos de archivos preexistentes de Kiro/SDLC ni `.gitignore`.
-
-No modifiques código funcional ajeno a este caso.
-
-No solicites permisos de administrador ni ayuda de otros compañeros.
-
-No ejecutes `git clean`, restauraciones generales, ni acciones destructivas sobre el entorno existente.
-
-### E. ENTREGA OBLIGATORIA
-
-Genera un documento técnico Markdown del caso 01, con estas seis secciones:
-
-**1. Título del caso**
-
-**2. Descripción del error original**
-
-**3. Qué provocaba el error**
-
-Incluye la causa comprobada y las limitaciones de atribución histórica.
-
-**4. Cómo se solucionó**
-
-Explica la solución FINAL que realmente implementaste, archivos modificados, código exacto y justificación arquitectónica.
-
-No quiero recomendaciones genéricas.
-
-**5. Cómo reproducir el error ANTES de la solución**
-
-Incluye un procedimiento seguro y reproducible. Indica si fue ejecutado realmente y sus resultados. Distingue una demostración aislada del incidente histórico.
-
-**6. Cómo ejecutar y comprobar el DESPUÉS**
-
-Incluye el procedimiento y las pruebas efectivamente ejecutadas, con resultados observados.
-
-Incluye también un `git diff` de los cambios del caso y un resumen de cualquier prueba que no haya sido posible completar.
-
-Guarda el documento en el repositorio, dentro de una carpeta de documentación apropiada, sin incorporarlo a ningún commit.
-
-## CRITERIO DE TERMINACIÓN
-
-No me digas que está cerrado solamente porque los contenedores arrancan.
-
-Al terminar quiero saber claramente:
-
-- Qué error corregimos.
-- Qué código cambiaste y por qué.
-- Qué código anterior eliminaste, si corresponde.
-- Qué pruebas ejecutaste.
-- Qué problema queda sin demostrar, si existe.
-- Si el resultado está listo para presentar a Eli o todavía requiere una validación específica.
-
-**Trabaja directamente. No me devuelvas otro plan ni me solicites ejecutar comandos de lectura. Entrégame los cambios, la evidencia y el documento.**
-
-Responde en español.
+Qué error corregimos. Los contenedores Admin UI y Tenant UI se ejecutaban como root y escribían en el mismo volumen que el Dev Container,
+  que trabaja como UID 1000. pnpm no podía modificar esos archivos de root y fallaba con EACCES. Lo reproduje en un volumen temporal: con un
+  instalador root, la actualización como 1000 falla con EACCES: permission denied, unlink '.../node_modules/@tsconfig/node22'.
+  
+  Qué cambié y por qué.
+  - Valor por defecto en Compose (cambio nuevo y necesario). En docker-compose-devui.yml cambié ${DEV_UID}:${DEV_GID} por
+  ${DEV_UID:-1000}:${DEV_GID:-1000} en los dos servicios. Sin las variables en .env, la versión anterior resolvía user: ':', y docker run
+  --user ":" arranca como root sin dar error. Es decir, el fix anterior volvía a abrir el bug sin aviso.
+  - Conservé la detección del UID. detect-and-write-volume.sh escribe DEV_UID y DEV_GID con id -u e id -g. Solo mejoré su comentario. Es
+  necesaria porque en hosts Linux o WSL el usuario node puede tener otro UID, y fijar 1000 crearía el conflicto al revés.
+  
+  Qué eliminé. Nada. Las dos piezas existentes son necesarias, y las pruebas lo demuestran.
+  
+  Qué pruebas ejecuté. Todas en volúmenes y contenedores temporales case01-*, ya eliminados. El volumen real y el .env real no se tocaron.
+  
+  ┌──────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────┐
+  │ Prueba                                                               │ Resultado                                                    │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Antes: el contenedor UI instala como root y el Dev Container (1000)  │ EACCES; 416 archivos de root                                 │
+  │ actualiza                                                            │                                                              │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Antes: el comando actual (pnpm dev) como root                        │ Crea node_modules/.vite como root, pero no .bin ni           │
+  │                                                                      │ @tsconfig/node22                                             │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Después: con el .env generado (UID 1000)                             │ Instala, actualiza y sirve en el puerto 80; 0 archivos       │
+  │                                                                      │ ajenos                                                       │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Después: con UID 1001                                                │ Igual que con 1000; 0 archivos ajenos                        │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Después: .env sin DEV_UID/DEV_GID                                    │ Compose resuelve 1000:1000                                   │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Script real de detección en este Dev Container, con salida           │ Escribe DEV_UID=1000 y DEV_GID=1000                          │
+  │ redirigida a /tmp                                                    │                                                              │
+  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+  │ Script sin modificar, como UID 1001, en la imagen del Dev Container  │ Escribe DEV_UID=1001 y DEV_GID=1001                          │
+  └──────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
+  
+  Qué queda sin demostrar.
+  - El proceso que creó los archivos de root no está identificado. Entre marzo de 2026 hubo un pnpm install como root en los Dockerfiles de
+  las UIs (commits 2f8c09ba a 007459b1). No pudo actuar sobre este volumen: el volumen es del 2026-10-29 y las imágenes de ese día ya no
+  instalan. Tampoco se ejecutaba en sharedUIComponents. El historial de comandos solo registra el chown de reparación.
+  - El arranque real no se ha observado: no comprobé un reinicio del Dev Container ni la recreación de los contenedores con la configuración
+  final.
+  - No hay prueba en equipos reales con Windows, ni con Linux o WSL con un UID distinto de 1000. La prueba con UID 1001 cubre el
+  comportamiento dentro de Docker.
+  - Los volúmenes creados antes del fix que ya tengan archivos de root necesitan un único chown. El suyo ya está reparado.
+  
+  Respeté las restricciones: no hice commit, no toqué los archivos de Kiro/SDLC ni .gitignore, y no creé ni eliminé recursos fuera de los
+  temporales.
+  
+  Decisión: el resultado se puede presentar a Eli. Para cerrarlo del todo queda una validación: reiniciar el Dev Container y ejecutar Dev:
+  Start UI. Debe cumplirse lo siguiente:
+  - ~/detect_volume_debug.log contiene Wrote DEV_UID=... con la hora del arranque.
+  - docker exec dev-portal-admin-ui id devuelve el mismo UID que id -u en el Dev Container.
+  - No queda ningún archivo con otro propietario en los tres node_modules.
+ 
+▸ Credits: turn 27.75 • session 40.25 | Time: 20m 3s
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 16%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+
+›  ask a question or describe a task ↵
