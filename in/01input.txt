@@ -1,1 +1,1 @@
-docker compose -f docker-compose-devui.yml config | grep 'user:'
+grep -nE 'detect-and-write-volume|postCreateCommand|postStartCommand' .devcontainer/devcontainer.json .devcontainer/postCreateCommand.sh .devcontainer/postStartCommand.sh .workspaceScripts/task_startDevPortalDevUI.sh
