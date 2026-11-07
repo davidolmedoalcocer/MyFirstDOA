@@ -1,355 +1,99 @@
-# INFIOS DEV PORTAL — CASO 04: CONFIGURACIÓN DE AZURE DEVOPS MCP EN KIRO CLI
+ CASO 04 — AZURE DEVOPS MCP CONFIGURADO Y VALIDADO
+  
+  El agente SDLC de Kiro CLI ya consulta Azure DevOps con tu cuenta corporativa. Hice una consulta real de solo lectura que devolvió 38
+  proyectos. No tuve que pedirte la URL: la organización highjumpvso ya estaba en .kiro/team-config.yaml. Tampoco tuviste que iniciar sesión:
+  Azure CLI ya tenía tu sesión ***@infios.com, del mismo inquilino de Entra ID que la organización.
+  
+  1. Causa comprobada Fueron tres fallos encadenados:
+  - No había servidor ado en ningún archivo MCP que carga el agente. kiro-cli mcp status --name ado respondía No MCP server named 'ado' found
+  in any agent, y ~/.kiro/settings/mcp.json no existía.
+  - La versión que configuraría el propio framework no arranca en este Dev Container. infios-sdlc fija ADO_VERSION = '2.10.0'
+  (mcp-services.js:10), y esa versión muere al iniciarse con libsecret-1.so.0: cannot open shared object file. El error viene de keytar, que
+  llega por la dependencia @azure/msal-node-extensions; la 2.11.0 oficial ya no la incluye.
+  - Aun con un servidor que funciona, había una carrera de arranque en Kiro v3. El primer mensaje salió a las 22:14:25 y el servidor conectó a
+  las 22:14:31, así que el agente respondió ADO_TOOLS_UNAVAILABLE. Kiro solo espera a los servidores marcados con waitForReady.
+  
+  No era un problema de autenticación, de permisos ni de política corporativa. El perfil empresarial tiene MCP activado y sin lista de
+  servidores permitidos.
+  
+  La advertencia de Workspace Trust es otro mecanismo y además un falso positivo. permissions.yaml dice workspaceTrusted: true, pero el
+  framework busca un .trust-migration.json que Kiro ya no crea (kiro-engine.cjs:185). Hay 0 señales reales de carpeta no confiable en los
+  registros.
+  
+  2. Configuración corregida Es el servidor local oficial de Microsoft. El servidor remoto mcp.dev.azure.com no sirve todavía para Kiro: según
+  Microsoft, necesita un registro OAuth dinámico en Entra que aún no existe para este tipo de clientes.
+  
+  "ado": {
+    "command": "npx",
+    "args": ["-y","@azure-devops/mcp@2.11.0","highjumpvso","-d","core","work","work-items","-a","azcli"],
+    "env": { "ado_mcp_project": "Development Tools" },
+    "timeout": 120000,
+    "waitForReady": true
+  }
+  
+  No usé ningún PAT ni secreto, y no hay autoApprove. El servidor ofrece herramientas de escritura, pero ninguna se aprueba automáticamente:
+  cada una pide confirmación.
+  
+  3. Archivos modificados
+  - Solo ~/.kiro/settings/mcp.json: es personal, está fuera de Git y tiene permisos 600.
+  - Probé añadir @ado a .kiro/agents/sdlc.json, comprobé que no hacía falta y lo revertí. Su hash final es idéntico al original.
+  - Probé el ajuste mcp.noInteractiveTimeout en ~/.kiro/settings/cli.json, no tuvo efecto y lo restauré.
+  
+  4. ANTES (before.sh, real)
+  - infios-sdlc check muestra Azure DevOps MCP server not configured y Workspace trust unknown.
+  - Ningún archivo MCP del proyecto tiene ado.
+  - En vivo: la versión 2.10.0 cae con el error de libsecret.
+  - Registrado: la carrera de 6 s entre el mensaje y la conexión.
+  - workspaceTrusted: true.
+  
+  5. DESPUÉS (after.sh, real)
+  - kiro-cli mcp list muestra sdlc • ado npx.
+  - Entra ID emite el token de Azure DevOps; el script no lo muestra.
+  - El servidor responde initialize → Azure DevOps MCP Server 2.11.0 y ofrece 15 herramientas.
+  - core_list_projects → ok, 38 projects, con Development Tools presente.
+  - El agente SDLC ejecuta [tool] @ado/core_list_projects … Completed y responde PROJECT_COUNT: 38.
+  - Ninguna herramienta de escritura queda aprobada automáticamente.
+  - Salida: código 0.
+  
+  6. Consulta real en ADO core_list_projects (GET _apis/projects), de solo lectura, autorizada únicamente para esa ejecución con
+  --trust-tools=mcp_ado_core_list_projects. No creé ni modifiqué nada en ADO.
+  
+  7. Cómo repetirlo Desde una terminal del Dev Container:
+  
+  bash /tmp/infios-caso-04/before.sh
+  bash /tmp/infios-caso-04/after.sh                 # unos 2 minutos, incluye la consulta del agente
+  SKIP_AGENT=1 bash /tmp/infios-caso-04/after.sh    # sin el paso del agente
+  
+  Si caduca tu sesión de Azure CLI, renuévala con az login --use-device-code y tu cuenta corporativa.
+  
+  Pendiente del lado del framework (no lo cambié porque no es de este repositorio):
+  - Fija la versión 2.10.0, que falla en esta imagen.
+  - Su check solo lee .mcp.json del proyecto, así que seguirá avisando aunque la integración funcione.
+  - Su detector de Workspace Trust busca un archivo que Kiro ya no crea.
+  - Conviene que genere el servidor con waitForReady.
+  
+  Para quitar el aviso del check habría que añadir ado a .mcp.json del proyecto. No lo hice sin tu autorización.
+  
+  8. ZIP
+  - /tmp/infios-caso-04.zip (SHA-256 bb547277…) con los tres archivos.
+  - El HTML funciona sin Internet y no contiene tokens, correos completos ni nombres de proyectos.
+  - /tmp/host-home/Downloads/ existe y se puede escribir:
+  
+  cp /tmp/infios-caso-04.zip /tmp/host-home/Downloads/
+  
+  No eliminé nada.
+  
+  9. Casos 01 y 03 intactos
+  - Los hashes coinciden: Caso 01 9f3d9fa5…; Caso 03 a69b2045… y 64df170e….
+  - .kiro/settings/mcp.json y .mcp.json sin cambios.
+  - Misma rama y mismo git status, sin commits.
+ 
+▸ Credits: turn 160.22 • session 335.86 | Time: 24m 27s
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◑ 59%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+
+›  ask a question or describe a task ↵
+                                                                                                     /sessions to resume · /copy to clipboard
 
-Actúa como Principal Software Engineer especializado en Kiro CLI, Model Context Protocol (MCP), Azure DevOps, autenticación Microsoft Entra ID y Dev Containers.
 
-## OBJETIVO
-
-Necesito resolver el Caso 04 completo como ejercicio personal de aprendizaje.
-
-**No quiero que solamente analices el problema y me pidas otro prompt.**
-
-Debes:
-
-1. Identificar por qué Kiro Agent SDLC muestra advertencias relacionadas con Azure DevOps MCP y Workspace Trust.
-2. Comprobar la configuración existente.
-3. Identificar e implementar una solución segura, si está permitida.
-4. Autenticar la integración mediante mi cuenta corporativa, con mi intervención cuando sea necesaria.
-5. Ejecutar consultas REALES de solo lectura a Azure DevOps.
-6. Preparar una demostración reproducible ANTES y DESPUÉS.
-7. Generar documentación HTML en español, explicando exactamente qué código y configuración intervienen.
-8. Preparar un ZIP para copiarlo a mi laptop Windows.
-
-Todo debe completarse en esta misma tarea, salvo las interacciones personales imprescindibles de autenticación o los bloqueos corporativos.
-
-## 1. CONTEXTO
-
-Repositorio: `/workspaces/dev-portal`
-
-Rama: `fix/dev-portal-setup-improvements`
-
-Estoy utilizando Kiro CLI, con el agente SDLC, dentro del Dev Container.
-
-Durante la configuración del ambiente aparecieron advertencias relacionadas con Azure DevOps MCP y Workspace Trust.
-
-**Yo tengo acceso a Azure DevOps desde el navegador corporativo, pero no conseguí configurar su integración con Kiro.**
-
-No asumas que carezco de permisos.
-
-Tampoco asumas que el acceso desde el navegador significa que el MCP ya está autenticado.
-
-Los Casos 01 y 03 están terminados. No debes modificar sus correcciones.
-
-## 2. URL DE AZURE DEVOPS
-
-Primero revisa si la organización Azure DevOps ya está identificada en alguna configuración existente a la que tengas acceso legítimo.
-
-Si no puedes identificarla con certeza, pregúntame directamente:
-
-**"¿Cuál es la URL de Azure DevOps a la que puedes acceder desde tu navegador?"**
-
-Yo te proporcionaré la URL.
-
-No inventes nombres de organizaciones, proyectos, servidores o endpoints.
-
-Cuando te responda, continúa automáticamente con esta misma tarea. No me pidas otro prompt.
-
-## 3. INVESTIGACIÓN DIRIGIDA
-
-Revisa exclusivamente lo necesario:
-
-- Versión instalada de Kiro CLI.
-- Agente SDLC y sus mecanismos de carga de MCP.
-- Configuración MCP personal y del workspace.
-- Posibles configuraciones heredadas.
-- Mensajes y registros relacionados con Azure DevOps MCP.
-- Advertencias de Workspace Trust.
-- Disponibilidad del servidor MCP oficial de Microsoft.
-- Requisitos de autenticación.
-- Permisos efectivos de la cuenta corporativa.
-
-Consulta la documentación oficial vigente de Kiro y Microsoft.
-
-Referencias iniciales:
-
-- https://kiro.dev/docs/mcp/configuration/
-- https://github.com/microsoft/azure-devops-mcp
-
-Verifica que las instrucciones elegidas sean compatibles con Kiro CLI, no solamente con GitHub Copilot o VS Code.
-
-Determina qué está fallando realmente:
-
-- El servidor MCP no está configurado.
-- El agente SDLC no carga la configuración.
-- El servidor no inicia.
-- La autenticación falla.
-- La conexión es rechazada.
-- Una política corporativa impide utilizar MCP.
-- La herramienta funciona, pero no tiene acceso al recurso solicitado.
-- La advertencia de Workspace Trust corresponde a otro problema.
-
-**No mezcles Workspace Trust con la autenticación de Azure DevOps: son mecanismos distintos.**
-
-Para cada hallazgo importante indica archivo, línea, configuración, registro y evidencia.
-
-Distingue HECHO COMPROBADO, INFERENCIA y DESCONOCIDO.
-
-## 4. IMPLEMENTA LA SOLUCIÓN SI ESTÁ PERMITIDA
-
-Si existe una solución técnicamente válida y autorizada, aplícala directamente.
-
-Prefiere una configuración PERSONAL de Kiro CLI sobre modificar archivos compartidos del repositorio.
-
-Antes de cualquier cambio, registra el estado anterior de manera segura para poder explicar qué estaba mal.
-
-Si existe una configuración MCP previa, consérvala y modifica solamente lo indispensable.
-
-Investiga primero el MCP remoto oficial de Azure DevOps, siempre que sea compatible con Kiro CLI y las políticas corporativas.
-
-Si no es compatible, evalúa el servidor local oficial.
-
-No instales paquetes de origen desconocido ni utilices implementaciones no oficiales sin justificación.
-
-### Autenticación
-
-Utiliza un método oficial y autorizado.
-
-Si necesitas que yo inicie sesión:
-
-1. Explícame qué ventana o proceso debo abrir.
-2. Indícame qué cuenta utilizar.
-3. Pídeme completar personalmente la autenticación.
-4. Continúa con las pruebas después.
-
-NUNCA me solicites pegar contraseñas, códigos MFA, cookies, tokens de acceso ni secretos en el chat.
-
-No crees un Personal Access Token si no es necesario.
-
-No intentes eludir MFA, políticas corporativas o controles de seguridad.
-
-Si una política de Infios impide utilizar MCP, detente y documenta ese bloqueo. No intentes evadirlo.
-
-## 5. RESULTADO FUNCIONAL OBLIGATORIO
-
-El objetivo no es simplemente hacer desaparecer una advertencia.
-
-Quiero que Kiro CLI, mediante el agente SDLC, pueda consultar Azure DevOps con mis permisos corporativos.
-
-Realiza pruebas REALES de solo lectura, por ejemplo:
-
-- Listar proyectos de Azure DevOps a los que tengo acceso.
-- Consultar los repositorios de un proyecto autorizado.
-- Consultar información de un Pull Request o work item autorizado.
-
-Selecciona las consultas más sencillas y seguras.
-
-**No crees ni modifiques work items, PR, repositorios, pipelines ni configuraciones de ADO.**
-
-No apruebes herramientas de escritura automáticamente.
-
-Comprueba tanto la conexión del servidor MCP como una consulta real exitosa.
-
-Si una herramienta está conectada pero devuelve 401, 403 u otro error, explica exactamente qué significa y no declares que la integración funciona.
-
-## 6. DEMOSTRACIÓN ANTES Y DESPUÉS
-
-Quiero mostrarle a Eli qué estaba mal y cómo se corrigió.
-
-### ANTES — `before.sh`
-
-Debe mostrar el problema original comprobado.
-
-Ejemplos de evidencia válida:
-
-- Advertencia real de Kiro.
-- Configuración MCP ausente o incorrecta.
-- Error de carga.
-- Error real de conexión.
-- Herramientas ADO no disponibles para el agente.
-
-Utiliza los mensajes originales si siguen disponibles.
-
-Si es posible repetir el ANTES mediante una configuración de prueba independiente, prepara un script seguro que no desconecte ni modifique mi integración ya corregida.
-
-NO inventes errores ni simules una conexión fallida.
-
-### DESPUÉS — `after.sh`
-
-Debe demostrar:
-
-- Configuración MCP correcta.
-- Servidor disponible para el agente SDLC.
-- Autenticación válida.
-- Consulta real de solo lectura a Azure DevOps.
-- Resultado correcto.
-
-**Los scripts deben mostrar evidencia técnica real.**
-
-Si la autenticación o una consulta de Kiro requiere interacción manual y no es posible automatizarla correctamente, combina el script con pasos manuales exactos. No fabriques resultados ni pretendas que una prueba estática equivale a una consulta real.
-
-Los scripts deben ser repetibles, no deben modificar Azure DevOps y no deben revelar credenciales.
-
-## 7. PROTECCIÓN DEL AMBIENTE
-
-- Mantén la misma rama Git.
-- No hagas commit, push ni Pull Request.
-- No modifiques los fixes de los Casos 01 y 03.
-- No modifiques código funcional del proyecto.
-- No cambies bases de datos ni Docker Compose.
-- No reinicies ni reconstruyas el Dev Container.
-- No modifiques archivos personales ajenos a MCP.
-- No sobrescribas configuraciones MCP existentes sin preservar su contenido.
-- No modifiques configuraciones de la organización en Azure DevOps.
-- No instales ni solicites privilegios de administrador.
-- No generes tokens ni guardes secretos en documentación.
-- No habilites aprobaciones automáticas de todas las herramientas MCP.
-- No agregues credenciales a Git.
-
-Puedes modificar únicamente la configuración PERSONAL de Kiro necesaria para resolver el problema.
-
-Si para hacerlo necesitas modificar un archivo versionado o compartido del repositorio, NO lo hagas automáticamente. Explica la necesidad y busca primero una alternativa personal.
-
-## 8. DOCUMENTACIÓN Y ENTREGABLES
-
-Guarda todos los archivos de aprendizaje FUERA del repositorio:
-
-`/tmp/infios-caso-04/`
-
-Estructura solicitada:
-
-```text
-/tmp/infios-caso-04/
-├── before.sh
-├── after.sh
-└── Caso_04_Explicacion_Completa.html
-```
-
-Los scripts, incluidos sus comentarios y mensajes, deben estar en INGLÉS.
-
-El HTML debe estar completamente en ESPAÑOL y abrirse sin Internet en Chrome o Edge.
-
-### Contenido obligatorio del HTML
-
-**1. Título del problema.**
-
-**2. Descripción del problema original.**
-
-Incluye los mensajes de advertencia reales y explica qué significaban.
-
-**3. Causa comprobada.**
-
-Explica por qué fallaba la integración, con evidencia.
-
-**4. Descripción de la solución.**
-
-Qué se implementó y cómo funciona.
-
-**5. Tabla de archivos modificados.**
-
-Columnas:
-
-- Nombre y ruta.
-- Cómo estaba ANTES.
-- Qué se modificó.
-- Cómo quedó DESPUÉS.
-- Por qué fue necesario.
-
-**6. Demostración ANTES y DESPUÉS.**
-
-Incluye pasos exactos, resultados observados y cómo repetirlos.
-
-**7. Explicación didáctica del código.**
-
-Esta sección es FUNDAMENTAL.
-
-Quiero entender cómo funciona todo, incluso si no conociera estas tecnologías.
-
-No escribas solamente "Kiro se conecta a Azure DevOps".
-
-Debes mostrar:
-
-- Qué archivo contiene la configuración.
-- Qué líneas definen el servidor MCP.
-- Qué ejecuta cada propiedad o comando.
-- Cómo Kiro carga esa configuración.
-- Cómo inicia o contacta al servidor.
-- Cómo se realiza la autenticación.
-- Cómo se envía una consulta a Azure DevOps.
-- Qué recibe Kiro.
-- Cómo se interpreta el resultado.
-
-Cada explicación debe estar vinculada al código, configuración o comando exacto correspondiente.
-
-Explica desde cero los conceptos:
-
-- Azure DevOps.
-- Kiro CLI.
-- Agente SDLC.
-- MCP y servidor MCP.
-- Autenticación corporativa.
-- Microsoft Entra ID.
-- Permisos de Azure DevOps.
-- Workspace Trust.
-- Configuración a nivel de usuario y de proyecto.
-- Herramientas de solo lectura.
-
-**8. Guía para presentar a Eli.**
-
-Incluye qué ejecutar, qué observar, qué explicar y cómo responder preguntas técnicas.
-
-**9. Anexos de código.**
-
-Incluye los scripts completos, numerados por línea, y los fragmentos relevantes de configuración ANTES y DESPUÉS.
-
-No incluyas secretos ni información privada de Azure DevOps. Oculta cualquier valor sensible sin perder la explicación técnica.
-
-## 9. VALIDACIÓN DEL ENTREGABLE
-
-Antes de terminar:
-
-- Comprueba que los scripts funcionan.
-- Verifica que sus resultados sean auténticos.
-- Comprueba que una consulta real a ADO funcione.
-- Confirma que el agente SDLC tiene acceso a las herramientas MCP.
-- Comprueba que no modificaste repositorios ni recursos de Azure DevOps.
-- Verifica que los Casos 01 y 03 no cambiaron.
-- Comprueba que el HTML no necesita Internet ni contiene secretos.
-
-Genera:
-
-`/tmp/infios-caso-04.zip`
-
-Incluye únicamente los tres archivos de aprendizaje.
-
-Comprueba si `/tmp/host-home/Downloads/` está disponible para copiarlo a Windows.
-
-No elimines los entregables hasta que confirme que los copié.
-
-## 10. RESPUESTA FINAL
-
-Si la integración funciona realmente, responde:
-
-**CASO 04 — AZURE DEVOPS MCP CONFIGURADO Y VALIDADO**
-
-Incluye:
-
-1. Causa comprobada.
-2. Configuración corregida.
-3. Archivos modificados.
-4. Resultado ANTES.
-5. Resultado DESPUÉS.
-6. Consulta real que pudiste realizar en ADO.
-7. Comandos para repetir ambas demostraciones.
-8. Ubicación del ZIP.
-9. Confirmación de que no alteraste los Casos 01 y 03.
-
-Si la integración no puede completarse por un bloqueo real, responde:
-
-**CASO 04 — BLOQUEADO**
-
-Explica el impedimento exacto, qué pruebas lo demuestran y si corresponde a autenticación, permisos, política corporativa o incompatibilidad técnica.
-
-No declares el caso resuelto solamente porque desaparecieron las advertencias.
-
-**IMPORTANTE: si puedes resolver el problema, resuélvelo, pruébalo y documéntalo sin pedirme otro prompt. Solo interrúmpeme cuando necesites la URL de ADO, una autenticación que deba realizar personalmente o una autorización indispensable.**
-
-Responde en español.
