@@ -1,62 +1,67 @@
-Qué error corregimos. Los contenedores Admin UI y Tenant UI se ejecutaban como root y escribían en el mismo volumen que el Dev Container,
-  que trabaja como UID 1000. pnpm no podía modificar esos archivos de root y fallaba con EACCES. Lo reproduje en un volumen temporal: con un
-  instalador root, la actualización como 1000 falla con EACCES: permission denied, unlink '.../node_modules/@tsconfig/node22'.
-  
-  Qué cambié y por qué.
-  - Valor por defecto en Compose (cambio nuevo y necesario). En docker-compose-devui.yml cambié ${DEV_UID}:${DEV_GID} por
-  ${DEV_UID:-1000}:${DEV_GID:-1000} en los dos servicios. Sin las variables en .env, la versión anterior resolvía user: ':', y docker run
-  --user ":" arranca como root sin dar error. Es decir, el fix anterior volvía a abrir el bug sin aviso.
-  - Conservé la detección del UID. detect-and-write-volume.sh escribe DEV_UID y DEV_GID con id -u e id -g. Solo mejoré su comentario. Es
-  necesaria porque en hosts Linux o WSL el usuario node puede tener otro UID, y fijar 1000 crearía el conflicto al revés.
-  
-  Qué eliminé. Nada. Las dos piezas existentes son necesarias, y las pruebas lo demuestran.
-  
-  Qué pruebas ejecuté. Todas en volúmenes y contenedores temporales case01-*, ya eliminados. El volumen real y el .env real no se tocaron.
-  
-  ┌──────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────┐
-  │ Prueba                                                               │ Resultado                                                    │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Antes: el contenedor UI instala como root y el Dev Container (1000)  │ EACCES; 416 archivos de root                                 │
-  │ actualiza                                                            │                                                              │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Antes: el comando actual (pnpm dev) como root                        │ Crea node_modules/.vite como root, pero no .bin ni           │
-  │                                                                      │ @tsconfig/node22                                             │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Después: con el .env generado (UID 1000)                             │ Instala, actualiza y sirve en el puerto 80; 0 archivos       │
-  │                                                                      │ ajenos                                                       │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Después: con UID 1001                                                │ Igual que con 1000; 0 archivos ajenos                        │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Después: .env sin DEV_UID/DEV_GID                                    │ Compose resuelve 1000:1000                                   │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Script real de detección en este Dev Container, con salida           │ Escribe DEV_UID=1000 y DEV_GID=1000                          │
-  │ redirigida a /tmp                                                    │                                                              │
-  ├──────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
-  │ Script sin modificar, como UID 1001, en la imagen del Dev Container  │ Escribe DEV_UID=1001 y DEV_GID=1001                          │
-  └──────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
-  
-  Qué queda sin demostrar.
-  - El proceso que creó los archivos de root no está identificado. Entre marzo de 2026 hubo un pnpm install como root en los Dockerfiles de
-  las UIs (commits 2f8c09ba a 007459b1). No pudo actuar sobre este volumen: el volumen es del 2026-10-29 y las imágenes de ese día ya no
-  instalan. Tampoco se ejecutaba en sharedUIComponents. El historial de comandos solo registra el chown de reparación.
-  - El arranque real no se ha observado: no comprobé un reinicio del Dev Container ni la recreación de los contenedores con la configuración
-  final.
-  - No hay prueba en equipos reales con Windows, ni con Linux o WSL con un UID distinto de 1000. La prueba con UID 1001 cubre el
-  comportamiento dentro de Docker.
-  - Los volúmenes creados antes del fix que ya tengan archivos de root necesitan un único chown. El suyo ya está reparado.
-  
-  Respeté las restricciones: no hice commit, no toqué los archivos de Kiro/SDLC ni .gitignore, y no creé ni eliminé recursos fuera de los
-  temporales.
-  
-  Decisión: el resultado se puede presentar a Eli. Para cerrarlo del todo queda una validación: reiniciar el Dev Container y ejecutar Dev:
-  Start UI. Debe cumplirse lo siguiente:
-  - ~/detect_volume_debug.log contiene Wrote DEV_UID=... con la hora del arranque.
-  - docker exec dev-portal-admin-ui id devuelve el mismo UID que id -u en el Dev Container.
-  - No queda ningún archivo con otro propietario en los tres node_modules.
- 
-▸ Credits: turn 27.75 • session 40.25 | Time: 20m 3s
+# CASO 01 — PREPARAR DEMOSTRACIÓN ANTES Y DESPUÉS
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◔ 16%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Kiro, ya investigaste el error EACCES y validaste la corrección. NO vuelvas a investigar desde cero.
 
-›  ask a question or describe a task ↵
+Necesito una demostración que pueda ejecutar personalmente para aprender y mostrar a Eli.
+
+## Objetivo
+
+Preparar dos scripts independientes:
+
+- `before.sh`: demuestra el problema con la configuración original.
+- `after.sh`: demuestra el comportamiento con la configuración corregida.
+
+Utiliza la configuración original de `docker-compose-devui.yml` recuperada de Git y la configuración corregida que actualmente existe en mi rama `fix/dev-portal-setup-improvements`.
+
+La demostración debe estar vinculada a esas configuraciones reales. No quiero únicamente un ejemplo genérico de permisos.
+
+Para reproducir EACCES, puedes preparar intencionalmente archivos con propietario root en el volumen temporal. Debes explicar claramente qué parte reproduce el mecanismo original y qué parte es una preparación artificial de la prueba. No inventes que identificaste al proceso histórico responsable.
+
+## Restricciones obligatorias
+
+1. NO cambies de rama.
+2. NO clones ni dupliques el repositorio.
+3. NO modifiques ningún archivo del repositorio.
+4. NO modifiques los contenedores, volúmenes, bases de datos ni `node_modules` actuales.
+5. Utiliza solamente recursos temporales mínimos de Docker, con nombres exclusivos.
+6. NO ejecutes acciones destructivas sobre recursos preexistentes.
+7. NO hagas commit ni push.
+8. Si no puedes realizar una prueba respetando estas restricciones, detenla y explica por qué.
+
+## Ubicación de los entregables
+
+Crea exclusivamente esta carpeta, fuera del repositorio:
+
+`/tmp/infios-caso-01/`
+
+Su contenido será:
+
+- `before.sh` — código, mensajes y comentarios en INGLÉS.
+- `after.sh` — código, mensajes y comentarios en INGLÉS.
+- `README.md` — documentación en ESPAÑOL, con los seis apartados del caso.
+- `guia-para-presentacion.md` — explicación en ESPAÑOL de cada instrucción de ambos scripts, cómo ejecutarlos, qué resultados debo observar y cómo explicárselos a Eli.
+
+Genera también `/tmp/infios-caso-01.zip` para que pueda copiarlo a mi laptop Windows.
+
+## Validación
+
+Ejecuta personalmente ambos scripts en recursos temporales, verifica que el ANTES produzca el EACCES esperado y que el DESPUÉS complete la misma operación correctamente.
+
+Verifica también que la demostración no haya alterado el ambiente actual.
+
+## Respuesta final
+
+No quiero un plan ni otra investigación.
+
+Entrégame:
+
+1. Los archivos que creaste.
+2. El resultado de ejecutar `before.sh`.
+3. El resultado de ejecutar `after.sh`.
+4. Cómo ejecutar cada uno personalmente.
+5. Qué parte demuestra realmente la corrección del código y qué parte es una reproducción controlada.
+6. Cómo copiar el ZIP a Windows sin modificar el repositorio.
+
+NO elimines los archivos temporales hasta que yo confirme que los copié.
+
+Responde completamente en español.
