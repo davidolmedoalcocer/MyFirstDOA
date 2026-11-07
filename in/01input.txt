@@ -1,1 +1,25 @@
-git diff -- .devcontainer/detect-and-write-volume.sh docker-compose-devui.yml
+node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ git diff -- .devcontainer/detect-and-write-volume.sh docker-compose-devui.yml
+diff --git a/.devcontainer/detect-and-write-volume.sh b/.devcontainer/detect-and-write-volume.sh
+index 10f2626d..747aacfc 100755
+--- a/.devcontainer/detect-and-write-volume.sh
++++ b/.devcontainer/detect-and-write-volume.sh
+@@ -64,6 +64,14 @@ fi
+ 
+ echo "Wrote DEVCONTAINER_VOLUME=$VOL_NAME to $ENV_FILE" >> "$LOG"
+ 
++# Use the Dev Container user's UID/GID for shared-volume writers
++DEV_UID="$(id -u)"
++DEV_GID="$(id -g)"
++
++printf 'DEV_UID=%s\nDEV_GID=%s\n' "$DEV_UID" "$DEV_GID" >> "$ENV_FILE"
++
++echo "Wrote DEV_UID=$DEV_UID DEV_GID=$DEV_GID to $ENV_FILE" >> "$LOG"
++
+ #############################################
+ # STEP 4: Output result to the console
+ #############################################
+diff --git a/docker-compose-devui.yml b/docker-compose-devui.yml
+index 02cb0e7d..446b96e9 100644
+--- a/docker-compose-devui.yml
++++ b/docker-compose-devui.yml
+:
