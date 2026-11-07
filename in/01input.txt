@@ -1,1 +1,1 @@
-printf 'DEV_UID=%s\nDEV_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
+docker compose -f docker-compose-devui.yml config | grep 'user:'
