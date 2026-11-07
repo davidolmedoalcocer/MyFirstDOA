@@ -1,8 +1,1 @@
-node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ grep -nE 'detect-and-write-volume|postCreateCommand|postStartCommand' .devcontainer/devcontainer.json .devcontainer/postCreateCommand.sh .devcontainer/postStartCommand.sh .workspaceScripts/task_startDevPortalDevUI.sh
-.devcontainer/devcontainer.json:36:     // The postStartCommand will use it to configure the devcontainer's access to the cluster.
-.devcontainer/devcontainer.json:61:    "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
-.devcontainer/devcontainer.json:62:     // Use 'postStartCommand' to run commands each time the container is started.
-.devcontainer/devcontainer.json:63:     "postStartCommand": "bash .devcontainer/postStartCommand.sh"
-.devcontainer/postCreateCommand.sh:5:source ./.devcontainer/detect-and-write-volume.sh
-.devcontainer/postStartCommand.sh:13:source ./.devcontainer/detect-and-write-volume.sh
-node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ 
+docker exec dev-portal-admin-ui id && docker exec dev-portal-tenant-ui id
