@@ -1,1 +1,97 @@
-cp /tmp/infios-caso-03-real.zip /tmp/host-home/Downloads/
+# CASO 03 — CORREGIR EL FIX DEFECTUOSO Y COMPLETAR LA VALIDACIÓN
+
+Kiro, la corrección que implementaste en `.workspaceScripts/open-when-ready.sh` tiene un defecto funcional CONFIRMADO por una prueba en Chrome.
+
+## Evidencia real
+
+En Windows, con Admin UI:
+
+- `http://localhost:35001/devportal/adminui/` funciona y consume la API.
+- `http://dev-portal.localhost:35001/devportal/adminui/` abre la aplicación, pero falla al consumir la API.
+
+En DevTools se observó:
+
+- Request URL: `http://localhost:35000/admin/api/users/current`
+- Status: `200 OK`
+- Origin: `http://dev-portal.localhost:35001`
+- No se observó `Access-Control-Allow-Origin` en la respuesta.
+
+Por lo tanto, NO acepto `dev-portal.localhost` como solución.
+
+## Objetivo obligatorio
+
+Cuando ejecute la tarea real `Dev: Start UI → Development`, VS Code debe abrir:
+
+- Admin UI: `http://localhost:35001/devportal/adminui/`
+- Tenant UI: `http://localhost:35002/devportal/tenantui/`
+
+Y ambas aplicaciones deben poder consumir su API sin fallos provocados por el cambio de origen.
+
+NO agregues `dev-portal`, otros dominios ni nombres de host alternativos en la barra del navegador.
+
+## Trabajo que debes realizar ahora
+
+1. Analiza exclusivamente el mecanismo de apertura de navegador en `.workspaceScripts/open-when-ready.sh`, el valor de `$BROWSER` y el código de VS Code que procesa `--openExternal`.
+
+2. Encuentra la manera de evitar el túnel incorrecto SIN cambiar el origen efectivo `localhost`.
+
+3. Evalúa primero esta posibilidad técnica: pasar temporalmente `http://LOCALHOST:35001/` a VS Code. El navegador debería normalizar el hostname a `localhost`, mientras que la regla de detección de túneles que identificaste distingue mayúsculas y minúsculas. **No asumas que funciona: comprueba si VS Code normaliza también el hostname antes de evaluar la regla.**
+
+4. Si esa alternativa no funciona, identifica y prueba otra manera de abrir el navegador de Windows directamente, conservando `localhost`. No introduzcas dominios alternativos ni cambios a la API.
+
+5. Cuando identifiques una solución respaldada por pruebas, MODIFICA directamente `.workspaceScripts/open-when-ready.sh`. Elimina la reescritura defectuosa a `dev-portal.localhost`.
+
+6. Comprueba con las aplicaciones reales ya iniciadas:
+   - URL que entrega el helper a VS Code.
+   - Si VS Code crea o no un túnel incorrecto.
+   - Si el navegador conserva el origen `http://localhost:35001`.
+   - Si la API permite ese origen.
+   - Que los servicios continúan respondiendo.
+
+7. No consideres suficiente que la página inicial cargue. La comunicación con la API forma parte del criterio de aceptación.
+
+8. Si necesitas una última prueba visual que solo yo puedo hacer en Chrome, entrégame una sola instrucción concreta para realizarla. No declares validado ese punto sin observarlo.
+
+## Restricciones
+
+- No toques los cambios del Caso 01.
+- No cambies CORS ni código de la API para aceptar un dominio nuevo.
+- No modifiques bases de datos, `node_modules`, volúmenes ni configuraciones ajenas.
+- No cambies de rama, no hagas commit ni push.
+- Evita reconstrucciones e instalaciones innecesarias.
+- No cierres puertos reenviados por VS Code sin identificar primero si están siendo utilizados.
+- No crees proyectos de ejemplo.
+
+## Demostración y documentación
+
+Después de implementar y validar técnicamente la corrección, actualiza los entregables existentes del Caso 03:
+
+`/tmp/infios-caso-03-real/`
+
+- `before.sh` — inglés.
+- `after.sh` — inglés.
+- `README.html` — español.
+- `guia-para-presentacion.html` — español.
+
+Las demostraciones deben reflejar el problema y la solución FINAL, no la corrección defectuosa que utilizaba `dev-portal.localhost`.
+
+La documentación debe explicar los cambios mostrando archivo, número de línea, código exacto, qué hace y por qué.
+
+Actualiza el ZIP `/tmp/infios-caso-03-real.zip`.
+
+## Entrega
+
+No me entregues otro plan.
+
+Haz el trabajo completo que sea técnicamente posible y responde:
+
+1. Qué causaba el problema.
+2. Qué cambio concreto implementaste.
+3. Qué verificaste y cuáles fueron los resultados.
+4. Si la URL final del navegador es `localhost` y la API funciona.
+5. Qué única comprobación manual falta, si existe.
+6. El `git diff` de la corrección.
+
+Si ninguna solución funciona con esas condiciones, NO implementes otra solución parcial. Explica el impedimento técnico concreto.
+
+Responde en español.
