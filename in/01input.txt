@@ -1,25 +1,67 @@
-node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ git diff -- .devcontainer/detect-and-write-volume.sh docker-compose-devui.yml
-diff --git a/.devcontainer/detect-and-write-volume.sh b/.devcontainer/detect-and-write-volume.sh
-index 10f2626d..747aacfc 100755
---- a/.devcontainer/detect-and-write-volume.sh
-+++ b/.devcontainer/detect-and-write-volume.sh
-@@ -64,6 +64,14 @@ fi
- 
- echo "Wrote DEVCONTAINER_VOLUME=$VOL_NAME to $ENV_FILE" >> "$LOG"
- 
-+# Use the Dev Container user's UID/GID for shared-volume writers
-+DEV_UID="$(id -u)"
-+DEV_GID="$(id -g)"
-+
-+printf 'DEV_UID=%s\nDEV_GID=%s\n' "$DEV_UID" "$DEV_GID" >> "$ENV_FILE"
-+
-+echo "Wrote DEV_UID=$DEV_UID DEV_GID=$DEV_GID to $ENV_FILE" >> "$LOG"
-+
- #############################################
- # STEP 4: Output result to the console
- #############################################
-diff --git a/docker-compose-devui.yml b/docker-compose-devui.yml
-index 02cb0e7d..446b96e9 100644
---- a/docker-compose-devui.yml
-+++ b/docker-compose-devui.yml
-:
+Actúa como arquitecto sénior experto en Docker, Dev Containers, Windows, WSL, Linux, Git y Node.js.
+
+Estamos finalizando el caso 01: errores EACCES en node_modules de Infios Dev Portal.
+
+**NO quiero otra investigación de tres horas ni un nuevo plan. Necesito consolidar la evidencia, verificar el fix y preparar el entregable final.**
+
+### Contexto confirmado
+
+Rama: fix/dev-portal-setup-improvements.
+
+Error histórico:
+- Dev: Start UI fallaba con EACCES en sharedUIComponents/node_modules/.bin y adminUi/node_modules/@tsconfig/node22.
+- Había archivos root:root.
+- El Dev Container trabajaba como node, UID 1000.
+- Se recuperó temporalmente mediante chown.
+
+Corrección actual:
+1. .devcontainer/detect-and-write-volume.sh obtiene id -u e id -g y los escribe como DEV_UID y DEV_GID en .env.
+2. docker-compose-devui.yml utiliza user: "${DEV_UID}:${DEV_GID}" en Admin UI y Tenant UI.
+3. postCreateCommand.sh y postStartCommand.sh ejecutan el script de detección.
+
+Pruebas ya realizadas:
+- Bash y Docker Compose aceptan la configuración.
+- Compose resuelve ambos usuarios como 1000:1000.
+- docker exec id devolvió uid=1000(node), gid=1000(node) en ambos contenedores.
+- Dev: Start UI inició sin EACCES reportado.
+- find -uid 0 devolvió cero entradas en los tres node_modules.
+- El problema de URLs y puertos incorrectos es otro hallazgo; NO lo investigues ahora.
+
+### Tu trabajo
+
+Realiza de manera autónoma las verificaciones de solo lectura estrictamente necesarias, aprovechando la evidencia existente. No me pidas ejecutar cada comando.
+
+Comprueba específicamente:
+- Que el diff de ambos archivos implementa correctamente la solución.
+- Que la generación de .env es automática tanto al crear como al reiniciar el Dev Container.
+- Que la solución se comporta correctamente cuando el UID del desarrollador es distinto de 1000.
+- Que la solución no exige editar .env manualmente en una instalación nueva.
+- Que no hay defectos evidentes de inicialización o dependencias de configuración.
+- Que no se añadieron cambios ajenos al caso 01.
+
+**Restricciones obligatorias**
+
+No modifiques archivos.
+No ejecutes chown, rm, git restore, git clean, docker compose down ni operaciones destructivas.
+No reinicies contenedores ni alteres node_modules o bases de datos.
+No crees ramas ni worktrees.
+No realices commit ni push.
+No solicites permisos administrativos.
+No involucres a otros compañeros.
+
+### Entregable
+
+Devuelve un informe técnico en español con EXACTAMENTE estas seis secciones:
+
+1. Título del caso.
+2. Descripción del error original.
+3. Causa comprobada del error, distinguiendo el conflicto de permisos del proceso histórico responsable.
+4. Solución implementada: archivos, cambios exactos y explicación de por qué funcionan.
+5. Cómo reproducir el error ANTES del fix, con un procedimiento reproducible y seguro, separado del ambiente actual. Si no se ha ejecutado, identifícalo claramente como procedimiento pendiente de validación.
+6. Cómo ejecutar y comprobar el DESPUÉS utilizando la corrección implementada, con resultados reales y limitaciones.
+
+Incluye las evidencias disponibles, los resultados de las verificaciones y una conclusión explícita: LISTO PARA CERRAR o PENDIENTE, indicando exactamente qué falta.
+
+No presentes una reproducción artificial como si fuera el incidente histórico. No inventes ejecuciones.
+
+**No me entregues otro plan de trabajo. Entrégame el análisis técnico consolidado y una decisión de ingeniería sustentada en la evidencia.**
