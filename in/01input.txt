@@ -1,99 +1,54 @@
- CASO 04 — AZURE DEVOPS MCP CONFIGURADO Y VALIDADO
-  
-  El agente SDLC de Kiro CLI ya consulta Azure DevOps con tu cuenta corporativa. Hice una consulta real de solo lectura que devolvió 38
-  proyectos. No tuve que pedirte la URL: la organización highjumpvso ya estaba en .kiro/team-config.yaml. Tampoco tuviste que iniciar sesión:
-  Azure CLI ya tenía tu sesión ***@infios.com, del mismo inquilino de Entra ID que la organización.
-  
-  1. Causa comprobada Fueron tres fallos encadenados:
-  - No había servidor ado en ningún archivo MCP que carga el agente. kiro-cli mcp status --name ado respondía No MCP server named 'ado' found
-  in any agent, y ~/.kiro/settings/mcp.json no existía.
-  - La versión que configuraría el propio framework no arranca en este Dev Container. infios-sdlc fija ADO_VERSION = '2.10.0'
-  (mcp-services.js:10), y esa versión muere al iniciarse con libsecret-1.so.0: cannot open shared object file. El error viene de keytar, que
-  llega por la dependencia @azure/msal-node-extensions; la 2.11.0 oficial ya no la incluye.
-  - Aun con un servidor que funciona, había una carrera de arranque en Kiro v3. El primer mensaje salió a las 22:14:25 y el servidor conectó a
-  las 22:14:31, así que el agente respondió ADO_TOOLS_UNAVAILABLE. Kiro solo espera a los servidores marcados con waitForReady.
-  
-  No era un problema de autenticación, de permisos ni de política corporativa. El perfil empresarial tiene MCP activado y sin lista de
-  servidores permitidos.
-  
-  La advertencia de Workspace Trust es otro mecanismo y además un falso positivo. permissions.yaml dice workspaceTrusted: true, pero el
-  framework busca un .trust-migration.json que Kiro ya no crea (kiro-engine.cjs:185). Hay 0 señales reales de carpeta no confiable en los
-  registros.
-  
-  2. Configuración corregida Es el servidor local oficial de Microsoft. El servidor remoto mcp.dev.azure.com no sirve todavía para Kiro: según
-  Microsoft, necesita un registro OAuth dinámico en Entra que aún no existe para este tipo de clientes.
-  
-  "ado": {
-    "command": "npx",
-    "args": ["-y","@azure-devops/mcp@2.11.0","highjumpvso","-d","core","work","work-items","-a","azcli"],
-    "env": { "ado_mcp_project": "Development Tools" },
-    "timeout": 120000,
-    "waitForReady": true
-  }
-  
-  No usé ningún PAT ni secreto, y no hay autoApprove. El servidor ofrece herramientas de escritura, pero ninguna se aprueba automáticamente:
-  cada una pide confirmación.
-  
-  3. Archivos modificados
-  - Solo ~/.kiro/settings/mcp.json: es personal, está fuera de Git y tiene permisos 600.
-  - Probé añadir @ado a .kiro/agents/sdlc.json, comprobé que no hacía falta y lo revertí. Su hash final es idéntico al original.
-  - Probé el ajuste mcp.noInteractiveTimeout en ~/.kiro/settings/cli.json, no tuvo efecto y lo restauré.
-  
-  4. ANTES (before.sh, real)
-  - infios-sdlc check muestra Azure DevOps MCP server not configured y Workspace trust unknown.
-  - Ningún archivo MCP del proyecto tiene ado.
-  - En vivo: la versión 2.10.0 cae con el error de libsecret.
-  - Registrado: la carrera de 6 s entre el mensaje y la conexión.
-  - workspaceTrusted: true.
-  
-  5. DESPUÉS (after.sh, real)
-  - kiro-cli mcp list muestra sdlc • ado npx.
-  - Entra ID emite el token de Azure DevOps; el script no lo muestra.
-  - El servidor responde initialize → Azure DevOps MCP Server 2.11.0 y ofrece 15 herramientas.
-  - core_list_projects → ok, 38 projects, con Development Tools presente.
-  - El agente SDLC ejecuta [tool] @ado/core_list_projects … Completed y responde PROJECT_COUNT: 38.
-  - Ninguna herramienta de escritura queda aprobada automáticamente.
-  - Salida: código 0.
-  
-  6. Consulta real en ADO core_list_projects (GET _apis/projects), de solo lectura, autorizada únicamente para esa ejecución con
-  --trust-tools=mcp_ado_core_list_projects. No creé ni modifiqué nada en ADO.
-  
-  7. Cómo repetirlo Desde una terminal del Dev Container:
-  
-  bash /tmp/infios-caso-04/before.sh
-  bash /tmp/infios-caso-04/after.sh                 # unos 2 minutos, incluye la consulta del agente
-  SKIP_AGENT=1 bash /tmp/infios-caso-04/after.sh    # sin el paso del agente
-  
-  Si caduca tu sesión de Azure CLI, renuévala con az login --use-device-code y tu cuenta corporativa.
-  
-  Pendiente del lado del framework (no lo cambié porque no es de este repositorio):
-  - Fija la versión 2.10.0, que falla en esta imagen.
-  - Su check solo lee .mcp.json del proyecto, así que seguirá avisando aunque la integración funcione.
-  - Su detector de Workspace Trust busca un archivo que Kiro ya no crea.
-  - Conviene que genere el servidor con waitForReady.
-  
-  Para quitar el aviso del check habría que añadir ado a .mcp.json del proyecto. No lo hice sin tu autorización.
-  
-  8. ZIP
-  - /tmp/infios-caso-04.zip (SHA-256 bb547277…) con los tres archivos.
-  - El HTML funciona sin Internet y no contiene tokens, correos completos ni nombres de proyectos.
-  - /tmp/host-home/Downloads/ existe y se puede escribir:
-  
-  cp /tmp/infios-caso-04.zip /tmp/host-home/Downloads/
-  
-  No eliminé nada.
-  
-  9. Casos 01 y 03 intactos
-  - Los hashes coinciden: Caso 01 9f3d9fa5…; Caso 03 a69b2045… y 64df170e….
-  - .kiro/settings/mcp.json y .mcp.json sin cambios.
-  - Misma rama y mismo git status, sin commits.
- 
-▸ Credits: turn 160.22 • session 335.86 | Time: 24m 27s
+Kiro, necesito finalizar el Caso 04. La integración Azure DevOps MCP ya funciona correctamente. NO repitas el diagnóstico ni modifiques la configuración MCP.
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◑ 59%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Revisé los archivos existentes en `/tmp/infios-caso-04/` y encontré tres problemas que debes corregir:
 
-›  ask a question or describe a task ↵
-                                                                                                     /sessions to resume · /copy to clipboard
+**1. before.sh, líneas 117–119**
 
+Actualmente imprime el resultado ANTES sin comprobar que la versión 2.10.0 realmente haya fallado.
 
+Corrígelo para que verifique el fallo esperado de `libsecret-1.so.0`. Si no ocurre, debe informar que la demostración ANTES no pudo reproducirse, en lugar de declarar éxito.
+
+**2. after.sh, línea 36**
+
+Actualmente utiliza:
+
+`cat -n "$USER_MCP" | code`
+
+No quiero mostrar toda mi configuración personal MCP durante una presentación.
+
+Sustituye esa instrucción por una visualización segura de los campos necesarios del servidor `ado`, sin exponer credenciales ni otras configuraciones personales.
+
+Evita también imprimir nombres de proyectos o información corporativa innecesaria.
+
+**3. after.sh, línea 98**
+
+Actualmente basta con encontrar `PROJECT_COUNT` para considerar satisfactoria la consulta del agente.
+
+Corrige la validación para comprobar que el agente SDLC realmente invocó `@ado/core_list_projects`, que la operación terminó correctamente y que recibió un resultado válido.
+
+No aceptes una respuesta inventada por el modelo como prueba de ejecución.
+
+## Trabajo completo
+
+1. Corrige únicamente `before.sh` y `after.sh`.
+2. Ejecuta las dos demostraciones y verifica sus resultados.
+3. Si alguna prueba falla, corrige el problema dentro de estos scripts, sin modificar la integración MCP que ya funciona.
+4. Actualiza `/tmp/infios-caso-04/Caso_04_Explicacion_Completa.html` con los scripts definitivos, sus números de línea y una explicación didáctica en español.
+5. Regenera `/tmp/infios-caso-04.zip` con los tres archivos actualizados.
+6. Comprueba que el ZIP no contiene secretos.
+7. Verifica que no modificaste archivos del repositorio, los Casos 01 y 03, ni `~/.kiro/settings/mcp.json`.
+
+Los scripts y comentarios deben estar en inglés; el HTML, en español.
+
+**No investigues nuevamente ADO, no reinstales MCP, no cambies versiones ni solicites otro prompt.**
+
+Al terminar, responde en español indicando:
+
+- Qué corregiste.
+- Resultado real de `before.sh`.
+- Resultado real de `after.sh`.
+- Confirmación de que la consulta real a ADO sigue funcionando.
+- Confirmación de que actualizaste el HTML y el ZIP.
+- Comando exacto para copiar el ZIP actualizado a Descargas de Windows.
+
+Si encuentras un impedimento, explica exactamente cuál es sin modificar otras configuraciones.
