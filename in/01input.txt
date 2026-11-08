@@ -1,97 +1,17 @@
-A. CASO 06: PROBLEMA CORREGIDO Y VALIDADO
-  
-  El hallazgo A es comportamiento esperado: lo documenté y no cambié nada. El hallazgo B era un defecto real y lo corregí con un volumen con
-  nombre, cambiando un solo archivo (docker-compose-dozzle.yml). Las demos ANTES y DESPUÉS se ejecutaron y terminaron con código 0.
-  
-  Hallazgo A: aviso "Found orphan containers"
-  
-  - Causa: .env:1 define COMPOSE_PROJECT_NAME=dev-portal. Todos los archivos compose usan ese mismo proyecto. Cuando task_dozzle.sh:6 levanta
-  solo docker-compose-dozzle.yml, Compose ve los otros 6 contenedores del proyecto y los llama "huérfanos". El aviso es correcto: esos
-  contenedores existen y pertenecen al proyecto. No es un fallo.
-  - Evidencia: reproduje el aviso con docker compose --dry-run, que no modifica nada. Los 6 nombres del aviso son exactamente los esperados:
-  admin-ui, tenant-ui, service, liquibase-init, postgres-db y seeder.
-  - Corrección: ninguna, solo documentación. Descarté dos alternativas:
-    - Renombrar el proyecto de Dozzle o usar -p: oculta un aviso verdadero y cambia cómo task_dozzle.sh:7 detiene Dozzle, que es el Caso 07.
-    - Usar --remove-orphans: nunca debe hacerse en dev-portal, porque borraría Postgres, el servicio y las UIs.
-  
-  - Prueba ANTES y DESPUÉS: en las dos demos el resultado fue EXPECTED (6 contenedores) y la comprobación del dry-run dio PASS.
-  - Limitaciones: ninguna relevante. El aviso seguirá apareciendo, y es lo correcto.
-  
-  Hallazgo B: persistencia de /data en Dozzle
-  
-  - Causa: Dozzle v11.4.1 guarda en /data su configuración: el asistente inicial, users.yml y las notificaciones. El compose no montaba nada
-  en /data (la imagen tiene Config.Volumes=null). Además, task_dozzle.sh:7 ejecuta down, que borra el contenedor. Por eso cada arranque era
-  una instalación nueva.
-  - Evidencia:
-    - /api/setup devolvía "dataPersisted":false.
-    - Creé un dispatcher de prueba (infios-caso06-test, que apunta a 127.0.0.1:9 y nunca se dispara). Desaparecía tras hacer down y up: Dozzle
-  devolvía [].
-  
-  - Corrección: añadí el volumen con nombre dozzle_data:/data y su declaración al final del archivo. Descarté dos alternativas:
-    - Un bind mount a una ruta del host: no es portable entre Windows, macOS y Linux, y da problemas de permisos.
-    - Cambiar task_dozzle.sh: es alcance del Caso 07, y su down sin -v ya conserva los volúmenes con nombre.
-  
-  - Prueba ANTES:
-    - /data montado: FAIL.
-    - dataPersisted: FAIL (false).
-    - El ajuste sobrevive al reinicio: FAIL.
-  
-  - Prueba DESPUÉS:
-    - /data montado: PASS (volume:infios-caso06-after_dozzle_data).
-    - dataPersisted: PASS (true).
-    - El ajuste sobrevive al reinicio: PASS.
-  
-  - Comprobaciones comunes, PASS en ambas demos: Dozzle lista 9 contenedores, los logs se leen, los recursos temporales se eliminan y el
-  entorno queda sin cambios.
-  - Limitaciones:
-    - No observé la interfaz en el navegador de Windows.
-    - No ejecuté la tarea real "Logs: Dozzle". El volumen real dev-portal_dozzle_data, según docker compose config, se creará la primera vez
-  que se use.
-    - down -v sí borraría la configuración.
-  
-  Archivo modificado
-  
-       volumes:
-         - "/var/run/docker.sock:/var/run/docker.sock"
-  +      # Dozzle keeps its settings in /data ... (4 líneas de comentario)
-  +      - "dozzle_data:/data"
-       ports:
-         - "8888:8080"
-   
-  +volumes:
-  +  dozzle_data:
-  
-  Hay una copia del original en /tmp/infios-caso06-work/backup/docker-compose-dozzle.yml.
-  
-  Validaciones
-  
-  - HTML: 0 placeholders, 9 de 9 secciones, 33 enlaces internos sin ninguno roto y ninguna referencia externa.
-  - Secretos: no hay tokens ni correos en el HTML, en los scripts ni dentro del ZIP.
-  - Scripts: son solo ASCII, la sintaxis es correcta y after.sh solo difiere de before.sh en la línea PHASE.
-  - Casos anteriores: los archivos protegidos de los Casos 01, 03, 04 y 05, además de task_dozzle.sh y .env, dieron OK en sha256sum -c.
-  - Entorno Docker: los 7 contenedores tienen el mismo id, nombre, estado y fecha de creación. Los volúmenes y las redes no cambiaron. No
-  queda ningún recurso infios-caso06*.
-  - Git: la rama sigue siendo fix/dev-portal-setup-improvements, sin commit ni push. El único cambio nuevo es  M docker-compose-dozzle.yml.
-  
-  Demos
-  
-  bash /tmp/infios-caso-06/before.sh
-  bash /tmp/infios-caso-06/after.sh
-  
-  Entregable
-  
-  - ZIP: /tmp/infios-caso-06.zip, que contiene before.sh, after.sh y Caso_06_Explicacion_Completa.html.
-  - SHA-256: 44e19bb10176ee05abc3d24820859e62b5f9916e4a8e54ecf526b25571304cc4
-  - Copia a Descargas de Windows:
-  
-    cp /tmp/infios-caso-06.zip /tmp/host-home/Downloads/
-  
-  No borraré los entregables de /tmp hasta que me confirmes que los has copiado.
- 
-▸ Credits: turn 83.39 • session 558.16 | Time: 16m 8s
+Kiro, el Caso 06 ya tiene su corrección funcional y no debe modificarse.
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◔ 7%                                            /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Revisé los scripts `/tmp/infios-caso-06/before.sh` y `after.sh` y encontré dos defectos:
 
-›  ask a question or describe a task ↵
-                                                     
+1. La función cleanup() ejecuta `docker compose down -v` incluso cuando el script aborta porque existen recursos con el nombre del proyecto temporal. Corrige esto para que NUNCA elimine recursos que no haya creado esta ejecución. Comprueba contenedores, redes y volúmenes antes de comenzar, y gestiona correctamente el trap EXIT.
+
+2. `after.sh` puede terminar exitosamente si falta la imagen auxiliar, porque registra NOT VERIFIED pero únicamente busca FAIL. Exige resultados PASS explícitos para las comprobaciones esenciales de persistencia, recreación, lectura de logs y limpieza. Si no se pudo verificar algo obligatorio, debe terminar con error.
+
+No cambies `docker-compose-dozzle.yml`, `task_dozzle.sh`, la rama Git ni los Casos 01, 03, 04 y 05.
+
+Corrige únicamente los scripts de demostración, ejecuta sus pruebas de manera segura y actualiza las referencias a líneas en `Caso_06_Explicacion_Completa.html`.
+
+Regenera `/tmp/infios-caso-06.zip`, verifica su contenido y comprueba que no alteraste los recursos reales de Docker.
+
+Entrega los resultados ANTES y DESPUÉS, la confirmación de las dos correcciones y el SHA-256 del nuevo ZIP.
+
+No repitas el diagnóstico y no me solicites otro prompt.
