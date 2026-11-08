@@ -1,60 +1,160 @@
- He sustituido before.sh y after.sh por demostraciones de solo lectura. Ejecuté las dos, actualicé el HTML y regeneré el ZIP. No ejecuté
-  ningún comando Docker ni los scripts antiguos.
-  
-  Los scripts solo leen. La inspección estática de los dos archivos dio cero en todos estos puntos:
-  - llamadas a docker como orden;
-  - docker compose down, docker rm, docker volume rm, rm, rm -rf, trap, cleanup, mktemp, tee, cp, mv, kill o curl;
-  - órdenes de Git que escriben (add, commit, push, checkout, reset, restore, stash, status);
-  - redirecciones que escriben en archivos (solo hay 2>/dev/null).
-  
-  Solo usan git show, git diff, git branch --show-current y git rev-parse, siempre con --no-optional-locks, además de grep, sed, awk, cat,
-  printf, head, tail, cut y wc. No crean archivos temporales. La sintaxis es correcta y el texto es solo ASCII.
-  
-  Las dos ejecuciones terminaron con código 0.
-  - before.sh: lee el archivo con git show HEAD:docker-compose-dozzle.yml. Muestra que la lista volumes: del servicio solo tiene la línea 9
-  (el socket) y que nada monta /data. Tampoco hay bloque volumes: de nivel superior. Cita la línea 7 de task_dozzle.sh, la que elimina el
-  contenedor. Las 4 comprobaciones dan PASS.
-  - after.sh: lee el archivo del árbol de trabajo. Muestra la línea 14 (- "dozzle_data:/data") dentro de k1-dozzle, la declaración en las
-  líneas 18-19 y el diff real (+7 / -0). También muestra que el socket y el puerto 8888:8080 siguen igual, y que el down de la tarea no lleva
-  -v. Las 6 comprobaciones dan PASS.
-  
-  Cualquier comprobación que no se cumpla termina el script con código 1. No existe el estado NOT VERIFIED.
-  
-  El cambio dozzle_data:/data sigue intacto. El SHA-256 de docker-compose-dozzle.yml (ee7f4caf…) coincide con la versión corregida que se
-  probó antes del incidente.
-  
-  Las pruebas funcionales anteriores están documentadas sin resultados nuevos. Los dos scripts tienen un bloque Historical functional test
-  (NOT re-run by this script) que solo repite los resultados registrados antes del incidente. Las secciones 6 y A5 del HTML incluyen la salida
-  original de aquellas ejecuciones, marcada como histórica y no repetida.
-  
-  El HTML está en español y funciona sin Internet. Tiene 10 secciones, 45 enlaces internos sin ninguno roto y ninguna referencia externa.
-  Cubre:
-  - el problema y la corrección;
-  - las pruebas funcionales históricas;
-  - el incidente: líneas 44-46, 56, 102-105 y 146 del script retirado, y los eventos de Docker entre las 05:18:29 y las 05:18:33;
-  - la inspección estática de los scripts nuevos y su salida real;
-  - una explicación línea por línea de before.sh y after.sh.
-  
-  No toqué el ambiente Docker. En esta fase no ejecuté ningún comando Docker. Por la misma razón, no he podido comprobar que el ambiente esté
-  recuperado.
-  
-  Repositorio, comprobado solo con lecturas:
-  - La rama sigue siendo fix/dev-portal-setup-improvements y HEAD 10ff3544. No hay commit ni push.
-  - git status muestra los mismos cambios que antes.
-  - sha256sum -c da OK en los archivos de los Casos 01, 03, 04 y 05, en task_dozzle.sh y en .env.
-  
-  ZIP: /tmp/infios-caso-06.zip contiene before.sh, after.sh y Caso_06_Explicacion_Completa.html. Los tres son idénticos a los del disco y no
-  contienen secretos.
-  - SHA-256: 2bca7d2486c46072ace662af28a7fc67b510edf4ba6a26ac175f61b37eb3200f
-  
-  Para copiarlo a Descargas de Windows:
-  
-  cp /tmp/infios-caso-06.zip /tmp/host-home/Downloads/
- 
-▸ Credits: turn 18.94 • session 590.89 | Time: 5m 27s
+# INFIOS DEV PORTAL — CASO 07: ERROR 137 AL DETENER DOZZLE
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◔ 18%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Actúa como Principal Software Engineer, especializado en Docker Compose, Bash, señales Linux, VS Code Tasks y Dev Containers.
 
-›  ask a question or describe a task ↵
-                                                                                                     /sessions to resume · /copy to clipboard
+## OBJETIVO
+
+Resolver completamente el Caso 07, relacionado con el código de salida 137 observado al detener Dozzle, sin afectar mi ambiente de desarrollo.
+
+Realiza en una sola tarea:
+
+1. Investigar la causa real del código 137.
+2. Determinar si es un error o un comportamiento esperado.
+3. Implementar una corrección mínima si existe un defecto comprobado.
+4. Validar el ANTES y DESPUÉS de manera segura.
+5. Generar scripts de demostración.
+6. Crear un único HTML explicativo en español.
+7. Preparar el ZIP definitivo para Windows.
+
+No me entregues solamente un diagnóstico si puedes completar las demás etapas de forma segura.
+
+## CONTEXTO
+
+Repositorio: `/workspaces/dev-portal`
+
+Rama: `fix/dev-portal-setup-improvements`
+
+Durante el uso de Dozzle se observó un código de salida 137 al detener el proceso, aparentemente relacionado con Ctrl+C y un tiempo límite de detención.
+
+Esto es una observación histórica. NO asumas que conocemos la causa.
+
+El Caso 06 ya está cerrado y corrigió la persistencia de Dozzle mediante `dozzle_data:/data`.
+
+**MUY IMPORTANTE: durante las pruebas del Caso 06 un comando Docker Compose eliminó accidentalmente los contenedores reales y el volumen PostgreSQL. El ambiente ya fue reconstruido. NO PODEMOS REPETIR ESE INCIDENTE.**
+
+## INVESTIGACIÓN
+
+Examina exclusivamente:
+
+- `.workspaceScripts/task_dozzle.sh`.
+- Las tareas de VS Code que inician o detienen Dozzle.
+- `docker-compose-dozzle.yml`.
+- Los scripts relacionados directamente.
+- Los registros históricos disponibles del error 137.
+
+Identifica:
+
+1. Qué ocurre al iniciar Dozzle.
+2. Qué sucede cuando presiono Ctrl+C.
+3. Qué proceso recibe SIGINT, SIGTERM o SIGKILL.
+4. Quién devuelve el código 137.
+5. Si existe un timeout y dónde se define.
+6. Si Docker Compose está eliminando un contenedor de forma esperada.
+7. Si existe un defecto real que amerite corrección.
+
+Explica qué significa 137, pero NO concluyas que hubo un problema de memoria ni un SIGKILL sin evidencia concreta.
+
+Para cada conclusión proporciona archivo, línea, código exacto y evidencia.
+
+## CORRECCIÓN
+
+Si existe un defecto real, corrígelo directamente con el cambio mínimo necesario.
+
+Si el código 137 es un comportamiento esperado y no representa un problema, NO modifiques el código solamente para ocultarlo.
+
+No cambies el volumen de Dozzle ni las correcciones anteriores.
+
+## RESTRICCIONES ABSOLUTAS DE SEGURIDAD
+
+NO ejecutes comandos Docker que creen, detengan, reinicien, eliminen o modifiquen recursos reales.
+
+NO ejecutes las tareas reales que detienen servicios.
+
+PROHIBIDO ejecutar:
+- `docker compose down`, con o sin `-v`.
+- `docker compose stop`, `restart`, `up` o `rm` sobre el ambiente actual.
+- `docker rm`, `docker volume rm`, `docker prune` o equivalentes destructivos.
+- Scripts antiguos del Caso 06.
+- Limpiezas generales de Docker.
+
+No modifiques PostgreSQL, API, Admin UI, Tenant UI ni los contenedores actuales.
+
+No cambies de rama, no hagas commit ni push.
+
+Puedes utilizar inspecciones de solo lectura, pruebas de sintaxis y pruebas aisladas con procesos locales o Docker simulado mediante mocks.
+
+**No basta con llamar temporal a un proyecto para considerarlo seguro. Ninguna prueba debe poder ejecutar accidentalmente acciones contra Docker real.**
+
+Si necesitas simular Docker, utiliza un ejecutable falso completamente aislado y comprueba que no existe una ruta de ejecución hacia el Docker real.
+
+## DEMOSTRACIÓN ANTES Y DESPUÉS
+
+Prepara:
+
+- `before.sh`: demostrar el comportamiento original comprobado.
+- `after.sh`: demostrar el comportamiento corregido, si corresponde.
+
+Ambos scripts deben ser seguros y repetibles.
+
+Si las pruebas utilizan mocks, indícalo claramente. NO afirmes que se ejecutó Docker real.
+
+No fabriques un error 137 si no está respaldado por el comportamiento original o los registros.
+
+Si no existe defecto, prepara una demostración explicativa del comportamiento esperado, sin inventar una corrección.
+
+## DOCUMENTACIÓN
+
+Guarda los entregables exclusivamente fuera del repositorio:
+
+`/tmp/infios-caso-07/`
+
+Archivos:
+
+- `before.sh` — código y comentarios en inglés.
+- `after.sh` — código y comentarios en inglés.
+- `Caso_07_Explicacion_Completa.html` — documentación en español.
+
+El HTML debe incluir:
+
+1. Título del problema.
+2. Descripción original.
+3. Causa comprobada.
+4. Solución implementada, si corresponde.
+5. Tabla de archivos revisados y modificados, mostrando ANTES, DESPUÉS y por qué.
+6. Demostración reproducible ANTES/DESPUÉS.
+7. Explicación desde cero para alguien que no conoce Docker ni Bash.
+8. Guía para presentar el caso a Eli.
+9. Anexos con código real numerado por línea.
+
+**Cada explicación debe indicar qué línea de código realiza la operación, qué significa y por qué se utiliza.**
+
+Explica especialmente Ctrl+C, SIGINT, SIGTERM, SIGKILL, exit code 137, timeout, Docker Compose y la diferencia entre detener y eliminar un contenedor.
+
+El HTML debe funcionar sin Internet en Chrome o Edge.
+
+## VALIDACIÓN Y ENTREGA
+
+Ejecuta las pruebas seguras que hayas preparado.
+
+Comprueba que:
+
+- Ninguna prueba afectó Docker real.
+- Los Casos 01, 03, 04, 05 y 06 permanecen intactos.
+- Los scripts son seguros, reproducibles y muestran resultados auténticos.
+- El HTML contiene las explicaciones y evidencias correspondientes.
+
+Genera:
+
+`/tmp/infios-caso-07.zip`
+
+No elimines los archivos hasta que confirme que los copié.
+
+Termina con una conclusión clara:
+
+- **CASO 07 — CORREGIDO Y VALIDADO**
+- **CASO 07 — COMPORTAMIENTO ESPERADO, SIN CORRECCIÓN NECESARIA**
+- **CASO 07 — NO RESUELTO**
+
+Indica qué hiciste, qué pruebas ejecutaste, qué queda pendiente si corresponde y el comando para copiar el ZIP a Windows.
+
+**No vuelvas a investigar otros casos ni ejecutes operaciones peligrosas para conseguir una demostración. Responde en español.**
