@@ -1,91 +1,53 @@
- CASO 07: COMPORTAMIENTO ESPERADO, SIN CORRECCIÓN NECESARIA
-  
-  El 137 es el código de salida del contenedor de Dozzle cuando Docker lo termina con SIGKILL. En esta tarea eso pasa en dos casos: si pulsas
-  Ctrl+C por segunda vez, o si el contenedor no se detiene en 10 segundos después de recibir SIGTERM. Los dos son comportamiento normal de
-  Docker Compose y no un defecto del repositorio, así que no modifiqué ningún archivo.
-  
-  Causa comprobada
-  
-  - Al iniciar: la tarea Logs: Dozzle (tasks.json:80-86) ejecuta task_dozzle.sh. Su línea 6 (docker compose -f ./docker-compose-dozzle.yml up
-  --abort-on-container-exit) inicia Dozzle y se queda en primer plano mostrando sus logs.
-  - Quién recibe SIGINT: al pulsar Ctrl+C, la terminal envía SIGINT a todos los procesos en primer plano: bash, el cliente docker y Compose.
-  Compose captura esa señal en up.go:104 (signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)).
-  - Primer Ctrl+C: Compose muestra Gracefully Stopping... press Ctrl+C again to force (up.go:289) y Docker envía SIGTERM a /dozzle.
-  - Timeout: si Dozzle no termina, Docker envía SIGKILL a los 10 segundos, que es su valor por defecto. Ni docker-compose-dozzle.yml ni la
-  tarea definen otro tiempo (no hay stop_grace_period ni -t).
-  - Segundo Ctrl+C: Compose ejecuta u.killApplication() (up.go:313), que envía SIGKILL sin esperar.
-  - Quién devuelve el 137: 128 + 9 (el número de SIGKILL) = 137. Docker registra ese código para el contenedor. Por --abort-on-container-exit,
-  Compose lo guarda (up.go:369, u.exitCode = event.ExitCode), muestra exited with code 137 y sale de up con 137 (up.go:230-235).
-  - El script no termina con 137: bash continúa con la línea 7, donde down >/dev/null 2>&1 elimina el contenedor y la red y conserva el
-  volumen dozzle_data. El código de salida del script es el de esa línea, normalmente 0.
-  - Detener y eliminar son pasos distintos: Ctrl+C solo detiene el contenedor. Lo elimina la línea 7, y eso es intencional.
-  - Qué camino es más probable: el daemon de Docker registró tres paradas de esta misma imagen (v11.4.1) durante el Caso 06. En las tres pasó
-  de signal=15 a exitCode=0 en 1 segundo o menos. Por eso, con un solo Ctrl+C no debería alcanzarse el timeout, y lo más probable es que el
-  137 histórico viniera de un segundo Ctrl+C. Es una inferencia: no encontré ningún registro de aquel 137 y la etiqueta latest pudo apuntar
-  entonces a otra versión de Dozzle.
-  - No es falta de memoria: no hay límites de memoria en el YAML ni ningún registro OOMKilled, y el 137 aparece justo al detener.
-  
-  Las líneas de Compose las verifiqué en su código fuente de la etiqueta v5.6.1, la versión instalada. Los textos de los mensajes también
-  están en el binario instalado.
-  
-  Qué hice
-  
-  - Revisé solo con lecturas task_dozzle.sh, la tarea de VS Code, docker-compose-dozzle.yml, las tareas antiguas de Dozzle (en Git) y el
-  código fuente de Compose. También busqué registros del 137 en Git, el repositorio, los logs de VS Code y Kiro y los eventos de Docker, sin
-  encontrar ninguno.
-  - Las únicas órdenes Docker que usé fueron de lectura: docker events, docker ps, docker image inspect, docker compose version y --help.
-  - Creé los entregables en /tmp/infios-caso-07/: before.sh y after.sh (en inglés, iguales salvo la línea 28) y
-  Caso_07_Explicacion_Completa.html (en español, 9 secciones y anexos con código numerado).
-  
-  Pruebas ejecutadas
-  
-  En las demos, Docker está simulado (mock) y bash es real: se ejecuta una copia idéntica de task_dozzle.sh y se le envía un SIGINT real al
-  grupo de procesos, como hace la terminal. La copia corre con env -i y un PATH que solo contiene bash, dirname, sleep y el docker simulado.
-  Antes de empezar, el script comprueba que el docker real no es alcanzable y que no existe ningún socket de Docker accesible.
-  
-  ┌──────────────────────────────────────────────────────────────────────┬───────────────┬─────┬────────┐
-  │ Escenario                                                            │ Contenedor    │ up  │ Script │
-  ├──────────────────────────────────────────────────────────────────────┼───────────────┼─────┼────────┤
-  │ ANTES B1: Ctrl+C dos veces                                           │ 137           │ 137 │ 0      │
-  ├──────────────────────────────────────────────────────────────────────┼───────────────┼─────┼────────┤
-  │ ANTES B2: Ctrl+C una vez, contenedor que ignora SIGTERM (hipotético) │ 137 tras 10 s │ 137 │ 0      │
-  ├──────────────────────────────────────────────────────────────────────┼───────────────┼─────┼────────┤
-  │ DESPUÉS A1: Ctrl+C una vez (como se comporta v11.4.1)                │ 0             │ 0   │ 0      │
-  └──────────────────────────────────────────────────────────────────────┴───────────────┴─────┴────────┘
-  
-  "DESPUÉS" no es una corrección: muestra la forma correcta de detener Dozzle y comprueba que el repositorio no cambió. Todas las
-  comprobaciones dieron PASS y los dos scripts terminaron con código 0.
-  
-  Validación
-  
-  - Docker real sin tocar: el daemon no registró ningún evento desde que empezó este caso (06:00:17 UTC), y no quedan sandboxes.
-  - Casos anteriores intactos: los hashes de los archivos de los Casos 01, 03, 04 y 05 coinciden. Del Caso 06 siguen intactos el volumen en
-  docker-compose-dozzle.yml (ee7f4caf…) y su ZIP (2bca7d24…).
-  - Git: la rama sigue en fix/dev-portal-setup-improvements y HEAD en 10ff3544, sin commit ni push.
-  - HTML: 43 enlaces internos sin ninguno roto, sin referencias externas y sin secretos.
-  
-  Pendiente
-  
-  - No analicé qué pasa si cierras la terminal en vez de pulsar Ctrl+C: es otra señal.
-  - No observé la tarea real en tu VS Code.
-  
-  ZIP
-  
-  /tmp/infios-caso-07.zip contiene los tres archivos, idénticos a los del disco.
-  - SHA-256: 0649f3144e9cb21a0abcd0eccdfc79611c78cb93bdf06ed208af9919d87e6d94
-  
-  Para copiarlo a Descargas de Windows:
-  
-  cp /tmp/infios-caso-07.zip /tmp/host-home/Downloads/
-  
-  No borraré los archivos de /tmp hasta que me confirmes que los has copiado.
- 
-▸ Credits: turn 40.33 • session 631.22 | Time: 14m 0s
+# CASO 09 — CORREGIR REGIÓN DE KIRO SEGÚN ELI
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◑ 27%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Eli confirmó que la región predeterminada de Kiro es incorrecta: actualmente utiliza `us-east-1` y debe utilizar `us-east-2`.
 
-›  ask a question or describe a task ↵
-                                                                                                     /sessions to resume · /copy to clipboard
+**No necesito investigar cuál debería ser la región. Ese requisito ya está confirmado por Eli.**
 
+Repositorio: `/workspaces/dev-portal`
 
+Rama: `fix/dev-portal-setup-improvements`
+
+## REALIZA EL TRABAJO COMPLETO
+
+1. Revisa `.workspaceScripts/task_setupSdlc.sh`, especialmente la variable `KIRO_REGION` y su utilización en `kiro-cli login --region`.
+
+2. Corrige el valor predeterminado de `us-east-1` a `us-east-2`, conservando el resto del comportamiento del script.
+
+3. Comprueba que la corrección realmente llega al comando de inicio de sesión de Kiro. No basta con comprobar que el texto cambió.
+
+4. Ejecuta pruebas seguras de sintaxis y de comportamiento utilizando mocks si es necesario. **No ejecutes un inicio de sesión real, no cierres mi sesión actual y no modifiques credenciales.**
+
+5. Genera dos demostraciones seguras y reproducibles:
+   - `before.sh`: muestra cómo la configuración original utilizaba `us-east-1`.
+   - `after.sh`: demuestra que la configuración corregida utiliza `us-east-2`.
+
+6. Ejecuta ambas demostraciones y documenta sus resultados reales.
+
+7. Genera `Caso_09_Explicacion_Completa.html` en español, para abrir sin Internet. Debe explicar el problema, el requisito de Eli, la corrección, las pruebas y los archivos modificados. Incluye el código real con números de línea y explica cada instrucción relevante para alguien que está aprendiendo.
+
+8. Comprueba que los cambios anteriores de los Casos 01, 03, 04, 05 y 06 siguen intactos.
+
+9. Genera `/tmp/infios-caso-09.zip` con `before.sh`, `after.sh` y el HTML.
+
+## RESTRICCIONES
+
+- No ejecutes Docker ni Docker Compose.
+- No modifiques otros casos.
+- No cambies otras regiones AWS que no intervengan en este problema.
+- No cambies de rama ni hagas commit, push o PR.
+- No ejecutes login/logout ni alteres sesiones corporativas.
+- No incluyas secretos en los entregables.
+- No inventes pruebas funcionales.
+- No me entregues otro plan: realiza la corrección, las validaciones y la documentación en esta misma tarea.
+
+## ENTREGA FINAL
+
+Indica claramente:
+- Qué línea corregiste y cómo quedó.
+- Qué pruebas ejecutaste y sus resultados.
+- Si la corrección quedó validada.
+- Ruta y SHA-256 del ZIP.
+- Comando exacto para copiarlo a Descargas de Windows.
+
+Responde en español.
