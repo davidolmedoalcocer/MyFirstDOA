@@ -1,62 +1,54 @@
- Detuve el trabajo antes de terminar el Caso 06. Durante las pruebas, un comando mío borró parte de tu entorno real de Docker. No hay ZIP
-  nuevo ni SHA-256.
-  
-  Qué se perdió
-  
-  Entre las 05:18:29 y las 05:18:33 UTC se ejecutó un docker compose down -v sobre el proyecto real dev-portal. Borró:
-  
-  - Los 6 contenedores: dev-portal-postgres-db, dev-portal-service, dev-portal-admin-ui, dev-portal-tenant-ui, dev-portal-liquibase-init y
-  dev-portal-seeder.
-  - El volumen dev-portal_pg_data: los datos de Postgres. No se pueden recuperar porque no había copia de seguridad.
-  - La red dev-portal_default.
-  
-  Siguen intactos el contenedor quirky_pasteur, el volumen anónimo dev-portal-211babec…, dev-portal-testing_pg_data_testing, minikube-config y
-  vscode. Tampoco cambiaron la rama, el repositorio ni los Casos 01, 03, 04 y 05.
-  
-  Cómo ocurrió
-  
-  1. Para probar el defecto 2, ejecuté el after.sh antiguo con una imagen auxiliar que no existe. En ese caso el script nunca crea
-  override.yml.
-  2. Al final, ese script ejecuta tmpc down -v, es decir, docker compose -p infios-caso06-after -f compose.yml -f override.yml down -v. Uno de
-  los archivos no existía.
-  3. Probé después ese comportamiento de forma aislada. Cuando faltan los archivos, down ignora -p y usa el proyecto del .env de
-  --project-directory, que es dev-portal (COMPOSE_PROJECT_NAME=dev-portal). La prueba aislada respondió No resource found to remove for
-  project "infios-caso06-probe".
-  
-  El fallo es mío: ejecuté el script antiguo sin comprobar antes qué haría down con archivos inexistentes. Era una variante más grave del
-  mismo defecto 1 que me pediste corregir.
-  
-  Estado del Caso 06
-  
-  Hecho:
-  - Los nuevos before.sh y after.sh ya están escritos.
-  - Corrección 1 comprobada: si ya existe un contenedor, una red o un volumen del proyecto temporal, el script sale con código 2 y los deja
-  intactos. El volumen conservó su contenido.
-  - Corrección 2 comprobada: si falta la imagen auxiliar, after.sh sale con 1 y lista las 7 comprobaciones obligatorias sin PASS. before.sh
-  también sale con 1.
-  - Con SIGTERM, el script sale con 143 y no deja restos.
-  - El script nuevo solo ejecuta down si el proyecto lo creó esta misma ejecución, y en ese momento los dos archivos existen.
-  
-  Pendiente:
-  - Añadir una protección más: que tmpc se niegue a ejecutarse si falta algún archivo o si el proyecto resuelto no es infios-caso06-<fase>.
-  - Ejecutar las demos normales.
-  - Actualizar las referencias a líneas del HTML.
-  - Regenerar el ZIP.
-  
-  Qué necesito que decidas
-  
-  No he intentado recrear nada, porque me pediste no recrear recursos y porque Postgres arrancaría con una base vacía.
-  
-  1. ¿Quieres recrear el stack de dev-portal? La forma sería la tarea que usas normalmente para levantar el Dev Portal. Liquibase y el seeder
-  volverían a crear el esquema y los datos de ejemplo. Los datos que hubieras añadido a mano se perdieron para siempre. Puedo hacerlo yo o
-  puedes hacerlo tú.
-  2. ¿Termino el Caso 06 mientras tanto? Las pruebas de Docker solo usarían recursos temporales y la protección nueva de tmpc. Mientras el
-  stack no exista, la comprobación del hallazgo A dará NOT VERIFIED, porque no habrá contenedores huérfanos que mostrar. Si prefieres que la
-  salida ANTES y DESPUÉS lo muestre, espero a que se recree el stack.
- 
-▸ Credits: turn 13.78 • session 571.95 | Time: 5m 45s
+# CASO 06 — FINALIZAR SIN RIESGO PARA DEV PORTAL
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◔ 12%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Kiro, necesitamos terminar el Caso 06. El ambiente ya fue recuperado después del incidente.
 
-›  ask a question or describe a task ↵
+**PROHIBIDO ejecutar Docker, Docker Compose, los scripts antiguos o cualquier operación que cree, detenga, elimine o modifique recursos.**
+
+La corrección de `docker-compose-dozzle.yml` ya fue implementada y probada satisfactoriamente antes del incidente. No vuelvas a modificarla ni a repetir las pruebas destructivas.
+
+## TRABAJO QUE DEBES COMPLETAR AHORA
+
+1. Sustituye `/tmp/infios-caso-06/before.sh` y `after.sh` por demostraciones **100 % de solo lectura**.
+
+2. `before.sh` debe recuperar con `git show` la configuración original de Dozzle y demostrar, mostrando las líneas reales, que `/data` no tenía un volumen persistente.
+
+3. `after.sh` debe inspeccionar la configuración corregida y demostrar, mostrando las líneas reales, que `dozzle_data:/data` está configurado correctamente y declarado como volumen.
+
+4. Ambos scripts deben explicar en su salida que las pruebas funcionales de persistencia ANTES/DESPUÉS ya se realizaron previamente con resultados satisfactorios, pero que estos nuevos scripts solo verifican la configuración. No deben fingir que vuelven a ejecutar esas pruebas.
+
+5. Los scripts no pueden contener `docker compose down`, `docker rm`, `docker volume rm`, `rm -rf`, llamadas a Docker ni operaciones destructivas. No necesitan funciones cleanup ni traps.
+
+6. Ejecuta ambos scripts y comprueba sus resultados. Verifica mediante inspección estática que no pueden alterar Docker.
+
+7. Actualiza `/tmp/infios-caso-06/Caso_06_Explicacion_Completa.html` en español, explicando el problema, la corrección, las pruebas funcionales históricas, el incidente, las nuevas demostraciones seguras y cada línea relevante de código.
+
+8. Regenera `/tmp/infios-caso-06.zip` con los tres archivos definitivos.
+
+9. Comprueba que la rama, Git y los archivos de los Casos 01, 03, 04 y 05 permanecen intactos. Hazlo solo mediante comandos de lectura.
+
+## RESTRICCIONES ABSOLUTAS
+
+- NO ejecutes ningún comando Docker.
+- NO ejecutes las versiones antiguas de before.sh ni after.sh.
+- NO ejecutes ninguna prueba que recree o destruya contenedores.
+- NO modifiques el repositorio.
+- NO modifiques la configuración de Dozzle ya corregida.
+- NO toques PostgreSQL.
+- NO hagas commit ni push.
+- NO pidas otro prompt.
+
+Los scripts y sus comentarios deben estar en inglés. El HTML debe estar en español y funcionar sin Internet.
+
+## ENTREGA FINAL
+
+Confirma:
+
+- Que los scripts nuevos son exclusivamente de lectura.
+- Que ambos fueron ejecutados correctamente.
+- Que el cambio `dozzle_data:/data` permanece intacto.
+- Que las pruebas funcionales anteriores están documentadas sin inventar nuevos resultados.
+- Que el ambiente Docker no fue tocado.
+- El SHA-256 del ZIP definitivo.
+- El comando para copiarlo a Descargas de Windows.
+
+No realices ninguna otra investigación ni ejecución.
