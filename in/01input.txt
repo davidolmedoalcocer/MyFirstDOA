@@ -1,74 +1,336 @@
-Corregí los tres problemas, volví a ejecutar las dos demostraciones con los scripts definitivos y la consulta real a ADO sigue funcionando.
-  Solo modifiqué before.sh, after.sh, el HTML y el ZIP.
-  
-  Qué corregí
-  - before.sh, fallo de 2.10.0 (líneas 91-99 y 125-133). El script guarda la salida del intento y solo da el ANTES por reproducido si se
-  cumplen dos condiciones a la vez: el servidor terminó sin responder y el error es libsecret-1.so.0: cannot open shared object file. Si no
-  ocurre, imprime "the BEFORE demonstration could not be reproduced" y termina con código 1.
-  - after.sh, configuración personal (líneas 36-60). Sustituí cat -n "$USER_MCP" por una vista de los campos del servidor ado:
-    - Muestra comando, paquete, dominios, modo de autenticación, timeout, waitForReady, autoApprove y los nombres de las variables de entorno,
-  sin sus valores.
-    - La organización se compara con team-config.yaml sin imprimirse, y otros servidores personales solo se cuentan.
-    - Avisa si alguna variable tiene aspecto de secreto.
-    - Oculté también el valor del proyecto en kiro-cli mcp status, tu cuenta en el paso 3 y la lista de nombres de proyectos del paso 4.
-  
-  - after.sh, validación del agente (líneas 117-155). La prueba ya no es el texto del modelo, sino el registro de sesión que escribe el propio
-  Kiro (~/.kiro/sessions/…/messages.jsonl). Las siete comprobaciones deben dar OK:
-    1. Existe un tool_call de @ado/core_list_projects.
-    2. Su estado es completed.
-    3. Su tool_result tiene success=true.
-    4. El contenido lleva la cabecera del servidor ADO.
-    5. El contenido es un array JSON de proyectos no vacío.
-    6. El número de proyectos coincide con la llamada independiente del paso 4.
-    7. El número que dio el modelo coincide con el resultado real.
-  
-  - Pruebas negativas con registros fabricados en /tmp:
-    - Una respuesta inventada, sin tool_call, da 7 FAIL y código 1.
-    - Un resultado con success:false da 5 FAIL y código 1.
-    - Si 2.10.0 arrancara bien, before.sh diría "NOT reproduced".
-  
-  Resultado real de before.sh (código 0)
-  - RESULT: server exited before answering (exit code 1)
-  - stderr: Error: libsecret-1.so.0: cannot open shared object file
-  - Expected failure reproduced
-  - Termina con BEFORE RESULT en rojo.
-  
-  Resultado real de after.sh (código 0)
-  - Configuración: muestra ado.package: @azure-devops/mcp@2.11.0, ado.organization: <hidden> (… yes), ado.waitForReady: true, secret-like env:
-  none y Env Vars: ado_mcp_project=<hidden>.
-  - Llamada independiente: tools/call core_list_projects -> ok, 38 projects.
-  - Agente SDLC: las siete comprobaciones dieron OK, con 38 proyectos tanto en el resultado real como en la respuesta del modelo.
-  - Termina con AFTER RESULT en verde.
-  
-  Consulta real a ADO: sigue funcionando. El agente SDLC ejecutó @ado/core_list_projects contra la organización y recibió 38 proyectos, lo
-  mismo que la llamada directa del paso 4.
-  
-  HTML y ZIP
-  - Caso_04_Explicacion_Completa.html lleva las salidas reales nuevas y la tabla 7.6 con los números de línea definitivos.
-  - Añadí la sección 7.7, que explica en español las tres correcciones instrucción por instrucción.
-  - Los anexos A1 y A2 tienen los scripts definitivos numerados por línea, y comprobé que todos los enlaces a líneas existen.
-  - El HTML todavía muestra completo el servidor ado de tu configuración personal en la sección 7.2 y en el anexo A4, porque la explicación
-  línea a línea lo necesita. No contiene secretos, pero si no quieres que aparezca en la presentación, puedo ocultar esos valores.
-  - /tmp/infios-caso-04.zip está regenerado con los tres archivos (SHA-256 8f68e9ad…).
-  - Al revisar su contenido no encontré tokens, PAT, correos completos ni nombres de proyectos.
-  - El HTML no usa recursos externos.
-  
-  Ambiente
-  - No cambiaron (comparé los hashes antes y después): ~/.kiro/settings/mcp.json, .kiro/agents/sdlc.json, los archivos MCP del proyecto y los
-  scripts del Caso 03.
-  - El Caso 01 tiene el mismo hash de diff (9f3d9fa5…), y git status y git diff son idénticos.
-  - Sigo en la rama fix/dev-portal-setup-improvements.
-  
-  Para copiar el ZIP a Descargas de Windows, desde una terminal del Dev Container:
-  
-  cp /tmp/infios-caso-04.zip /tmp/host-home/Downloads/
- 
-▸ Credits: turn 51.28 • session 387.14 | Time: 5m 1s
+# INFIOS DEV PORTAL — CASO 05: VALIDACIÓN Y CORRECCIÓN DE LA CONFIGURACIÓN DE KIRO AGENT SDLC
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◕ 63%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Actúa como Principal Software Engineer y Software Architect, especializado en Kiro CLI, agentes SDLC, configuración de proyectos, MCP, Git, automatizaciones y Dev Containers.
 
-›  ask a question or describe a task ↵
-                                                                                                     /sessions to resume · /copy to clipboard
+## OBJETIVO
 
+Estoy realizando un ejercicio personal de aprendizaje en Infios.
 
+Necesito investigar los archivos que fueron creados o modificados durante la configuración inicial de Kiro Agent SDLC, entender exactamente para qué sirven, comprobar si están bien configurados y corregir cualquier problema REAL que encuentres.
+
+**Haz el trabajo completo en una sola tarea. No me entregues solamente un análisis para después pedirme otro prompt.**
+
+El resultado debe tener el mismo nivel de calidad que los Casos 01, 03 y 04:
+
+- Problema identificado, si existe.
+- Causa comprobada.
+- Solución implementada, si es necesaria.
+- Archivos modificados y justificación.
+- Demostración ANTES/DESPUÉS cuando exista un comportamiento que realmente pueda compararse.
+- Documento HTML completo en español.
+- Explicación del código para alguien que está aprendiendo.
+- ZIP para copiar a Windows.
+
+**IMPORTANTE: no inventes un problema ni modifiques archivos que ya funcionan correctamente solo para producir un fix.**
+
+## 1. CONTEXTO
+
+Repositorio:
+
+`/workspaces/dev-portal`
+
+Rama:
+
+`fix/dev-portal-setup-improvements`
+
+Durante el onboarding se identificaron estos cambios:
+
+1. `.gitignore` — modificado.
+2. `.kiro/settings/cli.json` — modificado.
+3. `.kiro/steering/uikit-usage.md` — modificado.
+4. `.kiro/hooks/` — archivos nuevos.
+5. `.kiro/settings/mcp.json` — archivo nuevo.
+6. `.kiro/steering/uikit-foundations.md` — archivo nuevo.
+
+El estado anterior es una referencia histórica: verifica el estado ACTUAL de Git antes de comenzar.
+
+Ya resolvimos los siguientes casos:
+
+- Caso 01: error EACCES por permisos de archivos.
+- Caso 03: apertura incorrecta de puertos mediante VS Code.
+- Caso 04: conexión de Kiro Agent SDLC con Azure DevOps MCP.
+
+No alteres ninguno de esos tres casos.
+
+En particular, el Caso 04 configuró Azure DevOps MCP a nivel personal en `~/.kiro/settings/mcp.json`. No elimines ni sobrescribas esa integración.
+
+## 2. INVESTIGACIÓN
+
+Examina los seis archivos o grupos de archivos.
+
+Para cada uno responde:
+
+1. ¿Quién o qué componente lo utiliza?
+2. ¿Para qué sirve?
+3. ¿Qué instrucciones o propiedades contiene?
+4. ¿Cómo interpreta Kiro esas instrucciones?
+5. ¿La configuración es personal o corresponde al proyecto?
+6. ¿Qué comportamiento provoca?
+7. ¿Es necesaria?
+8. ¿Está funcionando?
+9. ¿Existe algún error, incompatibilidad, duplicación o riesgo real?
+10. ¿Qué pasaría si no existiera ese archivo?
+
+No supongas que un archivo nuevo o modificado es incorrecto.
+
+### Revisión de Git
+
+Compara el contenido versionado original con el contenido actual, sin restaurarlo.
+
+Para archivos nuevos, identifica su contenido real y explica por qué fueron creados.
+
+Determina qué modificaciones ya existían antes de este caso y cuáles realizaste tú durante esta tarea.
+
+No confundas cambios sin commit con errores.
+
+### Revisión de Kiro
+
+Comprueba:
+
+- Cómo Kiro carga sus archivos de configuración.
+- Qué prioridad tienen las configuraciones personales y las del workspace.
+- Cómo se cargan los archivos steering.
+- Cuándo se ejecutan los hooks.
+- Qué acciones pueden ejecutar esos hooks.
+- Qué configuración utiliza realmente el agente SDLC.
+- Cómo se cargan los servidores MCP.
+- Si existen configuraciones duplicadas o incompatibles.
+- Si alguna configuración afecta la seguridad, los permisos o la ejecución automática de comandos.
+
+**Especial atención a `.kiro/hooks/`: antes de ejecutar cualquier hook, identifica sus posibles efectos. No ejecutes acciones destructivas ni comandos que modifiquen servicios externos.**
+
+Distingue claramente:
+
+HECHO COMPROBADO / INFERENCIA / DESCONOCIDO.
+
+Cada hallazgo debe señalar el archivo, las líneas exactas y el código que lo demuestra.
+
+## 3. DECISIÓN TÉCNICA E IMPLEMENTACIÓN
+
+Después del análisis, clasifica cada archivo como:
+
+- CORRECTO Y NECESARIO.
+- CORRECTO Y OPCIONAL.
+- REDUNDANTE.
+- INCORRECTO.
+- NO VERIFICADO.
+
+Si identificas un defecto real y puedes corregirlo con seguridad, IMPLEMENTA LA CORRECCIÓN directamente.
+
+Puedes modificar los archivos relacionados con el Caso 05 cuando exista evidencia técnica suficiente.
+
+Antes de modificar cualquier archivo, conserva una copia de su contenido previo en una carpeta temporal fuera del repositorio, para documentar el ANTES y permitir una recuperación selectiva si algo falla.
+
+Evita modificaciones innecesarias.
+
+No elimines configuraciones sin comprobar primero para qué sirven y qué otros componentes dependen de ellas.
+
+Si una modificación requiere autorización corporativa, permisos adicionales o acciones fuera de mi ambiente local, no la realices automáticamente.
+
+No necesitas detenerte para pedirme otro prompt si la corrección es local, segura y está dentro de este alcance.
+
+## 4. VALIDACIÓN FUNCIONAL
+
+No basta con comprobar que los archivos tienen sintaxis válida.
+
+Verifica los comportamientos que correspondan a cada configuración.
+
+Por ejemplo:
+
+- Que Kiro reconoce sus archivos steering.
+- Que los hooks están correctamente definidos.
+- Que Kiro carga los MCP esperados.
+- Que las configuraciones no interfieren con Azure DevOps MCP.
+- Que los archivos personales tienen la prioridad esperada.
+- Que no hay instrucciones que ejecuten acciones no deseadas.
+- Que las configuraciones funcionan desde el Dev Container real.
+
+Utiliza pruebas de solo lectura cuando sea suficiente.
+
+Si necesitas ejecutar un hook para demostrar su comportamiento, primero verifica que sea seguro. Si no lo es, inspecciónalo sin ejecutarlo y deja constancia.
+
+No modifiques sistemas corporativos externos durante las pruebas.
+
+## 5. DEMOSTRACIÓN ANTES Y DESPUÉS
+
+Quiero poder mostrarle a Eli lo que encontré y, si corregimos algún problema, demostrar cómo funcionaba antes y cómo funciona después.
+
+### before.sh
+
+Si identificas un defecto real, crea una demostración que reproduzca el comportamiento anterior de manera segura.
+
+Utiliza los archivos y configuraciones reales del proyecto, preferentemente mediante copias temporales controladas.
+
+No reviertas el repositorio actual para provocar errores.
+
+### after.sh
+
+Debe demostrar el funcionamiento con la configuración corregida.
+
+Utiliza el mismo procedimiento y comprueba que desapareció el defecto identificado.
+
+Ambos scripts deben tener verificaciones reales y resultados claros.
+
+**Si concluyes que no había ningún defecto funcional, NO fabriques una demostración de fallo.**
+
+En ese caso, prepara scripts de inspección comparativa únicamente si aportan información real, identificándolos como auditoría de configuración, NO como reproducción de un error.
+
+Explica expresamente que el Caso 05 fue una revisión y validación, no una reparación.
+
+Los scripts deben poder repetirse y no deben alterar mis configuraciones actuales.
+
+## 6. RESTRICCIONES
+
+- No cambies de rama.
+- No hagas commit, push ni Pull Request.
+- No modifiques los fixes de los Casos 01 y 03.
+- No alteres la integración personal de Azure DevOps MCP del Caso 04.
+- No elimines configuraciones existentes sin evidencia y justificación.
+- No modifiques bases de datos.
+- No reinicies ni reconstruyas el Dev Container.
+- No elimines contenedores, imágenes ni volúmenes existentes.
+- No modifiques credenciales ni archivos personales ajenos al Caso 05.
+- No ejecutes escrituras sobre Azure DevOps.
+- No instales software adicional salvo que exista una necesidad demostrada y autorizada.
+- No utilices restauraciones generales de Git.
+- No solicites permisos administrativos.
+
+Todos los cambios deben ser mínimos, locales, comprobables y reversibles.
+
+## 7. DOCUMENTACIÓN HTML
+
+Guarda los entregables personales FUERA del repositorio:
+
+`/tmp/infios-caso-05/`
+
+Estructura:
+
+- `before.sh` — script en inglés, si existe una demostración válida.
+- `after.sh` — script en inglés, si existe una demostración válida.
+- `Caso_05_Explicacion_Completa.html` — documento completo en español.
+
+Si no existe una demostración ANTES/DESPUÉS válida, no inventes los scripts: explica esa conclusión en el HTML.
+
+### Contenido obligatorio del HTML
+
+**1. Título del caso.**
+
+**2. Descripción de la situación original.**
+
+**3. Qué problema existía realmente, si lo había.**
+
+**4. Descripción de la solución implementada o validación realizada.**
+
+**5. Tabla de los seis archivos investigados.**
+
+La tabla debe contener:
+
+- Nombre y ruta.
+- Cómo estaba ANTES.
+- Para qué sirve.
+- Qué código o configuración contiene.
+- Qué encontraste.
+- Qué modificaste, si corresponde.
+- Cómo quedó DESPUÉS.
+- Por qué fue necesario modificarlo o conservarlo.
+
+**6. Demostración ANTES/DESPUÉS o validación de la configuración.**
+
+**7. Explicación didáctica completa.**
+
+Quiero entender cada concepto como una persona sin experiencia previa en Kiro.
+
+Explica desde cero:
+
+- Qué es Kiro CLI.
+- Qué es un agente SDLC.
+- Qué significa steering.
+- Qué es un hook.
+- Cuándo y por qué se ejecuta.
+- Qué es una configuración MCP.
+- Diferencia entre configuración personal y de proyecto.
+- Qué significa que un archivo esté modificado o sin seguimiento en Git.
+- Qué hace `.gitignore`.
+- Cómo se relacionan estos archivos con el funcionamiento real de Kiro.
+
+**CADA explicación debe estar vinculada al código.**
+
+Por ejemplo, no escribas simplemente:
+
+"Este hook se ejecuta cuando ocurre un evento".
+
+Muestra:
+
+- Archivo.
+- Número de línea.
+- Evento que lo activa.
+- Propiedad exacta que lo configura.
+- Código que ejecuta.
+- Qué hace ese código.
+- Qué resultado tiene.
+- Cómo puedo comprobarlo.
+
+Haz lo mismo con las configuraciones JSON, los archivos steering y los scripts de demostración.
+
+No presupongas que conozco las tecnologías.
+
+**8. Guía para presentar el caso a Eli.**
+
+Explica qué mostrar, qué ejecutar y cómo responder preguntas técnicas.
+
+**9. Anexos con el código real.**
+
+Incluye los fragmentos completos relevantes, numerados por línea, con referencias desde las explicaciones.
+
+No incluyas tokens, contraseñas, información corporativa sensible ni datos de autenticación.
+
+El HTML debe:
+
+- Tener diseño profesional.
+- Funcionar sin conexión a Internet.
+- Abrirse directamente en Chrome o Edge.
+- Tener navegación interna.
+- No depender de librerías ni recursos externos.
+
+## 8. ENTREGABLE FINAL
+
+Valida todos los resultados y genera:
+
+`/tmp/infios-caso-05.zip`
+
+Incluye el HTML y solamente los scripts cuya demostración sea válida.
+
+Verifica que no contiene secretos.
+
+No elimines los archivos hasta que confirme que los copié a Windows.
+
+## 9. RESPUESTA FINAL
+
+Debes terminar con UNA de estas conclusiones:
+
+**A. CASO 05 — PROBLEMA IDENTIFICADO, CORREGIDO Y VALIDADO**
+
+Cuando encuentres un defecto, lo soluciones y compruebes que funciona.
+
+**B. CASO 05 — CONFIGURACIÓN REVISADA Y VALIDADA, SIN DEFECTOS QUE CORREGIR**
+
+Cuando los archivos sean correctos y no se necesiten cambios.
+
+**C. CASO 05 — NO RESUELTO**
+
+Cuando exista un problema real que no hayas podido corregir o comprobar.
+
+En todos los casos entrega:
+
+1. Tabla de los seis archivos con tus conclusiones.
+2. Qué problema encontraste, si existe.
+3. Qué modificaste exactamente.
+4. Qué pruebas ejecutaste y sus resultados.
+5. Cómo demostrar personalmente lo que encontraste.
+6. Qué archivos generaste.
+7. Ubicación del ZIP.
+8. Confirmación de que no alteraste los Casos 01, 03 y 04.
+
+**No termines después del diagnóstico: si hay una solución segura, impleméntala y pruébala en esta misma tarea.**
+
+Responde completamente en español. Los scripts, comentarios y mensajes de Bash deben estar en inglés.
