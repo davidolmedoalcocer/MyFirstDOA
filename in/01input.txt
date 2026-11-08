@@ -1,54 +1,60 @@
-# CASO 06 — FINALIZAR SIN RIESGO PARA DEV PORTAL
+ He sustituido before.sh y after.sh por demostraciones de solo lectura. Ejecuté las dos, actualicé el HTML y regeneré el ZIP. No ejecuté
+  ningún comando Docker ni los scripts antiguos.
+  
+  Los scripts solo leen. La inspección estática de los dos archivos dio cero en todos estos puntos:
+  - llamadas a docker como orden;
+  - docker compose down, docker rm, docker volume rm, rm, rm -rf, trap, cleanup, mktemp, tee, cp, mv, kill o curl;
+  - órdenes de Git que escriben (add, commit, push, checkout, reset, restore, stash, status);
+  - redirecciones que escriben en archivos (solo hay 2>/dev/null).
+  
+  Solo usan git show, git diff, git branch --show-current y git rev-parse, siempre con --no-optional-locks, además de grep, sed, awk, cat,
+  printf, head, tail, cut y wc. No crean archivos temporales. La sintaxis es correcta y el texto es solo ASCII.
+  
+  Las dos ejecuciones terminaron con código 0.
+  - before.sh: lee el archivo con git show HEAD:docker-compose-dozzle.yml. Muestra que la lista volumes: del servicio solo tiene la línea 9
+  (el socket) y que nada monta /data. Tampoco hay bloque volumes: de nivel superior. Cita la línea 7 de task_dozzle.sh, la que elimina el
+  contenedor. Las 4 comprobaciones dan PASS.
+  - after.sh: lee el archivo del árbol de trabajo. Muestra la línea 14 (- "dozzle_data:/data") dentro de k1-dozzle, la declaración en las
+  líneas 18-19 y el diff real (+7 / -0). También muestra que el socket y el puerto 8888:8080 siguen igual, y que el down de la tarea no lleva
+  -v. Las 6 comprobaciones dan PASS.
+  
+  Cualquier comprobación que no se cumpla termina el script con código 1. No existe el estado NOT VERIFIED.
+  
+  El cambio dozzle_data:/data sigue intacto. El SHA-256 de docker-compose-dozzle.yml (ee7f4caf…) coincide con la versión corregida que se
+  probó antes del incidente.
+  
+  Las pruebas funcionales anteriores están documentadas sin resultados nuevos. Los dos scripts tienen un bloque Historical functional test
+  (NOT re-run by this script) que solo repite los resultados registrados antes del incidente. Las secciones 6 y A5 del HTML incluyen la salida
+  original de aquellas ejecuciones, marcada como histórica y no repetida.
+  
+  El HTML está en español y funciona sin Internet. Tiene 10 secciones, 45 enlaces internos sin ninguno roto y ninguna referencia externa.
+  Cubre:
+  - el problema y la corrección;
+  - las pruebas funcionales históricas;
+  - el incidente: líneas 44-46, 56, 102-105 y 146 del script retirado, y los eventos de Docker entre las 05:18:29 y las 05:18:33;
+  - la inspección estática de los scripts nuevos y su salida real;
+  - una explicación línea por línea de before.sh y after.sh.
+  
+  No toqué el ambiente Docker. En esta fase no ejecuté ningún comando Docker. Por la misma razón, no he podido comprobar que el ambiente esté
+  recuperado.
+  
+  Repositorio, comprobado solo con lecturas:
+  - La rama sigue siendo fix/dev-portal-setup-improvements y HEAD 10ff3544. No hay commit ni push.
+  - git status muestra los mismos cambios que antes.
+  - sha256sum -c da OK en los archivos de los Casos 01, 03, 04 y 05, en task_dozzle.sh y en .env.
+  
+  ZIP: /tmp/infios-caso-06.zip contiene before.sh, after.sh y Caso_06_Explicacion_Completa.html. Los tres son idénticos a los del disco y no
+  contienen secretos.
+  - SHA-256: 2bca7d2486c46072ace662af28a7fc67b510edf4ba6a26ac175f61b37eb3200f
+  
+  Para copiarlo a Descargas de Windows:
+  
+  cp /tmp/infios-caso-06.zip /tmp/host-home/Downloads/
+ 
+▸ Credits: turn 18.94 • session 590.89 | Time: 5m 27s
 
-Kiro, necesitamos terminar el Caso 06. El ambiente ya fue recuperado después del incidente.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 18%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
 
-**PROHIBIDO ejecutar Docker, Docker Compose, los scripts antiguos o cualquier operación que cree, detenga, elimine o modifique recursos.**
-
-La corrección de `docker-compose-dozzle.yml` ya fue implementada y probada satisfactoriamente antes del incidente. No vuelvas a modificarla ni a repetir las pruebas destructivas.
-
-## TRABAJO QUE DEBES COMPLETAR AHORA
-
-1. Sustituye `/tmp/infios-caso-06/before.sh` y `after.sh` por demostraciones **100 % de solo lectura**.
-
-2. `before.sh` debe recuperar con `git show` la configuración original de Dozzle y demostrar, mostrando las líneas reales, que `/data` no tenía un volumen persistente.
-
-3. `after.sh` debe inspeccionar la configuración corregida y demostrar, mostrando las líneas reales, que `dozzle_data:/data` está configurado correctamente y declarado como volumen.
-
-4. Ambos scripts deben explicar en su salida que las pruebas funcionales de persistencia ANTES/DESPUÉS ya se realizaron previamente con resultados satisfactorios, pero que estos nuevos scripts solo verifican la configuración. No deben fingir que vuelven a ejecutar esas pruebas.
-
-5. Los scripts no pueden contener `docker compose down`, `docker rm`, `docker volume rm`, `rm -rf`, llamadas a Docker ni operaciones destructivas. No necesitan funciones cleanup ni traps.
-
-6. Ejecuta ambos scripts y comprueba sus resultados. Verifica mediante inspección estática que no pueden alterar Docker.
-
-7. Actualiza `/tmp/infios-caso-06/Caso_06_Explicacion_Completa.html` en español, explicando el problema, la corrección, las pruebas funcionales históricas, el incidente, las nuevas demostraciones seguras y cada línea relevante de código.
-
-8. Regenera `/tmp/infios-caso-06.zip` con los tres archivos definitivos.
-
-9. Comprueba que la rama, Git y los archivos de los Casos 01, 03, 04 y 05 permanecen intactos. Hazlo solo mediante comandos de lectura.
-
-## RESTRICCIONES ABSOLUTAS
-
-- NO ejecutes ningún comando Docker.
-- NO ejecutes las versiones antiguas de before.sh ni after.sh.
-- NO ejecutes ninguna prueba que recree o destruya contenedores.
-- NO modifiques el repositorio.
-- NO modifiques la configuración de Dozzle ya corregida.
-- NO toques PostgreSQL.
-- NO hagas commit ni push.
-- NO pidas otro prompt.
-
-Los scripts y sus comentarios deben estar en inglés. El HTML debe estar en español y funcionar sin Internet.
-
-## ENTREGA FINAL
-
-Confirma:
-
-- Que los scripts nuevos son exclusivamente de lectura.
-- Que ambos fueron ejecutados correctamente.
-- Que el cambio `dozzle_data:/data` permanece intacto.
-- Que las pruebas funcionales anteriores están documentadas sin inventar nuevos resultados.
-- Que el ambiente Docker no fue tocado.
-- El SHA-256 del ZIP definitivo.
-- El comando para copiarlo a Descargas de Windows.
-
-No realices ninguna otra investigación ni ejecución.
+›  ask a question or describe a task ↵
+                                                                                                     /sessions to resume · /copy to clipboard
