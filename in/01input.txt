@@ -1,53 +1,75 @@
-# CASO 09 — CORREGIR REGIÓN DE KIRO SEGÚN ELI
+ CASO 09: CORREGIDO Y VALIDADO
+  
+  Cambié la región predeterminada de Kiro a us-east-2 en .workspaceScripts/task_setupSdlc.sh y comprobé que ese valor llega al comando
+  kiro-cli login. La validación usa un kiro-cli simulado: no hice ningún login real.
+  
+  Línea corregida
+  
+  En la línea 18:
+  
+  -KIRO_REGION="us-east-1"
+  +KIRO_REGION="us-east-2"
+  
+  No cambié nada más. La línea 129 construye el comando con esa variable (kiro-cli login --license pro --identity-provider
+  $KIRO_IDENTITY_PROVIDER --region $KIRO_REGION --use-device-flow). La línea 133 lo ejecuta ($KIRO_LOGIN || true) y la 139 lo muestra para
+  repetirlo si el login no termina.
+  
+  KIRO_REGION solo se define y se usa en este archivo. La única otra mención de us-east-1 en el repositorio es un texto sobre un nombre de
+  perfil en un SKILL.md, y no la toqué.
+  
+  Pruebas ejecutadas
+  
+  - Sintaxis: bash -n da OK en task_setupSdlc.sh, before.sh y after.sh.
+  - Comportamiento: las demos ejecutan con bash las líneas reales del script, sin modificarlas: set -e, las variables KIRO_*, las funciones de
+  mensajes y el bloque completo del paso 3 (líneas 117-142). Solo kiro-cli está simulado: anota los argumentos que recibe y no contacta con
+  nada.
+    - Caso 1, sin sesión y login correcto:
+      - ANTES: kiro-cli login … --region us-east-1 …
+      - DESPUÉS: kiro-cli login --license pro --identity-provider https://d-9a671a9ffc.awsapps.com/start --region us-east-2 --use-device-flow
+  
+      Los demás argumentos son idénticos y el login se llama una sola vez.
+  
+    - Caso 2, el login no termina: el paso 3 solo avisa (código 0). El comando que muestra para repetirlo lleva la misma región: us-east-1
+  antes y us-east-2 después.
+    - Caso 3, ya hay sesión: no se intenta login. El comportamiento no cambia.
+    - Solo en DESPUÉS: el diff contra HEAD muestra que la región cambió únicamente en la línea 18. El archivo solo tiene otra zona modificada,
+  la del Caso 05, y ninguna otra región.
+  
+  - Aislamiento: el kiro-cli real y tu sesión no son alcanzables desde las demos. Corren con env -i, un PATH que solo contiene la carpeta
+  temporal y HOME apuntando a esa misma carpeta. Además, un análisis estático confirmó que los scripts de demostración no llaman a kiro-cli,
+  docker, aws, az ni gh.
+  - Resultado: las dos demos terminaron con código 0 y todas sus comprobaciones dieron PASS.
+  
+  Casos anteriores intactos
+  
+  - Casos 01, 03, 04 y 05: los hashes registrados dan OK.
+  - Archivo compartido con el Caso 05: la copia de seguridad que hice antes de editar task_setupSdlc.sh tenía el hash registrado al cerrar el
+  Caso 05. La única diferencia entre esa copia y el archivo actual es la línea 18, y las reglas sed del Caso 05 siguen presentes.
+  - Caso 06: docker-compose-dozzle.yml y su ZIP están intactos.
+  - Caso 07: su ZIP está intacto.
+  - Git: la rama sigue siendo fix/dev-portal-setup-improvements y HEAD 10ff3544, sin commit ni push.
+  
+  No ejecuté Docker ni kiro-cli real (ni login, ni logout, ni whoami).
+  
+  Limitación
+  
+  No probé un login real contra us-east-2. Lo validado es que el script le pasa --region us-east-2 a kiro-cli login; que esa región sea la
+  correcta lo da el requisito de Eli.
+  
+  ZIP
+  
+  - Ruta: /tmp/infios-caso-09.zip, con before.sh, after.sh y Caso_09_Explicacion_Completa.html. Los tres son idénticos a los del disco y no
+  contienen secretos.
+  - SHA-256: 91f9834851cab756af2b220474143d05c1b671c55ee3d20c61aa8b15847acf6e
+  
+  Para copiarlo a Descargas de Windows:
+  
+  cp /tmp/infios-caso-09.zip /tmp/host-home/Downloads/
+ 
+▸ Credits: turn 20.41 • session 651.64 | Time: 4m 2s
 
-Eli confirmó que la región predeterminada de Kiro es incorrecta: actualmente utiliza `us-east-1` y debe utilizar `us-east-2`.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◑ 32%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
 
-**No necesito investigar cuál debería ser la región. Ese requisito ya está confirmado por Eli.**
-
-Repositorio: `/workspaces/dev-portal`
-
-Rama: `fix/dev-portal-setup-improvements`
-
-## REALIZA EL TRABAJO COMPLETO
-
-1. Revisa `.workspaceScripts/task_setupSdlc.sh`, especialmente la variable `KIRO_REGION` y su utilización en `kiro-cli login --region`.
-
-2. Corrige el valor predeterminado de `us-east-1` a `us-east-2`, conservando el resto del comportamiento del script.
-
-3. Comprueba que la corrección realmente llega al comando de inicio de sesión de Kiro. No basta con comprobar que el texto cambió.
-
-4. Ejecuta pruebas seguras de sintaxis y de comportamiento utilizando mocks si es necesario. **No ejecutes un inicio de sesión real, no cierres mi sesión actual y no modifiques credenciales.**
-
-5. Genera dos demostraciones seguras y reproducibles:
-   - `before.sh`: muestra cómo la configuración original utilizaba `us-east-1`.
-   - `after.sh`: demuestra que la configuración corregida utiliza `us-east-2`.
-
-6. Ejecuta ambas demostraciones y documenta sus resultados reales.
-
-7. Genera `Caso_09_Explicacion_Completa.html` en español, para abrir sin Internet. Debe explicar el problema, el requisito de Eli, la corrección, las pruebas y los archivos modificados. Incluye el código real con números de línea y explica cada instrucción relevante para alguien que está aprendiendo.
-
-8. Comprueba que los cambios anteriores de los Casos 01, 03, 04, 05 y 06 siguen intactos.
-
-9. Genera `/tmp/infios-caso-09.zip` con `before.sh`, `after.sh` y el HTML.
-
-## RESTRICCIONES
-
-- No ejecutes Docker ni Docker Compose.
-- No modifiques otros casos.
-- No cambies otras regiones AWS que no intervengan en este problema.
-- No cambies de rama ni hagas commit, push o PR.
-- No ejecutes login/logout ni alteres sesiones corporativas.
-- No incluyas secretos en los entregables.
-- No inventes pruebas funcionales.
-- No me entregues otro plan: realiza la corrección, las validaciones y la documentación en esta misma tarea.
-
-## ENTREGA FINAL
-
-Indica claramente:
-- Qué línea corregiste y cómo quedó.
-- Qué pruebas ejecutaste y sus resultados.
-- Si la corrección quedó validada.
-- Ruta y SHA-256 del ZIP.
-- Comando exacto para copiarlo a Descargas de Windows.
-
-Responde en español.
+›  ask a question or describe a task ↵
+                                            
