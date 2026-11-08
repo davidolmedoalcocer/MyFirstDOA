@@ -1,109 +1,267 @@
-A. CASO 05 — PROBLEMA IDENTIFICADO, CORREGIDO Y VALIDADO
-  
-  De los seis cambios del onboarding, cinco son correctos y los dejé como estaban. El sexto, uikit-usage.md, mandaba al agente leer archivos
-  en rutas que no existen en este repositorio. Corregí el script que lo genera y comprobé que el agente SDLC ya encuentra esos archivos.
-  
-  1. Los seis archivos
-  
-  ┌────────────────┬────────┬───────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
-  │ Archivo        │ Estado │ Clasificación         │ Conclusión                                                                        │
-  ├────────────────┼────────┼───────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
-  │ .gitignore     │ M      │ Correcto y necesario  │ infios-sdlc añadió las líneas 23-31, que ignoran estado local y ajustes           │
-  │                │        │                       │ personales. La línea 28 (.kiro/agents/*.json.bak) es redundante con la línea 7,   │
-  │                │        │                       │ pero no causa nada. Sin cambios.                                                  │
-  ├────────────────┼────────┼───────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
-  │ .kiro/settings │ M      │ Correcto y opcional   │ Contiene tres ajustes reales de Kiro: agente por defecto sdlc, indicador de uso   │
-  │ /cli.json      │        │                       │ de contexto y esfuerzo medium para claude-opus-5.5. kiro-cli settings list los    │
-  │                │        │                       │ muestra como ajustes del workspace. Sin cambios.                                  │
-  ├────────────────┼────────┼───────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
-  │ .kiro/steering │ M      │ Incorrecto, corregido │ Ver punto 2.                                                                      │
-  │ /uikit-usage.m │        │                       │                                                                                   │
-  │ d              │        │                       │                                                                                   │
-  ├────────────────┼────────┼───────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
-  │ .kiro/hooks/in │ ??     │ Correcto y necesario  │ Hook que se ejecuta antes de cada comando de shell: bloquea git status (exit 2) y │
-  │ fios-output-gu │        │                       │ deja pasar el comando envuelto en el guard (exit 0). Solo lee el evento y no      │
-  │ ard.json       │        │                       │ escribe archivos. Sin cambios.                                                    │
-  ├────────────────┼────────┼───────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
-  │ .kiro/settings │ ??     │ Correcto              │ Define github y snyk (desactivado). Kiro los combina con tu ado personal sin      │
-  │ /mcp.json      │        │                       │ conflicto: el agente ve ado, github y snyk (disabled). Sin cambios.               │
-  ├────────────────┼────────┼───────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
-  │ .kiro/steering │ ??     │ Correcto y opcional   │ Es idéntico al archivo del paquete y no contiene rutas a node_modules. Sin        │
-  │ /uikit-foundat │        │                       │ cambios.                                                                          │
-  │ ions.md        │        │                       │                                                                                   │
-  └────────────────┴────────┴───────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
-  
-  Riesgos que conviene que decida el equipo, sin ser defectos:
-  - cli.json está versionado: si se hace commit, el esfuerzo medium se aplica a todos.
-  - .kiro/hooks/ depende de .kiro/helpers/, que está ignorado. Si se sube el hook, un compañero sin infios-sdlc init no tendrá el helper.
-  - El paquete @modelcontextprotocol/server-github está archivado en npm.
-  - uikit-foundations.md añade unas 500 líneas al contexto de cada sesión.
-  
-  2. El problema La regla uikit-usage.md se carga siempre y obliga al agente a leer la referencia de cada componente en rutas relativas como
-  node_modules/@infios/uikit/dist/steering/components/, antes de usarlo y "sin adivinar". Kiro resuelve esas rutas desde
-  /workspaces/dev-portal, según los workspacePaths de la sesión. En la raíz no hay node_modules: el paquete está instalado en
-  sharedUIComponents/, adminUi/ y tenantUi/. Ninguna de las 5 rutas de la regla existe desde la raíz.
-  
-  El origen está en task_setupSdlc.sh:246, que copia el archivo del paquete tal cual. Ese archivo está escrito para proyectos con node_modules
-   en la raíz. El defecto no lo introdujo el onboarding: la versión versionada (HEAD) ya tenía 95 referencias rotas del mismo tipo.
-  
-  3. Qué modifiqué
-  - .workspaceScripts/task_setupSdlc.sh (líneas 245-257): sustituí el cp por un bucle sed que antepone la carpeta real:
-    - sharedUIComponents/ para @infios/uikit;
-    - e2e/ para @infios/uikit.test, que es la aplicación que lo declara.
-  
-    Las rutas que ya tienen carpeta no se tocan, así que el bucle se puede ejecutar varias veces sin duplicar la carpeta.
-  
-  - .kiro/steering/uikit-usage.md: lo regeneré con ese mismo bucle, extraído del script, sin ejecutar el resto del setup. Cambian 4 líneas: 9,
-  121, 152 y 313.
-  - Corregí el script y no el .md directamente porque el setup sobrescribe el .md en cada ejecución. Si solo hubiera editado el .md, la
-  corrección se habría perdido en el siguiente setup.
-  - Las copias de antes están en /tmp/infios-caso05-work/backup/, con sus SHA256SUMS.
-  
-  4. Pruebas y resultados
-  - before.sh ejecuta en /tmp la línea cp original, tomada de git show HEAD:, sobre los archivos reales del paquete. Resultado: 5 of 5 paths …
-  do not exist from the workspace root, código 0.
-  - after.sh ejecuta en /tmp el bucle corregido y comprueba:
-    - Las 3 rutas de @infios/uikit existen. Las 2 de uikit.test apuntan a e2e/; el paquete no está instalado en este Dev Container, pero
-  e2e/package.json lo declara.
-    - El resultado es idéntico al archivo del workspace, y aplicar el bucle dos veces no cambia nada.
-    - uikit-foundations.md sigue intacto.
-    - El hook, los ajustes y los MCP se comportan como describe la tabla.
-    - El agente SDLC real leyó sharedUIComponents/node_modules/@infios/uikit/dist/steering/components/uikit-button.md en una sola lectura y
-  sin buscar. Lo comprobé en el registro de sesión de Kiro, no en la respuesta del modelo: 4 comprobaciones OK.
-  
-    Código 0.
-  
-  5. Cómo demostrarlo tú Desde una terminal del Dev Container:
-  
-  bash /tmp/infios-caso-05/before.sh
-  bash /tmp/infios-caso-05/after.sh                # ~1 minuto, incluye la lectura del agente
-  SKIP_AGENT=1 bash /tmp/infios-caso-05/after.sh   # sin el paso del agente
-  
-  También puedes ver el cambio con git diff -- .workspaceScripts/task_setupSdlc.sh.
-  
-  6. Archivos generados (en /tmp/infios-caso-05/)
-  - before.sh
-  - after.sh
-  - Caso_05_Explicacion_Completa.html: las nueve secciones pedidas, con explicación línea a línea de cada archivo. Los anexos tienen el código
-  real numerado y enlaces internos a cada línea. Funciona sin Internet y no contiene secretos ni correos.
-  
-  7. ZIP /tmp/infios-caso-05.zip (SHA-256 37510601…) contiene los tres archivos. Revisé su contenido y no hay tokens ni credenciales. Para
-  copiarlo a Windows:
-  
-  cp /tmp/infios-caso-05.zip /tmp/host-home/Downloads/
-  
-  8. Casos 01, 03 y 04 intactos
-  - Los hashes coinciden: docker-compose-devui.yml y detect-and-write-volume.sh (Caso 01), open-when-ready.sh y task_startDevPortalDevUI.sh
-  (Caso 03), y ~/.kiro/settings/mcp.json (Caso 04). El servidor ado sigue en la lista del agente.
-  - Sigo en la rama fix/dev-portal-setup-improvements, sin commits. Los únicos cambios nuevos en Git son task_setupSdlc.sh y las 4 líneas de
-  uikit-usage.md.
-  
-  No he borrado ningún archivo.
- 
-▸ Credits: turn 87.62 • session 474.77 | Time: 12m 43s
+# INFIOS DEV PORTAL — CASO 06: DOZZLE, DOCKER COMPOSE Y PERSISTENCIA
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◕ 72%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+Actúa como Principal Software Engineer y Software Architect especializado en Docker, Docker Compose, Dev Containers, Dozzle, Linux y Bash.
 
-›  ask a question or describe a task ↵
-                                                     
+## OBJETIVO
+
+Quiero investigar y resolver el Caso 06 de mi ejercicio personal de aprendizaje en Infios.
+
+Debes realizar, en una sola tarea:
+
+1. Diagnóstico técnico de los dos hallazgos.
+2. Identificación de sus causas reales.
+3. Corrección mínima de los defectos comprobados.
+4. Pruebas con los archivos y servicios reales del proyecto.
+5. Demostración reproducible ANTES y DESPUÉS.
+6. Un documento HTML completo en español, con explicación del código.
+7. Un ZIP que pueda copiar a mi laptop Windows.
+
+No te detengas después de investigar si puedes continuar de manera segura. No inventes un defecto para justificar modificaciones.
+
+## CONTEXTO
+
+Repositorio: `/workspaces/dev-portal`
+
+Rama actual: `fix/dev-portal-setup-improvements`
+
+Los Casos 01, 03, 04 y 05 ya tienen correcciones implementadas. No debes alterarlas.
+
+El Caso 02 está pendiente y no forma parte de este trabajo.
+
+El Caso 07 corresponde a un posible problema al detener Dozzle y no debe mezclarse con este caso.
+
+### Hallazgo A — Advertencia de contenedores huérfanos
+
+Durante el uso de Docker Compose se observó una advertencia relacionada con `orphan containers`.
+
+Necesito entender:
+
+- Qué contenedor o contenedores provocan la advertencia.
+- Qué archivo Compose los creó.
+- Por qué Docker Compose los considera huérfanos.
+- Si es un comportamiento esperado por utilizar diferentes archivos Compose.
+- Si existe algún defecto real de configuración.
+- Qué consecuencia práctica tiene la advertencia.
+- Si necesita corregirse o solamente documentarse.
+
+NO elimines contenedores para hacer desaparecer el mensaje.
+
+### Hallazgo B — Persistencia de Dozzle
+
+Se observó que el directorio `/data` de Dozzle no tenía un montaje persistente claramente configurado.
+
+Investiga:
+
+- Para qué utiliza Dozzle `/data` en la versión instalada.
+- Si la configuración actual necesita persistencia.
+- Qué datos se perderían al recrear el contenedor.
+- Si existe autenticación configurada y cómo conserva su estado.
+- Si el problema realmente existe en el flujo actual del proyecto.
+- Si corresponde agregar un volumen, un bind mount o no modificar nada.
+
+No asumas que la ausencia de un volumen es un defecto: comprueba el comportamiento real y la documentación oficial de la versión instalada.
+
+## INVESTIGACIÓN
+
+Inspecciona únicamente los archivos relevantes:
+
+- Archivos Docker Compose que intervienen en Dozzle.
+- Definiciones de servicios, nombres, proyectos, volúmenes y redes.
+- Scripts que inician o detienen Dozzle.
+- Tareas de VS Code relacionadas.
+- Configuración de Dozzle y sus opciones de persistencia y autenticación.
+
+Para cada hallazgo proporciona:
+
+- Archivo.
+- Número de línea.
+- Código exacto.
+- Qué hace esa instrucción.
+- Por qué produce el comportamiento observado.
+
+Distingue HECHO COMPROBADO, INFERENCIA y DESCONOCIDO.
+
+## CORRECCIÓN
+
+Si encuentras un defecto real y existe una solución segura, IMPLEMENTA LA CORRECCIÓN directamente.
+
+La solución debe:
+
+- Conservar el funcionamiento actual de Dozzle.
+- Ser compatible con el flujo de Dev Containers y Docker Compose.
+- Funcionar en otras computadoras, no solamente en la mía.
+- Mantener la persistencia de los datos que realmente deban conservarse.
+- No eliminar contenedores, volúmenes ni configuraciones existentes.
+- No ocultar advertencias que revelen problemas reales.
+- No introducir privilegios o exposiciones de seguridad innecesarios.
+- No modificar archivos ajenos al Caso 06.
+
+Si la advertencia de huérfanos es un comportamiento esperado, NO cambies la arquitectura solamente para ocultarla.
+
+Si no existe un problema de persistencia, documenta por qué no se necesita una modificación.
+
+## DEMOSTRACIÓN ANTES Y DESPUÉS
+
+Quiero demostrar personalmente a Eli qué ocurría y cómo se corrigió.
+
+Prepara:
+
+`before.sh`
+
+Debe mostrar el comportamiento original comprobado, utilizando la configuración real del proyecto, sin alterar el ambiente actual.
+
+`after.sh`
+
+Debe repetir una comprobación equivalente con la configuración corregida y mostrar el resultado.
+
+Requisitos:
+
+- Código, comentarios y mensajes de ambos scripts en inglés.
+- No utilizar aplicaciones de ejemplo como sustituto de Dozzle.
+- Preferir pruebas de solo lectura y recursos Docker temporales cuando sea necesario.
+- No recrear, detener ni modificar los contenedores actuales.
+- No modificar ni borrar datos o credenciales reales.
+- No utilizar `docker compose down --remove-orphans` sobre el proyecto existente.
+- Si necesitas reproducir pérdida de persistencia, utiliza exclusivamente datos de prueba creados para ese propósito.
+- Los scripts deben distinguir PASS, FAIL y NOT VERIFIED con condiciones comprobables.
+- No declarar que existe un error cuando solamente se observa una advertencia informativa.
+- No declarar validada la persistencia sin comprobar el comportamiento correspondiente.
+
+Si no es posible demostrar el ANTES y DESPUÉS de manera segura, explícame el impedimento concreto. No fabriques una prueba.
+
+## DOCUMENTACIÓN HTML
+
+Guarda los archivos personales exclusivamente fuera del repositorio:
+
+`/tmp/infios-caso-06/`
+
+Estructura:
+
+- `before.sh`
+- `after.sh`
+- `Caso_06_Explicacion_Completa.html`
+
+El HTML debe estar completamente en español y abrirse directamente en Chrome o Edge, sin Internet y sin recursos externos.
+
+Debe incluir:
+
+1. Título del caso.
+2. Descripción de los hallazgos originales.
+3. Causa comprobada de cada hallazgo.
+4. Explicación de la solución o justificación de por qué no se requiere modificar algo.
+5. Tabla de archivos revisados y modificados, con el código ANTES, código DESPUÉS y motivo.
+6. Cómo ejecutar las demostraciones y sus resultados reales.
+7. Explicación didáctica desde cero.
+8. Guía para presentar el caso a Eli.
+9. Anexos con los scripts y fragmentos de código reales, numerados por línea.
+
+### NIVEL DE EXPLICACIÓN OBLIGATORIO
+
+Explícame todo como si no tuviera conocimientos de Docker.
+
+Por ejemplo, si dices:
+
+"Docker Compose detecta un contenedor huérfano",
+
+debes explicar:
+
+- Qué es un contenedor.
+- Qué es Docker Compose.
+- Qué significa huérfano en este contexto.
+- Qué comando detecta la situación.
+- Qué archivos utiliza.
+- Qué líneas definen sus servicios.
+- Qué condición provoca la advertencia.
+- Qué consecuencia tiene para el desarrollador.
+
+Si dices:
+
+"Dozzle utiliza un volumen persistente",
+
+muestra:
+
+- Archivo y línea donde se configura.
+- Código YAML exacto.
+- Qué significa cada propiedad.
+- Cómo se relaciona con `/data`.
+- Qué se conserva.
+- Qué sucede al recrear el contenedor.
+- Qué prueba demuestra ese comportamiento.
+
+Haz lo mismo con TODOS los pasos importantes de before.sh y after.sh.
+
+Cada explicación técnica debe estar vinculada al código real. No quiero conclusiones sin mostrar las instrucciones responsables.
+
+## RESTRICCIONES
+
+- Mantén la rama actual.
+- No hagas commit, push ni Pull Request.
+- No crees otra rama ni clones el repositorio.
+- No modifiques los cambios de los Casos 01, 03, 04 y 05.
+- No trabajes en los Casos 02 y 07.
+- No reinicies ni reconstruyas el Dev Container.
+- No modifiques bases de datos.
+- No detengas servicios existentes para reproducir una advertencia.
+- No borres volúmenes, imágenes, redes ni contenedores existentes.
+- No modifiques configuraciones de autenticación corporativa.
+- No solicites privilegios de administrador.
+- No ejecutes acciones destructivas sobre recursos compartidos.
+- No uses restauraciones generales de Git.
+
+Si necesitas modificar algún archivo, comprueba primero su estado y conserva la versión anterior para explicar el cambio.
+
+## VALIDACIÓN
+
+Ejecuta las comprobaciones que correspondan y verifica que:
+
+- Los hallazgos están respaldados por evidencia.
+- La corrección resuelve los defectos identificados.
+- Dozzle sigue pudiendo mostrar los logs, si ese comportamiento puede probarse sin alterar los servicios.
+- La persistencia funciona si fue parte de la corrección.
+- Los servicios y volúmenes existentes permanecen intactos.
+- Git conserva todos los cambios de casos anteriores.
+- Los scripts de demostración pueden repetirse.
+- No quedan recursos temporales creados por las pruebas.
+
+No afirmes que abriste la interfaz en Windows si no pudiste observar el navegador.
+
+## ENTREGABLE FINAL
+
+Genera:
+
+`/tmp/infios-caso-06.zip`
+
+Incluye los dos scripts y el HTML, siempre que los scripts representen demostraciones válidas.
+
+No incluyas credenciales, cookies, tokens ni datos privados de logs.
+
+No elimines los entregables hasta que confirme que los copié.
+
+Indica el comando exacto para copiar el ZIP a Descargas de Windows.
+
+## RESPUESTA FINAL
+
+Indica una de estas conclusiones:
+
+**A. CASO 06 — PROBLEMA CORREGIDO Y VALIDADO**
+
+**B. CASO 06 — COMPORTAMIENTO ESPERADO, SIN CORRECCIÓN NECESARIA**
+
+**C. CASO 06 — PARCIALMENTE RESUELTO**
+
+**D. CASO 06 — NO RESUELTO**
+
+Para cada hallazgo explica por separado:
+
+- Causa.
+- Evidencia.
+- Corrección, si corresponde.
+- Prueba ANTES.
+- Prueba DESPUÉS.
+- Limitaciones.
+
+Después proporciona los archivos modificados, los resultados de las pruebas, los comandos de demostración y la ubicación del ZIP.
+
+No me entregues solamente un plan. Completa el diagnóstico, la implementación segura, las comprobaciones y la documentación en esta misma tarea.
+
+Responde en español.
