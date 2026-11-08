@@ -1,54 +1,74 @@
-Kiro, necesito finalizar el Caso 04. La integración Azure DevOps MCP ya funciona correctamente. NO repitas el diagnóstico ni modifiques la configuración MCP.
+Corregí los tres problemas, volví a ejecutar las dos demostraciones con los scripts definitivos y la consulta real a ADO sigue funcionando.
+  Solo modifiqué before.sh, after.sh, el HTML y el ZIP.
+  
+  Qué corregí
+  - before.sh, fallo de 2.10.0 (líneas 91-99 y 125-133). El script guarda la salida del intento y solo da el ANTES por reproducido si se
+  cumplen dos condiciones a la vez: el servidor terminó sin responder y el error es libsecret-1.so.0: cannot open shared object file. Si no
+  ocurre, imprime "the BEFORE demonstration could not be reproduced" y termina con código 1.
+  - after.sh, configuración personal (líneas 36-60). Sustituí cat -n "$USER_MCP" por una vista de los campos del servidor ado:
+    - Muestra comando, paquete, dominios, modo de autenticación, timeout, waitForReady, autoApprove y los nombres de las variables de entorno,
+  sin sus valores.
+    - La organización se compara con team-config.yaml sin imprimirse, y otros servidores personales solo se cuentan.
+    - Avisa si alguna variable tiene aspecto de secreto.
+    - Oculté también el valor del proyecto en kiro-cli mcp status, tu cuenta en el paso 3 y la lista de nombres de proyectos del paso 4.
+  
+  - after.sh, validación del agente (líneas 117-155). La prueba ya no es el texto del modelo, sino el registro de sesión que escribe el propio
+  Kiro (~/.kiro/sessions/…/messages.jsonl). Las siete comprobaciones deben dar OK:
+    1. Existe un tool_call de @ado/core_list_projects.
+    2. Su estado es completed.
+    3. Su tool_result tiene success=true.
+    4. El contenido lleva la cabecera del servidor ADO.
+    5. El contenido es un array JSON de proyectos no vacío.
+    6. El número de proyectos coincide con la llamada independiente del paso 4.
+    7. El número que dio el modelo coincide con el resultado real.
+  
+  - Pruebas negativas con registros fabricados en /tmp:
+    - Una respuesta inventada, sin tool_call, da 7 FAIL y código 1.
+    - Un resultado con success:false da 5 FAIL y código 1.
+    - Si 2.10.0 arrancara bien, before.sh diría "NOT reproduced".
+  
+  Resultado real de before.sh (código 0)
+  - RESULT: server exited before answering (exit code 1)
+  - stderr: Error: libsecret-1.so.0: cannot open shared object file
+  - Expected failure reproduced
+  - Termina con BEFORE RESULT en rojo.
+  
+  Resultado real de after.sh (código 0)
+  - Configuración: muestra ado.package: @azure-devops/mcp@2.11.0, ado.organization: <hidden> (… yes), ado.waitForReady: true, secret-like env:
+  none y Env Vars: ado_mcp_project=<hidden>.
+  - Llamada independiente: tools/call core_list_projects -> ok, 38 projects.
+  - Agente SDLC: las siete comprobaciones dieron OK, con 38 proyectos tanto en el resultado real como en la respuesta del modelo.
+  - Termina con AFTER RESULT en verde.
+  
+  Consulta real a ADO: sigue funcionando. El agente SDLC ejecutó @ado/core_list_projects contra la organización y recibió 38 proyectos, lo
+  mismo que la llamada directa del paso 4.
+  
+  HTML y ZIP
+  - Caso_04_Explicacion_Completa.html lleva las salidas reales nuevas y la tabla 7.6 con los números de línea definitivos.
+  - Añadí la sección 7.7, que explica en español las tres correcciones instrucción por instrucción.
+  - Los anexos A1 y A2 tienen los scripts definitivos numerados por línea, y comprobé que todos los enlaces a líneas existen.
+  - El HTML todavía muestra completo el servidor ado de tu configuración personal en la sección 7.2 y en el anexo A4, porque la explicación
+  línea a línea lo necesita. No contiene secretos, pero si no quieres que aparezca en la presentación, puedo ocultar esos valores.
+  - /tmp/infios-caso-04.zip está regenerado con los tres archivos (SHA-256 8f68e9ad…).
+  - Al revisar su contenido no encontré tokens, PAT, correos completos ni nombres de proyectos.
+  - El HTML no usa recursos externos.
+  
+  Ambiente
+  - No cambiaron (comparé los hashes antes y después): ~/.kiro/settings/mcp.json, .kiro/agents/sdlc.json, los archivos MCP del proyecto y los
+  scripts del Caso 03.
+  - El Caso 01 tiene el mismo hash de diff (9f3d9fa5…), y git status y git diff son idénticos.
+  - Sigo en la rama fix/dev-portal-setup-improvements.
+  
+  Para copiar el ZIP a Descargas de Windows, desde una terminal del Dev Container:
+  
+  cp /tmp/infios-caso-04.zip /tmp/host-home/Downloads/
+ 
+▸ Credits: turn 51.28 • session 387.14 | Time: 5m 1s
 
-Revisé los archivos existentes en `/tmp/infios-caso-04/` y encontré tres problemas que debes corregir:
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◕ 63%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
 
-**1. before.sh, líneas 117–119**
+›  ask a question or describe a task ↵
+                                                                                                     /sessions to resume · /copy to clipboard
 
-Actualmente imprime el resultado ANTES sin comprobar que la versión 2.10.0 realmente haya fallado.
 
-Corrígelo para que verifique el fallo esperado de `libsecret-1.so.0`. Si no ocurre, debe informar que la demostración ANTES no pudo reproducirse, en lugar de declarar éxito.
-
-**2. after.sh, línea 36**
-
-Actualmente utiliza:
-
-`cat -n "$USER_MCP" | code`
-
-No quiero mostrar toda mi configuración personal MCP durante una presentación.
-
-Sustituye esa instrucción por una visualización segura de los campos necesarios del servidor `ado`, sin exponer credenciales ni otras configuraciones personales.
-
-Evita también imprimir nombres de proyectos o información corporativa innecesaria.
-
-**3. after.sh, línea 98**
-
-Actualmente basta con encontrar `PROJECT_COUNT` para considerar satisfactoria la consulta del agente.
-
-Corrige la validación para comprobar que el agente SDLC realmente invocó `@ado/core_list_projects`, que la operación terminó correctamente y que recibió un resultado válido.
-
-No aceptes una respuesta inventada por el modelo como prueba de ejecución.
-
-## Trabajo completo
-
-1. Corrige únicamente `before.sh` y `after.sh`.
-2. Ejecuta las dos demostraciones y verifica sus resultados.
-3. Si alguna prueba falla, corrige el problema dentro de estos scripts, sin modificar la integración MCP que ya funciona.
-4. Actualiza `/tmp/infios-caso-04/Caso_04_Explicacion_Completa.html` con los scripts definitivos, sus números de línea y una explicación didáctica en español.
-5. Regenera `/tmp/infios-caso-04.zip` con los tres archivos actualizados.
-6. Comprueba que el ZIP no contiene secretos.
-7. Verifica que no modificaste archivos del repositorio, los Casos 01 y 03, ni `~/.kiro/settings/mcp.json`.
-
-Los scripts y comentarios deben estar en inglés; el HTML, en español.
-
-**No investigues nuevamente ADO, no reinstales MCP, no cambies versiones ni solicites otro prompt.**
-
-Al terminar, responde en español indicando:
-
-- Qué corregiste.
-- Resultado real de `before.sh`.
-- Resultado real de `after.sh`.
-- Confirmación de que la consulta real a ADO sigue funcionando.
-- Confirmación de que actualizaste el HTML y el ZIP.
-- Comando exacto para copiar el ZIP actualizado a Descargas de Windows.
-
-Si encuentras un impedimento, explica exactamente cuál es sin modificar otras configuraciones.
