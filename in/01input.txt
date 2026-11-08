@@ -1,267 +1,97 @@
-# INFIOS DEV PORTAL — CASO 06: DOZZLE, DOCKER COMPOSE Y PERSISTENCIA
-
-Actúa como Principal Software Engineer y Software Architect especializado en Docker, Docker Compose, Dev Containers, Dozzle, Linux y Bash.
-
-## OBJETIVO
-
-Quiero investigar y resolver el Caso 06 de mi ejercicio personal de aprendizaje en Infios.
-
-Debes realizar, en una sola tarea:
-
-1. Diagnóstico técnico de los dos hallazgos.
-2. Identificación de sus causas reales.
-3. Corrección mínima de los defectos comprobados.
-4. Pruebas con los archivos y servicios reales del proyecto.
-5. Demostración reproducible ANTES y DESPUÉS.
-6. Un documento HTML completo en español, con explicación del código.
-7. Un ZIP que pueda copiar a mi laptop Windows.
-
-No te detengas después de investigar si puedes continuar de manera segura. No inventes un defecto para justificar modificaciones.
-
-## CONTEXTO
-
-Repositorio: `/workspaces/dev-portal`
-
-Rama actual: `fix/dev-portal-setup-improvements`
-
-Los Casos 01, 03, 04 y 05 ya tienen correcciones implementadas. No debes alterarlas.
-
-El Caso 02 está pendiente y no forma parte de este trabajo.
-
-El Caso 07 corresponde a un posible problema al detener Dozzle y no debe mezclarse con este caso.
-
-### Hallazgo A — Advertencia de contenedores huérfanos
-
-Durante el uso de Docker Compose se observó una advertencia relacionada con `orphan containers`.
-
-Necesito entender:
-
-- Qué contenedor o contenedores provocan la advertencia.
-- Qué archivo Compose los creó.
-- Por qué Docker Compose los considera huérfanos.
-- Si es un comportamiento esperado por utilizar diferentes archivos Compose.
-- Si existe algún defecto real de configuración.
-- Qué consecuencia práctica tiene la advertencia.
-- Si necesita corregirse o solamente documentarse.
-
-NO elimines contenedores para hacer desaparecer el mensaje.
-
-### Hallazgo B — Persistencia de Dozzle
-
-Se observó que el directorio `/data` de Dozzle no tenía un montaje persistente claramente configurado.
-
-Investiga:
-
-- Para qué utiliza Dozzle `/data` en la versión instalada.
-- Si la configuración actual necesita persistencia.
-- Qué datos se perderían al recrear el contenedor.
-- Si existe autenticación configurada y cómo conserva su estado.
-- Si el problema realmente existe en el flujo actual del proyecto.
-- Si corresponde agregar un volumen, un bind mount o no modificar nada.
-
-No asumas que la ausencia de un volumen es un defecto: comprueba el comportamiento real y la documentación oficial de la versión instalada.
-
-## INVESTIGACIÓN
-
-Inspecciona únicamente los archivos relevantes:
-
-- Archivos Docker Compose que intervienen en Dozzle.
-- Definiciones de servicios, nombres, proyectos, volúmenes y redes.
-- Scripts que inician o detienen Dozzle.
-- Tareas de VS Code relacionadas.
-- Configuración de Dozzle y sus opciones de persistencia y autenticación.
-
-Para cada hallazgo proporciona:
-
-- Archivo.
-- Número de línea.
-- Código exacto.
-- Qué hace esa instrucción.
-- Por qué produce el comportamiento observado.
-
-Distingue HECHO COMPROBADO, INFERENCIA y DESCONOCIDO.
-
-## CORRECCIÓN
-
-Si encuentras un defecto real y existe una solución segura, IMPLEMENTA LA CORRECCIÓN directamente.
-
-La solución debe:
-
-- Conservar el funcionamiento actual de Dozzle.
-- Ser compatible con el flujo de Dev Containers y Docker Compose.
-- Funcionar en otras computadoras, no solamente en la mía.
-- Mantener la persistencia de los datos que realmente deban conservarse.
-- No eliminar contenedores, volúmenes ni configuraciones existentes.
-- No ocultar advertencias que revelen problemas reales.
-- No introducir privilegios o exposiciones de seguridad innecesarios.
-- No modificar archivos ajenos al Caso 06.
-
-Si la advertencia de huérfanos es un comportamiento esperado, NO cambies la arquitectura solamente para ocultarla.
-
-Si no existe un problema de persistencia, documenta por qué no se necesita una modificación.
-
-## DEMOSTRACIÓN ANTES Y DESPUÉS
-
-Quiero demostrar personalmente a Eli qué ocurría y cómo se corrigió.
-
-Prepara:
-
-`before.sh`
-
-Debe mostrar el comportamiento original comprobado, utilizando la configuración real del proyecto, sin alterar el ambiente actual.
-
-`after.sh`
-
-Debe repetir una comprobación equivalente con la configuración corregida y mostrar el resultado.
-
-Requisitos:
-
-- Código, comentarios y mensajes de ambos scripts en inglés.
-- No utilizar aplicaciones de ejemplo como sustituto de Dozzle.
-- Preferir pruebas de solo lectura y recursos Docker temporales cuando sea necesario.
-- No recrear, detener ni modificar los contenedores actuales.
-- No modificar ni borrar datos o credenciales reales.
-- No utilizar `docker compose down --remove-orphans` sobre el proyecto existente.
-- Si necesitas reproducir pérdida de persistencia, utiliza exclusivamente datos de prueba creados para ese propósito.
-- Los scripts deben distinguir PASS, FAIL y NOT VERIFIED con condiciones comprobables.
-- No declarar que existe un error cuando solamente se observa una advertencia informativa.
-- No declarar validada la persistencia sin comprobar el comportamiento correspondiente.
-
-Si no es posible demostrar el ANTES y DESPUÉS de manera segura, explícame el impedimento concreto. No fabriques una prueba.
-
-## DOCUMENTACIÓN HTML
-
-Guarda los archivos personales exclusivamente fuera del repositorio:
-
-`/tmp/infios-caso-06/`
-
-Estructura:
-
-- `before.sh`
-- `after.sh`
-- `Caso_06_Explicacion_Completa.html`
-
-El HTML debe estar completamente en español y abrirse directamente en Chrome o Edge, sin Internet y sin recursos externos.
-
-Debe incluir:
-
-1. Título del caso.
-2. Descripción de los hallazgos originales.
-3. Causa comprobada de cada hallazgo.
-4. Explicación de la solución o justificación de por qué no se requiere modificar algo.
-5. Tabla de archivos revisados y modificados, con el código ANTES, código DESPUÉS y motivo.
-6. Cómo ejecutar las demostraciones y sus resultados reales.
-7. Explicación didáctica desde cero.
-8. Guía para presentar el caso a Eli.
-9. Anexos con los scripts y fragmentos de código reales, numerados por línea.
-
-### NIVEL DE EXPLICACIÓN OBLIGATORIO
-
-Explícame todo como si no tuviera conocimientos de Docker.
-
-Por ejemplo, si dices:
-
-"Docker Compose detecta un contenedor huérfano",
-
-debes explicar:
-
-- Qué es un contenedor.
-- Qué es Docker Compose.
-- Qué significa huérfano en este contexto.
-- Qué comando detecta la situación.
-- Qué archivos utiliza.
-- Qué líneas definen sus servicios.
-- Qué condición provoca la advertencia.
-- Qué consecuencia tiene para el desarrollador.
-
-Si dices:
-
-"Dozzle utiliza un volumen persistente",
-
-muestra:
-
-- Archivo y línea donde se configura.
-- Código YAML exacto.
-- Qué significa cada propiedad.
-- Cómo se relaciona con `/data`.
-- Qué se conserva.
-- Qué sucede al recrear el contenedor.
-- Qué prueba demuestra ese comportamiento.
-
-Haz lo mismo con TODOS los pasos importantes de before.sh y after.sh.
-
-Cada explicación técnica debe estar vinculada al código real. No quiero conclusiones sin mostrar las instrucciones responsables.
-
-## RESTRICCIONES
-
-- Mantén la rama actual.
-- No hagas commit, push ni Pull Request.
-- No crees otra rama ni clones el repositorio.
-- No modifiques los cambios de los Casos 01, 03, 04 y 05.
-- No trabajes en los Casos 02 y 07.
-- No reinicies ni reconstruyas el Dev Container.
-- No modifiques bases de datos.
-- No detengas servicios existentes para reproducir una advertencia.
-- No borres volúmenes, imágenes, redes ni contenedores existentes.
-- No modifiques configuraciones de autenticación corporativa.
-- No solicites privilegios de administrador.
-- No ejecutes acciones destructivas sobre recursos compartidos.
-- No uses restauraciones generales de Git.
-
-Si necesitas modificar algún archivo, comprueba primero su estado y conserva la versión anterior para explicar el cambio.
-
-## VALIDACIÓN
-
-Ejecuta las comprobaciones que correspondan y verifica que:
-
-- Los hallazgos están respaldados por evidencia.
-- La corrección resuelve los defectos identificados.
-- Dozzle sigue pudiendo mostrar los logs, si ese comportamiento puede probarse sin alterar los servicios.
-- La persistencia funciona si fue parte de la corrección.
-- Los servicios y volúmenes existentes permanecen intactos.
-- Git conserva todos los cambios de casos anteriores.
-- Los scripts de demostración pueden repetirse.
-- No quedan recursos temporales creados por las pruebas.
-
-No afirmes que abriste la interfaz en Windows si no pudiste observar el navegador.
-
-## ENTREGABLE FINAL
-
-Genera:
-
-`/tmp/infios-caso-06.zip`
-
-Incluye los dos scripts y el HTML, siempre que los scripts representen demostraciones válidas.
-
-No incluyas credenciales, cookies, tokens ni datos privados de logs.
-
-No elimines los entregables hasta que confirme que los copié.
-
-Indica el comando exacto para copiar el ZIP a Descargas de Windows.
-
-## RESPUESTA FINAL
-
-Indica una de estas conclusiones:
-
-**A. CASO 06 — PROBLEMA CORREGIDO Y VALIDADO**
-
-**B. CASO 06 — COMPORTAMIENTO ESPERADO, SIN CORRECCIÓN NECESARIA**
-
-**C. CASO 06 — PARCIALMENTE RESUELTO**
-
-**D. CASO 06 — NO RESUELTO**
-
-Para cada hallazgo explica por separado:
-
-- Causa.
-- Evidencia.
-- Corrección, si corresponde.
-- Prueba ANTES.
-- Prueba DESPUÉS.
-- Limitaciones.
-
-Después proporciona los archivos modificados, los resultados de las pruebas, los comandos de demostración y la ubicación del ZIP.
-
-No me entregues solamente un plan. Completa el diagnóstico, la implementación segura, las comprobaciones y la documentación en esta misma tarea.
-
-Responde en español.
+A. CASO 06: PROBLEMA CORREGIDO Y VALIDADO
+  
+  El hallazgo A es comportamiento esperado: lo documenté y no cambié nada. El hallazgo B era un defecto real y lo corregí con un volumen con
+  nombre, cambiando un solo archivo (docker-compose-dozzle.yml). Las demos ANTES y DESPUÉS se ejecutaron y terminaron con código 0.
+  
+  Hallazgo A: aviso "Found orphan containers"
+  
+  - Causa: .env:1 define COMPOSE_PROJECT_NAME=dev-portal. Todos los archivos compose usan ese mismo proyecto. Cuando task_dozzle.sh:6 levanta
+  solo docker-compose-dozzle.yml, Compose ve los otros 6 contenedores del proyecto y los llama "huérfanos". El aviso es correcto: esos
+  contenedores existen y pertenecen al proyecto. No es un fallo.
+  - Evidencia: reproduje el aviso con docker compose --dry-run, que no modifica nada. Los 6 nombres del aviso son exactamente los esperados:
+  admin-ui, tenant-ui, service, liquibase-init, postgres-db y seeder.
+  - Corrección: ninguna, solo documentación. Descarté dos alternativas:
+    - Renombrar el proyecto de Dozzle o usar -p: oculta un aviso verdadero y cambia cómo task_dozzle.sh:7 detiene Dozzle, que es el Caso 07.
+    - Usar --remove-orphans: nunca debe hacerse en dev-portal, porque borraría Postgres, el servicio y las UIs.
+  
+  - Prueba ANTES y DESPUÉS: en las dos demos el resultado fue EXPECTED (6 contenedores) y la comprobación del dry-run dio PASS.
+  - Limitaciones: ninguna relevante. El aviso seguirá apareciendo, y es lo correcto.
+  
+  Hallazgo B: persistencia de /data en Dozzle
+  
+  - Causa: Dozzle v11.4.1 guarda en /data su configuración: el asistente inicial, users.yml y las notificaciones. El compose no montaba nada
+  en /data (la imagen tiene Config.Volumes=null). Además, task_dozzle.sh:7 ejecuta down, que borra el contenedor. Por eso cada arranque era
+  una instalación nueva.
+  - Evidencia:
+    - /api/setup devolvía "dataPersisted":false.
+    - Creé un dispatcher de prueba (infios-caso06-test, que apunta a 127.0.0.1:9 y nunca se dispara). Desaparecía tras hacer down y up: Dozzle
+  devolvía [].
+  
+  - Corrección: añadí el volumen con nombre dozzle_data:/data y su declaración al final del archivo. Descarté dos alternativas:
+    - Un bind mount a una ruta del host: no es portable entre Windows, macOS y Linux, y da problemas de permisos.
+    - Cambiar task_dozzle.sh: es alcance del Caso 07, y su down sin -v ya conserva los volúmenes con nombre.
+  
+  - Prueba ANTES:
+    - /data montado: FAIL.
+    - dataPersisted: FAIL (false).
+    - El ajuste sobrevive al reinicio: FAIL.
+  
+  - Prueba DESPUÉS:
+    - /data montado: PASS (volume:infios-caso06-after_dozzle_data).
+    - dataPersisted: PASS (true).
+    - El ajuste sobrevive al reinicio: PASS.
+  
+  - Comprobaciones comunes, PASS en ambas demos: Dozzle lista 9 contenedores, los logs se leen, los recursos temporales se eliminan y el
+  entorno queda sin cambios.
+  - Limitaciones:
+    - No observé la interfaz en el navegador de Windows.
+    - No ejecuté la tarea real "Logs: Dozzle". El volumen real dev-portal_dozzle_data, según docker compose config, se creará la primera vez
+  que se use.
+    - down -v sí borraría la configuración.
+  
+  Archivo modificado
+  
+       volumes:
+         - "/var/run/docker.sock:/var/run/docker.sock"
+  +      # Dozzle keeps its settings in /data ... (4 líneas de comentario)
+  +      - "dozzle_data:/data"
+       ports:
+         - "8888:8080"
+   
+  +volumes:
+  +  dozzle_data:
+  
+  Hay una copia del original en /tmp/infios-caso06-work/backup/docker-compose-dozzle.yml.
+  
+  Validaciones
+  
+  - HTML: 0 placeholders, 9 de 9 secciones, 33 enlaces internos sin ninguno roto y ninguna referencia externa.
+  - Secretos: no hay tokens ni correos en el HTML, en los scripts ni dentro del ZIP.
+  - Scripts: son solo ASCII, la sintaxis es correcta y after.sh solo difiere de before.sh en la línea PHASE.
+  - Casos anteriores: los archivos protegidos de los Casos 01, 03, 04 y 05, además de task_dozzle.sh y .env, dieron OK en sha256sum -c.
+  - Entorno Docker: los 7 contenedores tienen el mismo id, nombre, estado y fecha de creación. Los volúmenes y las redes no cambiaron. No
+  queda ningún recurso infios-caso06*.
+  - Git: la rama sigue siendo fix/dev-portal-setup-improvements, sin commit ni push. El único cambio nuevo es  M docker-compose-dozzle.yml.
+  
+  Demos
+  
+  bash /tmp/infios-caso-06/before.sh
+  bash /tmp/infios-caso-06/after.sh
+  
+  Entregable
+  
+  - ZIP: /tmp/infios-caso-06.zip, que contiene before.sh, after.sh y Caso_06_Explicacion_Completa.html.
+  - SHA-256: 44e19bb10176ee05abc3d24820859e62b5f9916e4a8e54ecf526b25571304cc4
+  - Copia a Descargas de Windows:
+  
+    cp /tmp/infios-caso-06.zip /tmp/host-home/Downloads/
+  
+  No borraré los entregables de /tmp hasta que me confirmes que los has copiado.
+ 
+▸ Credits: turn 83.39 • session 558.16 | Time: 16m 8s
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 7%                                            /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+
+›  ask a question or describe a task ↵
+                                                     
