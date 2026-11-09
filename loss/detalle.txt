@@ -1,68 +1,119 @@
-Scenario: Select an eligible unprocessed note
+CREATE OR ALTER PROCEDURE dbo.notes_checkout
+    @POSTEDINDTOPROCESS VARCHAR(250),
+    @POSTEDINDPROCESSING VARCHAR(1),
+    @CLIENTCODE VARCHAR(250),
+    @NOTEDATE DATETIME,
+    @ELAPSEDTIME INT,
+    @ROWS INT,
+    @INCLUDEBLANK BIT,
+    @WHITESPACECHARACTERS NVARCHAR(32)
+AS
+BEGIN
+    SET NOCOUNT ON;
 
-Given a record exists in db_lossdrafts.tbl_Notes
-And the record belongs to an MSP client (SM, UA, CR)
-And processInd is 9 or blank (contains only whitespace)
-When the LossdraftProcess console application runs the notes processor
-Then the processor must select the record for processing grouped by refernceid and notedaetime and filenotedatetime is null or less then last hour
+    -- Evitar que el caller prolongue los bloqueos después del procedimiento.
+    IF @@TRANCOUNT <> 0 OR (@@OPTIONS & 2) = 2
+        THROW 50001,
+            'notes_checkout requires autocommit without an ambient transaction.',
+            1;
 
-And update filenotedatetime of the selected notes row.
+    IF @POSTEDINDTOPROCESS IS NULL
+       OR LEN(@POSTEDINDTOPROCESS) = 0
+       OR @POSTEDINDPROCESSING IS NULL
+       OR DATALENGTH(@POSTEDINDPROCESSING) = 0
+       OR @CLIENTCODE IS NULL
+       OR LEN(@CLIENTCODE) = 0
+       OR @ELAPSEDTIME IS NULL
+       OR @ELAPSEDTIME <= 0
+       OR @ROWS IS NULL
+       OR @ROWS <= 0
+       OR @INCLUDEBLANK IS NULL
+       OR @WHITESPACECHARACTERS IS NULL
+       OR DATALENGTH(@WHITESPACECHARACTERS) = 0
+        THROW 50002, 'Invalid note checkout parameters.', 1;
 
+    -- La reserva no puede ser uno de los valores elegibles.
+    IF EXISTS (
+        SELECT 1
+        FROM STRING_SPLIT(@POSTEDINDTOPROCESS, ',')
+        WHERE LTRIM(RTRIM(value)) = @POSTEDINDPROCESSING
+    )
+    OR DATALENGTH(
+        TRIM(
+            @WHITESPACECHARACTERS
+            FROM CONVERT(NVARCHAR(1), @POSTEDINDPROCESSING)
+                COLLATE Latin1_General_100_BIN2
+        )
+    ) = 0
+        THROW 50003,
+            'The processing indicator must differ from eligible indicators and whitespace.',
+            1;
 
+    DECLARE @SelectedAt DATETIME = GETDATE();
+    DECLARE @Cutoff DATETIME =
+        DATEADD(MINUTE, -@ELAPSEDTIME, @SelectedAt);
 
-Scenario: Process multiple eligible notes
-Given multiple eligible MSP notes have a blank or 9 processInd
-When the notes processor runs
-Then a set of 10 eligible notes should be processed
-And each note must receive its own processing result
-And a failure for one note must not prevent the remaining notes from being processed.
-And next set of 10 eligible notes in a loop until there are no notes left to be processed in tbl_notes
-
-Scenario: Format a note into lines of no more than 50 characters
-Given an eligible note contains more than 50 characters
-When the note is formatted
-Then each output line must contain no more than 50 characters
-And the formatted note must contain no more than 10 lines.
-And the request is sent to SOR API
-
-Scenario: Handle a note that exceeds the supported formatted length (50 characters in each in 10 lines)
-Given an 1 set of eligible note contains more content than can fit within 10 lines of 50 characters
-When the processor attempts to format the note
-Then the note must be be sent to SOR API in multiple requests with set of 10 in each
-
-Scenario: Successfully update the system of record
-Given an eligible note has been successfully formatted
-And the SOR API Notes route returns a successful response
-When processing completes for the note
-Then tbl_Notes.processInd must be updated to Y
-And any existing processing error message for that note must be cleared
-And the note must not be selected during the next normal processor run.
-
-Scenario: SOR API returns an unsuccessful response
-Given an eligible note has been formatted
-When the SOR API Notes route returns an unsuccessful response
-Then tbl_Notes.processInd must be updated to 9
-And the error message column must contain the relevant API error
-And the processor must continue with the next eligible note.
-
-Scenario: SOR API is unavailable
-Given an eligible note has been formatted
-When the SOR API Notes route times out or cannot be reached
-Then tbl_Notes.processInd must be updated to 9
-And the error message column must contain a meaningful connection or timeout error
-And the application must not terminate with an unhandled exception
-And the processor must continue with the next eligible note when possible.
-
-Scenario: SOR API returns Loan not found
-Given an eligible note has been formatted
-When the SOR API Notes route times out or cannot be reached
-Then tbl_Notes.processInd must be updated to 8
-And the error message column must contain a meaningful connection or timeout error
-And the application must not terminate with an unhandled exception
-And the processor must continue with the next eligible note when possible.
-
-Scenario: MSP Notes Format
-Given an eligible note has been formatted
-When the SOR API Notes is sucessful
-Then MSP Notes should be formatted according to the attached screen shot
-
+    ;WITH EligibleNotes AS
+    (
+        SELECT N.*
+        FROM dbo.tbl_Notes AS N WITH (UPDLOCK, HOLDLOCK)
+        WHERE
+        (
+            N.PostedInd IN (
+                SELECT LTRIM(RTRIM(value))
+                FROM STRING_SPLIT(@POSTEDINDTOPROCESS, ',')
+            )
+            OR
+            (
+                @INCLUDEBLANK = 1
+                AND DATALENGTH(N.PostedInd) > 0
+                AND DATALENGTH(
+                    TRIM(
+                        @WHITESPACECHARACTERS
+                        FROM CONVERT(NVARCHAR(MAX), N.PostedInd)
+                            COLLATE Latin1_General_100_BIN2
+                    )
+                ) = 0
+            )
+        )
+        AND
+        (
+            N.FileNoteDateTime IS NULL
+            OR N.FileNoteDateTime < @Cutoff
+        )
+        AND EXISTS
+        (
+            SELECT 1
+            FROM dbo.tbl_LossDraftSummary AS S
+            WHERE S.ReferenceID = N.ReferenceID
+              AND S.ClientCode IN (
+                  SELECT LTRIM(RTRIM(value))
+                  FROM STRING_SPLIT(@CLIENTCODE, ',')
+              )
+        )
+    ),
+    SelectedGroups AS
+    (
+        SELECT TOP (@ROWS)
+            ReferenceID,
+            NoteDateTime
+        FROM EligibleNotes
+        GROUP BY ReferenceID, NoteDateTime
+        ORDER BY NoteDateTime, ReferenceID
+    )
+    UPDATE E
+    SET PostedInd = @POSTEDINDPROCESSING,
+        FileNoteDateTime = @SelectedAt
+    OUTPUT inserted.*
+    FROM EligibleNotes AS E
+    INNER JOIN SelectedGroups AS G
+        ON (
+            G.ReferenceID = E.ReferenceID
+            OR (G.ReferenceID IS NULL AND E.ReferenceID IS NULL)
+        )
+       AND (
+            G.NoteDateTime = E.NoteDateTime
+            OR (G.NoteDateTime IS NULL AND E.NoteDateTime IS NULL)
+        );
+END;
+GO
