@@ -1,1 +1,82 @@
-git log -1 --oneline origin/develop && git branch -a --contains 340c4ac5
+
+Necesito preparar el PBI 513634 – "Fix local dev environment setup for UIs, Dozzle and Kiro", asignado por Eli Kramme.
+
+IMPORTANTE: Esta tarea ya fue investigada, implementada y validada previamente con Kiro. NO quiero repetir investigaciones ni volver a implementar las soluciones. Necesito revisar y preparar los cambios existentes para un Pull Request.
+
+CONTEXTO CONFIRMADO:
+- Repositorio: /workspaces/dev-portal
+- Rama actual: fix/dev-portal-setup-improvements
+- HEAD local: 10ff3544
+- origin/develop actualizado mediante git fetch: 48883fe3
+- Rama solicitada: pbi/513634_dev-environment-fixes
+- Destino del PR: develop
+- Hay archivos modificados y archivos sin seguimiento que debemos proteger.
+- Eli indicó que el cambio de región us-east-2 ya fue integrado mediante el commit 340c4ac5. Debemos comprobarlo, no asumirlo.
+
+LAS CINCO CORRECCIONES QUE DEBEN INCLUIRSE:
+
+1. Permisos EACCES en Admin UI y Tenant UI:
+   - docker-compose-devui.yml
+   - .devcontainer/detect-and-write-volume.sh
+
+2. Apertura de URLs y puertos:
+   - .workspaceScripts/open-when-ready.sh
+   - .workspaceScripts/task_startDevPortalDevUI.sh
+
+3. Rutas de documentación UIKit para Kiro:
+   - .workspaceScripts/task_setupSdlc.sh
+   - .kiro/steering/uikit-usage.md
+
+4. Persistencia de configuración de Dozzle:
+   - docker-compose-dozzle.yml
+
+5. Documentación oficial del Dev Portal:
+   - README.md
+
+INSTRUCCIONES ESTRICTAS:
+
+- Trabaja exclusivamente en modo ANÁLISIS y SOLO LECTURA.
+- NO modifiques, crees ni elimines archivos.
+- NO ejecutes git checkout, switch, stash, reset, clean, pull, merge, rebase, add, commit, push ni fetch.
+- NO cambies de rama ni crees ramas.
+- NO ejecutes Docker ni scripts de demostración.
+- NO modifiques credenciales ni configuraciones personales.
+- NO imprimas secretos, tokens ni contenido sensible.
+- NO repitas pruebas de funcionalidad previamente realizadas.
+- No solicites seleccionar modelo ni confirmaciones innecesarias.
+- Utiliza comandos Git de consulta y revisa solo los archivos necesarios.
+
+ANÁLISIS SOLICITADO:
+
+A. Confirma el estado actual de Git, sin asumir que continúa igual.
+
+B. Compara los cambios locales con origin/develop e identifica exactamente qué modificaciones de las cinco correcciones siguen siendo necesarias.
+
+C. Comprueba si el commit 340c4ac5 está incluido en origin/develop y verifica el valor actual de KIRO_REGION. No debemos duplicar ni revertir ese cambio.
+
+D. Examina TODOS los archivos modificados y sin seguimiento. Clasifícalos como:
+   - INCLUIR: necesarios para el PBI.
+   - EXCLUIR: configuraciones personales, archivos sensibles o cambios fuera de alcance.
+   - REVISAR: modificaciones que requieren una decisión.
+
+E. Identifica los archivos con cambios mezclados que debamos separar por bloques, especialmente task_setupSdlc.sh.
+
+F. Si puedes consultar el PBI 513634 en Azure DevOps mediante herramientas de SOLO LECTURA, recupera sus criterios de aceptación exactos. Si no puedes, indícalo; no los inventes.
+
+G. Recomienda una estrategia segura para conservar los cambios actuales y preparar la rama pbi/513634_dev-environment-fixes desde origin/develop, sin ejecutar todavía esa estrategia.
+
+FORMATO DE RESPUESTA:
+
+Responde en ESPAÑOL, directo y sin explicaciones largas.
+
+1. Estado Git confirmado.
+2. Tabla: las cinco correcciones, archivos, cambios locales, cambios ya existentes en develop y decisión.
+3. Tabla: archivos adicionales que deben excluirse o revisarse.
+4. Estado del commit 340c4ac5.
+5. Criterios de aceptación del PBI: confirmados o pendientes.
+6. Secuencia mínima de acciones necesarias para preparar el PR, SIN ejecutarlas.
+7. Riesgos concretos de pérdida de cambios o conflictos.
+
+Distingue HECHOS, INFERENCIAS y DESCONOCIDOS.
+
+NO ejecutes ninguna acción de implementación. Detente al terminar el diagnóstico.
