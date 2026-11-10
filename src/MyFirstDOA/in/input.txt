@@ -1,0 +1,1 @@
+cd /workspaces/dev-portal && git --no-optional-locks status --short --branch && git rev-parse --short HEAD
