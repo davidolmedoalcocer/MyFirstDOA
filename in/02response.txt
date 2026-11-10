@@ -1,4 +1,0 @@
-node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ grep -nE '^(DEV_UID|DEV_GID|DEVCONTAINER_VOLUME)=' .env.template .env
-.env.template:9:DEVCONTAINER_VOLUME=
-.env:9:DEVCONTAINER_VOLUME=dev-portal-211babec333808460af7d6e4b0b555616ddd2a826899a7efbe0d86072db61ffb
-node ➜ /workspaces/dev-portal (fix/dev-portal-setup-improvements) $ 
