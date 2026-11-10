@@ -1,13 +1,26 @@
-cd /workspaces/dev-portal && \
-git diff --binary origin/develop -- \
-  .devcontainer/detect-and-write-volume.sh \
-  docker-compose-devui.yml \
-  .workspaceScripts/open-when-ready.sh \
-  .workspaceScripts/task_startDevPortalDevUI.sh \
-  .workspaceScripts/task_setupSdlc.sh \
-  docker-compose-dozzle.yml \
-  README.md \
-  > /tmp/pbi-513634-selected.patch && \
-git -C /workspaces/dev-portal-513634 apply --check /tmp/pbi-513634-selected.patch && \
-git -C /workspaces/dev-portal-513634 apply /tmp/pbi-513634-selected.patch && \
-git -C /workspaces/dev-portal-513634 status --short
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+p = Path("/workspaces/dev-portal-513634/.kiro/steering/uikit-usage.md")
+before = p.read_text()
+
+after, n1 = re.subn(
+    r'(?<![\w./-])node_modules/@infios/uikit\.test/',
+    'e2e/node_modules/@infios/uikit.test/',
+    before
+)
+after, n2 = re.subn(
+    r'(?<![\w./-])node_modules/@infios/uikit/',
+    'sharedUIComponents/node_modules/@infios/uikit/',
+    after
+)
+
+if n1 + n2 == 0:
+    raise SystemExit("No se encontraron rutas que corregir. Archivo intacto.")
+
+p.write_text(after)
+print(f"Rutas UIKit corregidas: {n2}")
+print(f"Rutas UIKit test corregidas: {n1}")
+print(f"Archivo: {p}")
+PY
