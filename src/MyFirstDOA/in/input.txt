@@ -1,10 +1,1 @@
-cd /workspaces/dev-portal && (
-  umask 077
-  BACKUP=$(mktemp -d /tmp/pbi-513634-backup.XXXXXX) &&
-  git diff --binary HEAD > "$BACKUP/local-changes.patch" &&
-  git ls-files --modified --others --exclude-standard -z |
-    tar --null -czf "$BACKUP/working-files.tar.gz" -T - &&
-  tar -tzf "$BACKUP/working-files.tar.gz" >/dev/null &&
-  echo "BACKUP COMPLETADO: $BACKUP" &&
-  ls -lh "$BACKUP"
-)
+git worktree add -b pbi/513634_dev-environment-fixes /workspaces/dev-portal-513634 origin/develop
