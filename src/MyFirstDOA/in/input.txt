@@ -1,7 +1,35 @@
-cd /workspaces/dev-portal-513634 && for f in \
-.devcontainer/detect-and-write-volume.sh \
-.workspaceScripts/open-when-ready.sh \
-.workspaceScripts/task_setupSdlc.sh \
-.workspaceScripts/task_startDevPortalDevUI.sh; do
-  bash -n "$f" || exit 1
-done && echo "PASS: Sintaxis de los scripts correcta"
+
+Estamos preparando el PBI 513634 para un Pull Request hacia develop.
+
+Rama: pbi/513634_dev-environment-fixes
+Directorio: /workspaces/dev-portal-513634
+
+Las cinco correcciones ya fueron implementadas previamente y trasladadas a esta rama.
+
+Necesito una VALIDACIÓN FINAL, no otra investigación.
+
+1. Verifica los 7 criterios de aceptación reales del PBI 513634.
+2. Compara únicamente los 8 archivos modificados contra origin/develop.
+3. Confirma que las cinco correcciones solicitadas estén incluidas y no existan cambios adicionales.
+4. Revisa especialmente que las 96 rutas de UIKit sean correctas y que el script de configuración las genere correctamente.
+5. Confirma que la región us-east-2 permanezca intacta.
+6. Identifica posibles errores que impidan el commit, push o PR.
+
+IMPORTANTE:
+- SOLO LECTURA.
+- NO modifiques archivos ni ejecutes Docker.
+- NO hagas commit, push ni PR.
+- NO repitas las investigaciones originales.
+- Aprovecha las validaciones anteriores.
+- Distingue lo comprobado de lo que todavía requiere una prueba funcional.
+
+RESPUESTA BREVE EN ESPAÑOL:
+
+Una tabla con los 7 criterios:
+CRITERIO | PASS / PENDIENTE / FAIL | EVIDENCIA
+
+Al final indica:
+- ¿Está listo para commit y PR?
+- Si no, ¿qué problema concreto debemos corregir?
+
+No incluyas explicaciones extensas ni recomendaciones fuera del PBI.
