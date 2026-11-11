@@ -1,1 +1,1 @@
-git add .devcontainer/detect-and-write-volume.sh .kiro/steering/uikit-usage.md .workspaceScripts/open-when-ready.sh .workspaceScripts/task_setupSdlc.sh .workspaceScripts/task_startDevPortalDevUI.sh README.md docker-compose-devui.yml docker-compose-dozzle.yml && git diff --cached --check && git diff --cached --stat
+code --reuse-window /workspaces/dev-portal-513634
