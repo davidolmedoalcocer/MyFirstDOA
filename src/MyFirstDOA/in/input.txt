@@ -1,1 +1,1 @@
-docs: update UIKit steering for v15.552.0
+En Add Destination, guarda el HTTP Webhook temporal con Name PBI-513634 Persistence Test y Webhook URL https://dozzle-test.invalid/pbi-513634. Pulsa Add Destination y omite Test.
