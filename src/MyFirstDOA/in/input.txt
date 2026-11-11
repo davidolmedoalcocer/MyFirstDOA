@@ -1,35 +1,106 @@
 
-Estamos preparando el PBI 513634 para un Pull Request hacia develop.
+Necesito realizar la VALIDACIÓN FINAL del PBI 513634 – "Fix local dev environment setup for UIs, Dozzle and Kiro", antes de crear el commit y Pull Request hacia develop.
 
-Rama: pbi/513634_dev-environment-fixes
-Directorio: /workspaces/dev-portal-513634
+IMPORTANTE SOBRE EL ENTORNO:
 
-Las cinco correcciones ya fueron implementadas previamente y trasladadas a esta rama.
+Esta sesión de Kiro está abierta en el repositorio original:
+/workspaces/dev-portal
 
-Necesito una VALIDACIÓN FINAL, no otra investigación.
+PERO DEBES REVISAR EXCLUSIVAMENTE EL NUEVO REPOSITORIO DE TRABAJO:
+/workspaces/dev-portal-513634
 
-1. Verifica los 7 criterios de aceptación reales del PBI 513634.
-2. Compara únicamente los 8 archivos modificados contra origin/develop.
-3. Confirma que las cinco correcciones solicitadas estén incluidas y no existan cambios adicionales.
-4. Revisa especialmente que las 96 rutas de UIKit sean correctas y que el script de configuración las genere correctamente.
-5. Confirma que la región us-east-2 permanezca intacta.
-6. Identifica posibles errores que impidan el commit, push o PR.
+Rama que debes validar:
+pbi/513634_dev-environment-fixes
 
-IMPORTANTE:
+Rama de comparación:
+origin/develop
+
+Utiliza rutas absolutas y git -C /workspaces/dev-portal-513634 para TODAS las consultas Git.
+
+NO analices ni modifiques los cambios de la rama original fix/dev-portal-setup-improvements.
+
+CONTEXTO:
+
+Ya investigamos, implementamos y validamos previamente las cinco correcciones solicitadas por Eli Kramme.
+
+Las trasladamos a la nueva rama del PBI, partiendo de origin/develop.
+
+Actualmente hay exactamente 8 archivos modificados:
+
+1. .devcontainer/detect-and-write-volume.sh
+2. docker-compose-devui.yml
+3. .workspaceScripts/open-when-ready.sh
+4. .workspaceScripts/task_startDevPortalDevUI.sh
+5. .workspaceScripts/task_setupSdlc.sh
+6. .kiro/steering/uikit-usage.md
+7. docker-compose-dozzle.yml
+8. README.md
+
+Ya ejecutamos satisfactoriamente:
+- git diff --check
+- bash -n de los cuatro scripts modificados
+- Corrección de 96 referencias UIKit en uikit-usage.md
+
+VALIDACIÓN SOLICITADA:
+
+Verifica los siete criterios de aceptación reales del PBI 513634:
+
+1. Admin UI y Tenant UI utilizan permisos compatibles con el usuario del Dev Container y pueden instalar dependencias sin EACCES.
+
+2. Las tareas de VS Code abren correctamente Admin UI y Tenant UI en los puertos 35001 y 35002, sin redirecciones incorrectas ni problemas CORS.
+
+3. Las referencias UIKit son correctas, apuntan a archivos existentes y task_setupSdlc.sh puede generar las rutas esperadas. Comprueba especialmente la compatibilidad con la versión actual de UIKit en develop.
+
+4. Dozzle utiliza almacenamiento persistente y conserva su configuración cuando se elimina y recrea el contenedor.
+
+5. README.md contiene la sección Documentation con el enlace y la explicación de la documentación oficial.
+
+6. La región KIRO_REGION="us-east-2", integrada previamente en develop mediante el commit 340c4ac5, permanece intacta. No debe duplicarse ni revertirse.
+
+7. No existen cambios personales, credenciales, secretos ni archivos fuera del alcance del PBI.
+
+REVISIÓN FINAL:
+
+- Compara los 8 archivos contra origin/develop.
+- Comprueba que no se introdujeron modificaciones ajenas a los cinco requerimientos.
+- Revisa especialmente el contenido y las referencias de .kiro/steering/uikit-usage.md.
+- Identifica problemas concretos que debamos corregir antes del commit.
+- Comprueba si existe algún bloqueo real relacionado con el nombre de rama solicitado por Eli.
+- Aprovecha las evidencias anteriores. NO repitas investigaciones completas.
+
+RESTRICCIONES OBLIGATORIAS:
+
 - SOLO LECTURA.
-- NO modifiques archivos ni ejecutes Docker.
-- NO hagas commit, push ni PR.
-- NO repitas las investigaciones originales.
-- Aprovecha las validaciones anteriores.
-- Distingue lo comprobado de lo que todavía requiere una prueba funcional.
+- NO modificar archivos.
+- NO cambiar de rama.
+- NO ejecutar git add, commit, push, merge, rebase, reset, clean ni stash.
+- NO ejecutar Docker ni pruebas destructivas.
+- NO regenerar archivos.
+- NO modificar configuraciones de Kiro.
+- NO mostrar secretos.
+- NO volver a auditar todo el repositorio.
+- NO solicitar confirmaciones innecesarias.
+- No declares PASS funcional cuando solamente se haya revisado código.
 
-RESPUESTA BREVE EN ESPAÑOL:
+FORMATO DE RESPUESTA:
 
-Una tabla con los 7 criterios:
-CRITERIO | PASS / PENDIENTE / FAIL | EVIDENCIA
+Responde EN ESPAÑOL y de forma BREVE.
 
-Al final indica:
-- ¿Está listo para commit y PR?
-- Si no, ¿qué problema concreto debemos corregir?
+Entrega:
 
-No incluyas explicaciones extensas ni recomendaciones fuera del PBI.
+1. Tabla de los 7 criterios:
+   CRITERIO | PASS / FAIL / PENDIENTE | EVIDENCIA BREVE
+
+2. Archivos correctos: indica cuántos de los 8 están listos.
+
+3. Problemas concretos: únicamente los que realmente debemos corregir.
+
+4. CONCLUSIÓN:
+   ¿Está listo para commit y Pull Request?
+   SÍ o NO.
+
+Si la respuesta es NO, indica exactamente qué falta, sin proponer otra investigación extensa.
+
+Distingue HECHOS, INFERENCIAS y DESCONOCIDOS.
+
+NO IMPLEMENTES NADA. TERMINA DESPUÉS DE LA VALIDACIÓN.
