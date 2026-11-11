@@ -1,8 +1,23 @@
-for c in dev-portal-admin-ui dev-portal-tenant-ui; do
-  echo "===== $c ====="
-  docker exec "$c" sh -c '
-    echo "Usuario: $(id -u):$(id -g)"
-    echo "Directorio: $(pwd)"
-    stat -c "node_modules: %u:%g" node_modules
-  ' || exit 1
-done
+cd /workspaces/dev-portal && python3 - <<'PY'
+from pathlib import Path
+import re
+import subprocess
+
+p = Path(".kiro/steering/uikit-usage.md")
+if not p.exists():
+    raise SystemExit("FAIL: No se generó uikit-usage.md")
+
+refs = re.findall(r'#\[\[file:([^\]]+)\]\]', p.read_text())
+missing = [r for r in refs if not Path(r).is_file()]
+
+print("Referencias encontradas:", len(refs))
+print("Referencias inexistentes:", len(missing))
+for r in missing[:10]:
+    print("FALTA:", r)
+
+result = subprocess.run(
+    ["git", "diff", "--quiet", "HEAD", "--", str(p)]
+)
+print("Cambios respecto al commit:", "NO" if result.returncode == 0 else "SÍ")
+print("RESULTADO:", "PASS" if refs and not missing else "FAIL")
+PY
