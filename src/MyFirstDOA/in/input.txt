@@ -1,1 +1,6 @@
-cd /workspaces/dev-portal && if [ -n "$(docker compose -f docker-compose-dozzle.yml ps -q dozzle)" ]; then docker compose -f docker-compose-dozzle.yml down && docker compose -f docker-compose-dozzle.yml up -d; else echo "Dozzle is not running under this Compose project. No changes made."; fi
+cd /workspaces/dev-portal &&
+git fetch origin develop &&
+git status --short --branch &&
+git log --oneline FETCH_HEAD..HEAD &&
+git diff --name-status FETCH_HEAD...HEAD &&
+git ls-remote --heads origin pbi/513634_dev-environment-fixes
