@@ -1,1 +1,7 @@
-git -C /workspaces/dev-portal-513634 diff --check && git -C /workspaces/dev-portal-513634 status --short
+cd /workspaces/dev-portal-513634 && for f in \
+.devcontainer/detect-and-write-volume.sh \
+.workspaceScripts/open-when-ready.sh \
+.workspaceScripts/task_setupSdlc.sh \
+.workspaceScripts/task_startDevPortalDevUI.sh; do
+  bash -n "$f" || exit 1
+done && echo "PASS: Sintaxis de los scripts correcta"
