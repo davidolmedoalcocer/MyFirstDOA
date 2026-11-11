@@ -1,3 +1,1 @@
-printf 'PBI-513634-PERSISTENCIA\n' > /tmp/pbi-513634-dozzle-test.txt && \
-docker cp /tmp/pbi-513634-dozzle-test.txt dev-portal-513634-k1-dozzle-1:/data/pbi-513634-test.txt && \
-echo "PASS: Archivo de prueba guardado en el volumen de Dozzle"
+docker exec dev-portal-513634-k1-dozzle-1 cat /data/pbi-513634-test.txt
