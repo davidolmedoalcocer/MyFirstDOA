@@ -1,52 +1,42 @@
+CAUSA RAÍZ: La prueba dio un falso FAIL. Buscaba solo la sintaxis #[[file:...]], que UIKit 15.552.0 ya no usa. El uikit-usage.md de esta
+  versión sustituye esas inclusiones por una tabla de componentes. La tabla apunta a la carpeta
+  sharedUIComponents/node_modules/@infios/uikit/dist/steering/components/ y da el nombre del archivo de API de cada componente, que el agente
+  lee cuando lo necesita. El script (líneas 243-259) copia los .md del paquete y reescribe las rutas node_modules/... para que partan de la
+  raíz del workspace. Ese paso funciona bien.
+  
+  RESULTADO DE LA VALIDACIÓN:
+  - La rama es pbi/513634_dev-environment-fixes y la versión instalada de @infios/uikit es la 15.552.0.
+  - Reproduje el sed del script sobre los archivos del paquete. Los tres archivos generados (uikit-usage.md, uikit-patterns.md y
+  uikit-foundations.md) salen idénticos byte a byte a los de .kiro/steering/. La Task generó exactamente lo esperado.
+  - Las rutas a components/, uikit-patterns.md, uikit-foundations.md y al índice de iconos existen.
+  - Kiro puede usar el archivo: en esta misma sesión se cargó como regla de workspace. El archivo nuevo ya no tiene el bloque inclusion:
+  always, pero Kiro incluye siempre por defecto los archivos que no lo tienen.
+  - Comparado con el commit 14977a1, el formato antiguo tenía 95 #[[file:]] válidos, pero estaba desactualizado. Le faltaban 8 componentes que
+  la versión actual sí incluye: chatbot-button, chatbot-status, chat-bubble, chat-input, chat-response, field-set, field-set-group y
+  side-panel.
+  
+  ARCHIVOS DE COMPONENTES COMPROBADOS: La tabla tiene 103 filas y 103 nombres de archivo distintos, y los 103 existen en
+  dist/steering/components/. Hay 103 archivos en disco, así que todos están listados y ninguno sobra.
+  
+  REFERENCIAS INEXISTENTES: Ninguna de componentes, 0 de 103. Solo fallan dos rutas que no son de componentes:
+  e2e/node_modules/@infios/uikit.test/dist/steering/uikit-testing-patterns.md y .../wrappers/. Fallan porque las dependencias de e2e/ no están
+  instaladas, y esta Task no las instala. La ruta en sí es correcta, porque e2e/package.json declara @infios/uikit.test 1.524.0. Se resuelven
+  con pnpm install en e2e/ y no afectan al criterio 3.
+  
+  CORRECCIÓN REALIZADA, SI FUE NECESARIA: Ninguna, porque no hay defecto. Restaurar el formato antiguo sería un retroceso, ya que perdería 8
+  componentes. Lo que hay que cambiar es la prueba: debe tomar los nombres uikit-*.md de la tabla y comprobar que cada uno exista en
+  .../dist/steering/components/, en lugar de buscar #[[file:.
+  
+  Una nota: el uikit-usage.md regenerado sigue sin commit. Está como modificado en el working tree, junto con uikit-patterns.md y
+  uikit-foundations.md, que aparecen como archivos nuevos. No hice commit, como pediste.
+  
+  ¿CRITERIO 3 APROBADO?: SÍ
+  
+  No queda ningún bloqueo.
+ 
+▸ Credits: turn 3.66 • session 3.66 | Time: 1m 12s
 
-Necesito RESOLVER el criterio de aceptación 3 del PBI 513634.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 8%                                             /workspaces/dev-portal · (pbi/513634_dev-environment-fixes)
 
-Repositorio: /workspaces/dev-portal
-Rama: pbi/513634_dev-environment-fixes
-Commit existente: 14977a1
-
-CONTEXTO:
-Ejecuté la Task real "Setup SDLC Framework".
-
-Después de ejecutarla, .kiro/steering/uikit-usage.md cambió de formato.
-
-ANTES: contenía 95 referencias #[[file:...]].
-AHORA: contiene una tabla de componentes, con nombres de archivos de API.
-
-Una prueba que buscaba exclusivamente #[[file:...]] encontró cero coincidencias y reportó FAIL.
-
-Debemos determinar si realmente hay un incumplimiento o si la prueba es incompatible con el formato actual de UIKit 15.552.0.
-
-TU TRABAJO:
-
-1. Inspecciona el archivo generado por la Task.
-2. Comprueba la versión instalada de @infios/uikit.
-3. Revisa las líneas 243-259 de .workspaceScripts/task_setupSdlc.sh.
-4. Identifica TODAS las referencias a archivos de componentes del formato actual.
-5. Verifica que cada referencia resuelva a un archivo real bajo sharedUIComponents/node_modules/@infios/uikit/dist/steering/components/.
-6. Comprueba que el script genera correctamente las rutas esperadas y que Kiro puede utilizarlas.
-7. Compara el resultado generado con los cambios del commit 14977a1.
-8. Si existe un defecto real dentro del alcance del PBI, implementa la corrección mínima y verifica su resultado.
-9. Si el formato nuevo es correcto, explica por qué la prueba anterior dio un falso FAIL.
-
-RESTRICCIONES:
-- No hagas otra auditoría general.
-- No cambies de rama.
-- No hagas commit, push ni PR.
-- No modifiques los seis archivos personales.
-- No cambies Docker, PostgreSQL ni los servicios.
-- No restaures el formato antiguo sin demostrar que es necesario.
-- No alteres los otros criterios de aceptación.
-
-ENTREGA EN ESPAÑOL, BREVE:
-
-CAUSA RAÍZ:
-RESULTADO DE LA VALIDACIÓN:
-ARCHIVOS DE COMPONENTES COMPROBADOS:
-REFERENCIAS INEXISTENTES:
-CORRECCIÓN REALIZADA, SI FUE NECESARIA:
-¿CRITERIO 3 APROBADO?: SÍ / NO
-
-Si queda algún bloqueo, explica exactamente cuál es.
-
-Resuelve el problema hasta donde sea seguro, sin detenerte únicamente en recomendaciones.
+›  ask a question or describe a task ↵
