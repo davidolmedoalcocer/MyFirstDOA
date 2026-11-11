@@ -1,6 +1,1 @@
-cd /workspaces/dev-portal &&
-git fetch origin develop &&
-git status --short --branch &&
-git log --oneline FETCH_HEAD..HEAD &&
-git diff --name-status FETCH_HEAD...HEAD &&
-git ls-remote --heads origin pbi/513634_dev-environment-fixes
+https://github.com/infios-tools/dev-portal/pull/347
