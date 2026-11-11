@@ -1,1 +1,1 @@
-docker exec dev-portal-513634-k1-dozzle-1 cat /data/pbi-513634-test.txt
+docker cp dev-portal-513634-k1-dozzle-1:/data/pbi-513634-test.txt /tmp/pbi-513634-dozzle-after.txt && grep -Fxq 'PBI-513634-PERSISTENCIA' /tmp/pbi-513634-dozzle-after.txt && echo "PASS: Persistencia de Dozzle comprobada"
