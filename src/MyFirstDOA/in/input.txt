@@ -1,1 +1,42 @@
-pnpm -C /workspaces/dev-portal-513634/adminUi dev --host 0.0.0.0 --port 35001 --strictPort
+
+NECESITO QUE RESUELVAS EL PROBLEMA DE LOS DOS WORKTREES. NO QUIERO OTRA AUDITORÍA NI UN PLAN TEÓRICO.
+
+OBJETIVO FINAL:
+Trabajar únicamente desde /workspaces/dev-portal con la rama pbi/513634_dev-environment-fixes, conservar todos mis cambios anteriores y ejecutar las Tasks normales de VS Code.
+
+ESTADO:
+- /workspaces/dev-portal: rama original fix/dev-portal-setup-improvements, con modificaciones sin commit y mi configuración funcional de Kiro.
+- /workspaces/dev-portal-513634: rama pbi/513634_dev-environment-fixes, con 8 archivos del PBI preparados para commit.
+- Existe un respaldo anterior en /tmp/pbi-513634-backup.XmivZ3. Comprueba su existencia y validez antes de depender de él.
+- PostgreSQL está funcionando y NO debe alterarse.
+- No se ha realizado commit ni push.
+
+TU TRABAJO:
+
+1. Determina la operación segura y más corta para dejar la rama del PBI en /workspaces/dev-portal.
+2. CONSERVA los cambios de ambas carpetas, incluidos archivos sin seguimiento y configuraciones personales.
+3. Ejecuta automáticamente las operaciones locales que sean seguras, verificables y reversibles.
+4. No dejes los 8 cambios del PBI mezclados con archivos personales.
+5. Comprueba que la carpeta original quede con los 8 cambios del PBI y la rama correcta.
+6. Retira el worktree adicional SOLO después de verificar que no se pierde ningún cambio.
+7. No modifiques Docker Compose ni las Tasks como solución provisional a un problema causado por los worktrees.
+
+PROHIBIDO:
+- Perder o sobrescribir modificaciones.
+- Borrar carpetas con trabajo no preservado.
+- git reset --hard, git clean, operaciones Git forzadas.
+- Hacer commit, push o Pull Request.
+- Ejecutar Docker, detener contenedores o eliminar volúmenes.
+- Modificar PostgreSQL.
+- Repetir las pruebas de Dozzle y UIKit ya completadas.
+
+IMPORTANTE:
+Si no puedes garantizar la conservación de ambos conjuntos de cambios, DETENTE antes de cualquier operación irreversible. No improvises.
+
+RESPUESTA FINAL BREVE:
+- Qué hiciste realmente.
+- Qué carpeta y rama quedaron activas.
+- Si se preservaron todos los cambios.
+- Qué falta exactamente para ejecutar Dev: Start UI de forma normal.
+
+NO ME PIDAS COMANDOS INTERMEDIOS. REALIZA EL TRABAJO SEGURO DIRECTAMENTE.
