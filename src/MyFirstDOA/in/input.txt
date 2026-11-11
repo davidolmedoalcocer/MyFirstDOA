@@ -1,3 +1,4 @@
-read -r -p "Tu nombre para Git: " NOMBRE
-read -r -p "Tu correo corporativo de Azure DevOps: " CORREO
-git -C /workspaces/dev-portal -c user.name="$NOMBRE" -c user.email="$CORREO" commit -m "fix: improve local dev environment setup (PBI 513634)"
+git -C /workspaces/dev-portal \
+  -c user.name="David Olmedo" \
+  -c user.email="david.olmedo@infios.com" \
+  commit -m "fix: improve local dev environment setup (PBI 513634)"
