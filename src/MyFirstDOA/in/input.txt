@@ -1,1 +1,1 @@
-docker ps --filter publish=8888 --format 'table {{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.project.config_files"}}'
+cd /workspaces/dev-portal && if [ -n "$(docker compose -f docker-compose-dozzle.yml ps -q dozzle)" ]; then docker compose -f docker-compose-dozzle.yml down && docker compose -f docker-compose-dozzle.yml up -d; else echo "Dozzle is not running under this Compose project. No changes made."; fi
