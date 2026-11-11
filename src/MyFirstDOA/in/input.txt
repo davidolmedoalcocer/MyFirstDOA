@@ -1,21 +1,7 @@
-[AB#513634] Fix local dev setup for UIs, Dozzle, and Kiro
+Llena el aviso en el cuadro nuevo de Teams, el que tiene tu nombre y el botón morado Post.
 
+En Add a subject escribe:
+PR #354 for review: Dev Portal setup fixes
 
-Work item: AB#513634
-
-## Summary
-
-- Run the Admin and Tenant UI containers with the Dev Container user's UID and GID to prevent node_modules permission errors.
-- Fix the startup tasks so they open the correct Admin and Tenant UI URLs.
-- Update Kiro's UIKit steering references for UIKit 15.552.0.
-- Persist Dozzle settings in a named volume mounted at /data.
-- Add a Documentation section to the README linking to the official Dev Portal docs.
-
-## Validation
-
-- Permissions: Dependencies installed without EACCES errors. Both UI containers and their node_modules directories used UID/GID 1000:1000. Both UIs started after rebuilding the Dev Container. Installation with an empty dependency volume was not tested.
-- UI startup: The VS Code startup tasks opened both UIs at their expected URLs: http://localhost:35001/devportal/adminui/ and http://localhost:35002/devportal/tenantui/.
-- UIKit: The Setup SDLC Framework task generated 103 component references, all of which resolved to existing files. Kiro loaded the generated steering file.
-- Dozzle: A temporary notification destination remained visible after Docker Compose down and up. The destination was removed after the test.
-- Documentation: The README contains the official Dev Portal documentation link.
-- Scope: The existing Kiro default region remains us-east-2. The branch contains two commits across eight files. Local settings and generated files outside the PBI were excluded.
+En Type a message escribe:
+Hi @Devs, please review PR #354 for AB#513634. It covers local setup fixes for the Admin and Tenant UIs, Dozzle, and Kiro. Thanks!
