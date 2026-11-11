@@ -1,6 +1,1 @@
-cd /workspaces/dev-portal-513634 && \
-for d in sharedUIComponents adminUi tenantUi; do
-  echo "$d:"
-  stat -c 'Propietario UID:GID = %u:%g' "$d/node_modules" || exit 1
-done && \
-echo "Usuario actual: $(id -u):$(id -g)"
+pnpm -C /workspaces/dev-portal-513634/adminUi dev --host 0.0.0.0 --port 35001 --strictPort
