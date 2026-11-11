@@ -1,23 +1,52 @@
-cd /workspaces/dev-portal && python3 - <<'PY'
-from pathlib import Path
-import re
-import subprocess
 
-p = Path(".kiro/steering/uikit-usage.md")
-if not p.exists():
-    raise SystemExit("FAIL: No se generó uikit-usage.md")
+Necesito RESOLVER el criterio de aceptación 3 del PBI 513634.
 
-refs = re.findall(r'#\[\[file:([^\]]+)\]\]', p.read_text())
-missing = [r for r in refs if not Path(r).is_file()]
+Repositorio: /workspaces/dev-portal
+Rama: pbi/513634_dev-environment-fixes
+Commit existente: 14977a1
 
-print("Referencias encontradas:", len(refs))
-print("Referencias inexistentes:", len(missing))
-for r in missing[:10]:
-    print("FALTA:", r)
+CONTEXTO:
+Ejecuté la Task real "Setup SDLC Framework".
 
-result = subprocess.run(
-    ["git", "diff", "--quiet", "HEAD", "--", str(p)]
-)
-print("Cambios respecto al commit:", "NO" if result.returncode == 0 else "SÍ")
-print("RESULTADO:", "PASS" if refs and not missing else "FAIL")
-PY
+Después de ejecutarla, .kiro/steering/uikit-usage.md cambió de formato.
+
+ANTES: contenía 95 referencias #[[file:...]].
+AHORA: contiene una tabla de componentes, con nombres de archivos de API.
+
+Una prueba que buscaba exclusivamente #[[file:...]] encontró cero coincidencias y reportó FAIL.
+
+Debemos determinar si realmente hay un incumplimiento o si la prueba es incompatible con el formato actual de UIKit 15.552.0.
+
+TU TRABAJO:
+
+1. Inspecciona el archivo generado por la Task.
+2. Comprueba la versión instalada de @infios/uikit.
+3. Revisa las líneas 243-259 de .workspaceScripts/task_setupSdlc.sh.
+4. Identifica TODAS las referencias a archivos de componentes del formato actual.
+5. Verifica que cada referencia resuelva a un archivo real bajo sharedUIComponents/node_modules/@infios/uikit/dist/steering/components/.
+6. Comprueba que el script genera correctamente las rutas esperadas y que Kiro puede utilizarlas.
+7. Compara el resultado generado con los cambios del commit 14977a1.
+8. Si existe un defecto real dentro del alcance del PBI, implementa la corrección mínima y verifica su resultado.
+9. Si el formato nuevo es correcto, explica por qué la prueba anterior dio un falso FAIL.
+
+RESTRICCIONES:
+- No hagas otra auditoría general.
+- No cambies de rama.
+- No hagas commit, push ni PR.
+- No modifiques los seis archivos personales.
+- No cambies Docker, PostgreSQL ni los servicios.
+- No restaures el formato antiguo sin demostrar que es necesario.
+- No alteres los otros criterios de aceptación.
+
+ENTREGA EN ESPAÑOL, BREVE:
+
+CAUSA RAÍZ:
+RESULTADO DE LA VALIDACIÓN:
+ARCHIVOS DE COMPONENTES COMPROBADOS:
+REFERENCIAS INEXISTENTES:
+CORRECCIÓN REALIZADA, SI FUE NECESARIA:
+¿CRITERIO 3 APROBADO?: SÍ / NO
+
+Si queda algún bloqueo, explica exactamente cuál es.
+
+Resuelve el problema hasta donde sea seguro, sin detenerte únicamente en recomendaciones.
