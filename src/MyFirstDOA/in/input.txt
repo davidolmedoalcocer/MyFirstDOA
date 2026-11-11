@@ -1,23 +1,6 @@
-cd /workspaces/dev-portal-513634/sharedUIComponents &&
-TMP=$(mktemp -d /tmp/pbi513634-uikit.XXXXXX) &&
-npm pack @infios/uikit@15.552.0 --pack-destination "$TMP" --silent &&
-python3 - "$TMP" <<'PY'
-from pathlib import Path
-import re, sys, tarfile
-
-root = Path("/workspaces/dev-portal-513634")
-archive = next(Path(sys.argv[1]).glob("*.tgz"))
-content = (root / ".kiro/steering/uikit-usage.md").read_text()
-prefix = "sharedUIComponents/node_modules/@infios/uikit/"
-refs = re.findall(r'#\[\[file:(' + re.escape(prefix) + r'[^\]]+)\]\]', content)
-
-with tarfile.open(archive) as tar:
-    existing = set(tar.getnames())
-
-missing = [r for r in refs if "package/" + r[len(prefix):] not in existing]
-print(f"Referencias comprobadas: {len(refs)}")
-print(f"Referencias inexistentes: {len(missing)}")
-for r in missing[:10]:
-    print("FALTA:", r)
-print("PASS: UIKit 15.552.0" if refs and not missing else "FAIL: Revisar UIKit")
-PY
+cd /workspaces/dev-portal-513634 && \
+for d in sharedUIComponents adminUi tenantUi; do
+  echo "Probando instalación en $d"
+  pnpm -C "$d" install --frozen-lockfile || exit 1
+done && \
+echo "PASS: Dependencias instaladas sin EACCES"
