@@ -1,6 +1,6 @@
 cd /workspaces/dev-portal-513634 && \
 for d in sharedUIComponents adminUi tenantUi; do
-  echo "Probando instalación en $d"
-  pnpm -C "$d" install --frozen-lockfile || exit 1
+  echo "$d:"
+  stat -c 'Propietario UID:GID = %u:%g' "$d/node_modules" || exit 1
 done && \
-echo "PASS: Dependencias instaladas sin EACCES"
+echo "Usuario actual: $(id -u):$(id -g)"
