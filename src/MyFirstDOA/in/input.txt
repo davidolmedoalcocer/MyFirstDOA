@@ -1,82 +1,36 @@
-Validación final del PBI 513634 (solo lectura, en /workspaces/dev-portal-513634)
-  
-  HECHO, estado de la rama: pbi/513634_dev-environment-fixes está en 48883fe3, igual que origin/develop (0/0 commits de diferencia). Hay
-  exactamente los 8 archivos modificados y ninguno sin seguimiento. git diff --check origin/develop sale limpio.
-  
-  1. Criterios
-  
-  ┌───────────────────────────────────────┬───────────────────────┬──────────────────────────────────────────────────────────────────────┐
-  │ Criterio                              │ Estado                │ Evidencia breve                                                      │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 1. EACCES en las UIs                  │ PENDIENTE (funcional) │ HECHO: user: "${DEV_UID:-1000}:${DEV_GID:-1000}" está en los dos     │
-  │                                       │                       │ servicios, y detect-and-write-volume.sh escribe DEV_UID/DEV_GID en   │
-  │                                       │                       │ .env. DESCONOCIDO: no hay prueba en esta rama; la validación         │
-  │                                       │                       │ anterior se hizo en la otra.                                         │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 2. URLs y puertos 35001/35002         │ PENDIENTE (funcional) │ HECHO: las URLs incluyen /devportal/adminui/ y /devportal/tenantui/. │
-  │                                       │                       │ La ruta base de Vite coincide con esas rutas.                        │
-  │                                       │                       │ appsettings.Development.json admite http://localhost:35001 y :35002  │
-  │                                       │                       │ en CORS. Falta probarlo.                                             │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 3. Referencias UIKit                  │ PENDIENTE             │ HECHO: las 95 referencias #[[file:]] apuntan a                       │
-  │                                       │                       │ sharedUIComponents/node_modules/.../components/. La 96.ª línea       │
-  │                                       │                       │ cambiada es la ruta de búsqueda de iconos (grep). No queda ninguna   │
-  │                                       │                       │ ruta node_modules/ sin carpeta delante. Probé el sed con ejemplos y  │
-  │                                       │                       │ reescribe bien sin duplicar el prefijo. Los 95 archivos existen en   │
-  │                                       │                       │ uikit 15.511.0. DESCONOCIDO: el worktree no tiene node_modules y la  │
-  │                                       │                       │ versión 15.552.0 de develop no está en disco, así que no puedo       │
-  │                                       │                       │ verificar la compatibilidad.                                         │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 4. Persistencia de Dozzle             │ PENDIENTE (funcional) │ HECHO: el volumen dozzle_data:/data está declarado. task_dozzle.sh   │
-  │                                       │                       │ ejecuta down sin -v, así que el volumen sobrevive (INFERENCIA).      │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 5. README Documentation               │ PASS                  │ HECHO: la sección ## Documentation tiene el enlace y explica qué     │
-  │                                       │                       │ cubre la documentación.                                              │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 6. KIRO_REGION                        │ PASS                  │ HECHO: la línea 18 dice us-east-2. 340c4ac5 es ancestro de HEAD. El  │
-  │                                       │                       │ diff contra develop no toca esa línea.                               │
-  ├───────────────────────────────────────┼───────────────────────┼──────────────────────────────────────────────────────────────────────┤
-  │ 7. Sin cambios personales ni secretos │ PASS                  │ HECHO: cli.json, mcp.json, el hook y docs/cases no están en la rama. │
-  │                                       │                       │ El diff no añade tokens ni credenciales; "secrets" en el README es   │
-  │                                       │                       │ un término del producto.                                             │
-  └───────────────────────────────────────┴───────────────────────┴──────────────────────────────────────────────────────────────────────┘
-  
-  2. Archivos listos
-  
-  6 de 8. Los otros dos son docker-compose-devui.yml y .devcontainer/detect-and-write-volume.sh, por el problema A.
-  
-  3. Problemas concretos
-  
-  - A. Hay que corregirlo antes del commit. Tres comentarios mencionan "case 01", que remite a un documento excluido del PR:
-    - detect-and-write-volume.sh, línea 68
-    - docker-compose-devui.yml, líneas 16 y 34
-  
-    Hay que quitar esa referencia.
-  
-  - B. Hay que mencionarlo en el PR. HECHO por el código: task_setupSdlc.sh sobrescribe .kiro/steering/uikit-usage.md con la versión que trae
-  el paquete y añade uikit-foundations.md. El archivo que se confirma hoy es la versión de develop con las rutas corregidas, y la próxima
-  ejecución de task_setupSdlc.sh lo reemplaza. INFERENCIA: no impide el commit, pero el criterio 3 depende de lo que genera el script con
-  15.552.0.
-  - C. Nombre de rama: no hay un bloqueo real. HECHO: branch-naming.cjs check devuelve FAIL porque espera bugfix/ o feature/. Pero el
-  repositorio no tiene git hooks instalados, ni hook de push en Kiro. El CI (ci.yml) acepta cualquier rama para los PR, y ya existen 35 ramas
-  pbi/ en origin. INFERENCIA: el aviso del helper es solo informativo.
-  
-  4. Conclusión
-  
-  NO está listo todavía. Falta:
-  
-  1. Quitar las referencias "case 01" de los dos archivos (problema A).
-  2. Cerrar el criterio 3 con uikit 15.552.0: instalar las dependencias en el worktree, ejecutar task_setupSdlc.sh y comprobar que el
-  uikit-usage.md generado no tiene referencias sin resolver.
-  3. Para los criterios 1, 2 y 4, hacer una prueba funcional en esta rama o citar en el PR la evidencia de la validación anterior, indicando
-  que se hizo en la rama original.
-  
-  Con el punto 1 resuelto, el commit se puede hacer. Los puntos 2 y 3 son la evidencia que necesita el PR.
- 
-▸ Credits: turn 4.72 • session 10.89 | Time: 1m 44s
+python3 - <<'PY'
+from pathlib import Path
+import re
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◔ 10%                                           /workspaces/dev-portal · (fix/dev-portal-setup-improvements)
+base = Path("/workspaces/dev-portal-513634")
+files = {
+    ".devcontainer/detect-and-write-volume.sh": 1,
+    "docker-compose-devui.yml": 2,
+}
 
-›  ask a question or describe a task ↵
-                                                                                                     /sessions to resume · /copy to clipboard
+changes = {}
+
+for filename, expected in files.items():
+    path = base / filename
+    original = path.read_text()
+    updated, count = re.subn(
+        r"case 01",
+        "EACCES",
+        original,
+        flags=re.IGNORECASE
+    )
+
+    if count != expected:
+        raise SystemExit(
+            f"DETENIDO: {filename}: esperaba {expected} referencias, encontré {count}. No se modificó ningún archivo."
+        )
+
+    changes[path] = updated
+
+for path, updated in changes.items():
+    path.write_text(updated)
+    print(f"CORREGIDO: {path.name}")
+
+print("PASS: 3 referencias corregidas")
+PY
+git -C /workspaces/dev-portal-513634 diff --check
