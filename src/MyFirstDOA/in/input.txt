@@ -1,1 +1,88 @@
-code --reuse-window /workspaces/dev-portal-513634
+
+Necesito preparar de una sola vez las pruebas funcionales del PBI 513634 de Infios Dev Portal.
+
+DIRECTORIO EXCLUSIVO DE TRABAJO:
+/workspaces/dev-portal-513634
+
+RAMA:
+pbi/513634_dev-environment-fixes
+
+IMPORTANTE:
+Si tu sesión está abierta en /workspaces/dev-portal, utiliza rutas absolutas y git -C para consultar únicamente /workspaces/dev-portal-513634.
+
+CONTEXTO:
+- Ya están implementadas las cinco correcciones solicitadas por Eli.
+- Hay exactamente ocho archivos modificados y preparados con git add.
+- Ya pasaron git diff --check y las validaciones de sintaxis Bash.
+- Faltan las pruebas funcionales.
+- No quiero repetir auditorías ni cambiar de rama o ventana.
+- Anteriormente tuvimos un incidente de pérdida de datos al eliminar un volumen de PostgreSQL. No debe repetirse.
+
+TAREA:
+Analiza en una sola ejecución todas las dependencias, scripts, Tasks de VS Code y configuraciones Docker necesarias para probar estas cinco correcciones:
+
+1. Permisos EACCES de Admin UI y Tenant UI.
+2. Apertura del navegador y URLs de los puertos 35001 y 35002.
+3. Generación de referencias UIKit con la versión 15.552.0.
+4. Persistencia de configuración de Dozzle.
+5. Documentación y región Kiro us-east-2.
+
+REVISA ESPECÍFICAMENTE:
+- .vscode/tasks.json
+- .workspaceScripts/task_startDevPortalDevUI.sh
+- .workspaceScripts/task_setupSdlc.sh
+- .workspaceScripts/open-when-ready.sh
+- .workspaceScripts/task_dozzle.sh
+- .devcontainer/detect-and-write-volume.sh
+- docker-compose-devui.yml
+- docker-compose-dozzle.yml
+- docker-compose.yml
+- Los scripts que invoquen las Tasks anteriores.
+
+Sigue las llamadas a otros scripts hasta determinar sus efectos reales.
+
+Verifica también el estado de los contenedores y volúmenes actuales utilizando exclusivamente comandos de consulta, sin modificar nada.
+
+DEBES DETERMINAR:
+- Qué Tasks se pueden ejecutar desde VS Code.
+- Qué Task prueba cada criterio.
+- Si alguna Task utiliza los mismos nombres de contenedores, proyectos Compose, puertos o volúmenes que el ambiente original.
+- Si existe riesgo de detener, recrear, sobrescribir o eliminar recursos existentes.
+- Si ejecutar las Tasks desde el segundo worktree puede modificar archivos de la primera carpeta.
+- Cómo comprobar resultados PASS/FAIL.
+- Qué pruebas pueden ejecutarse sin riesgo y cuáles requieren aislamiento previo.
+- Cómo probar UIKit 15.552.0 sin reemplazar configuraciones existentes ni alterar archivos preparados para commit.
+- Si una prueba requiere Docker down, down -v, borrar volúmenes o recrear PostgreSQL, marcarla como NO SEGURA. No ejecutarla.
+
+RESTRICCIONES ABSOLUTAS:
+- SOLO LECTURA.
+- NO modificar archivos.
+- NO ejecutar Tasks.
+- NO arrancar, detener ni recrear contenedores.
+- NO instalar dependencias.
+- NO ejecutar migraciones de base de datos.
+- NO ejecutar Docker Compose up/down.
+- NO borrar archivos ni volúmenes.
+- NO cambiar ramas.
+- NO ejecutar git add, commit, push, merge, reset ni rebase.
+- NO modificar configuraciones de VS Code o Kiro.
+- NO solicitar confirmaciones intermedias.
+- NO hacer una auditoría general del repositorio.
+
+RESULTADO OBLIGATORIO EN ESPAÑOL:
+
+1. Tabla:
+   CORRECCIÓN | TASK DE VS CODE | SEGURA / NO SEGURA / CONDICIONAL | RIESGO | CÓMO VERIFICAR PASS
+
+2. Indica exactamente qué Task debemos ejecutar PRIMERO y por qué es segura.
+
+3. Si no existe ninguna Task segura, explica el bloqueo concreto y la alternativa que no afecte nuestro ambiente.
+
+4. Indica qué recursos Docker existentes podrían verse afectados, con sus nombres reales.
+
+5. Distingue claramente HECHO, INFERENCIA y DESCONOCIDO.
+
+6. Termina con una conclusión breve:
+   "LISTO PARA PRUEBAS: SÍ/NO"
+
+NO MODIFIQUES NI EJECUTES NADA. SOLO ENTREGA EL ANÁLISIS.
