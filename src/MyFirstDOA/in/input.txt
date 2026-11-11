@@ -1,7 +1,236 @@
-Llena el aviso en el cuadro nuevo de Teams, el que tiene tu nombre y el botón morado Post.
+# Proposal: Shift test automation left
 
-En Add a subject escribe:
-PR #354 for review: Dev Portal setup fixes
+**Status:** Final proposal for squad review, revised after feedback sessions with Quality and with the devs
+**Scope:** How Neptune plans, writes, reviews and runs Playwright tests for Dev Portal work items
 
-En Type a message escribe:
-Hi @Devs, please review PR #354 for AB#513634. It covers local setup fixes for the Admin and Tenant UIs, Dozzle, and Kiro. Thanks!
+## Why change
+
+Building and running the regression plan takes days, and that cost is what keeps our iterations long. Every iteration absorbs a regression and release effort that grows with each PBI. Getting regression down to minutes is a requirement for the team, not a nice-to-have.
+
+The order of work causes the growth. Automation waits for a manual case, and the manual case waits for merged code, so every automated case is written twice and the manual pass keeps growing. This proposal moves the core tests into the feature PR, in line with DORA's research on [test automation](https://dora.dev/capabilities/test-automation/): developers write acceptance tests as part of the change, and testers own exploratory testing and the health of the suites.
+
+## What changes
+
+| What | Today | Proposed |
+| --- | --- | --- |
+| Does a work item need Playwright tests? | Automation field, set inconsistently | Automation field, set at estimation; Quality has the final say |
+| Core AC tests | Manual cases after merge, automated later | Dev writes them in the feature PR |
+| Quality in PRs | Requested on `e2e/` changes, approval optional | Approval required on any PR that changes tests; decides every skip |
+| Missing tests | Nobody checks | A check opens a merge-blocking thread |
+| Edge cases | Manual cases after merge | Quality follow-up PR after merge |
+| Manual cases | ADO test cases for most coverage | Only when automation isn't viable |
+| Exploratory testing | Not planned | Per PBI after merge, plus a squad session per iteration |
+| PBI moves to Done | After manual testing | After Quality's follow-up work is merged and validated |
+| Regression | Manual test plans built by hand, run at end of iteration | Automated: nightly, from `@regression` tags. Manual: query-based ADO suite |
+
+## Who owns what
+
+- **Quality** owns what testing a work item needs: the final say on the Automation field, approval of tests in PRs, every decision to skip tests, edge-case and manual cases after merge, and the health of the suites.
+- **Devs** own the E2E tests for the core AC paths in their feature PR, fixing tests their changes break, and first response to nightly failures in their area.
+- **The squad** proposes the Automation field value at estimation and joins the per-iteration exploratory session.
+
+## Workflow
+
+### 1. Estimation: set the Automation field
+
+At Thursday estimation, the squad proposes a value for `Titan.Automation` on each PBI and Bug, and Quality has the final say. Testing effort is part of the estimate, so the decision belongs here.
+
+| Value | Meaning for Neptune |
+| --- | --- |
+| Required | Contributions to the Playwright suite are expected |
+| Not Required | No Playwright tests expected. Unit or integration tests may still be |
+
+The field has two other values, Approved and In Progress, which Neptune won't use. Approved used to mean the automation was written, reviewed and accepted, which in this process is the same as the PBI reaching Done.
+
+Today the field is often blank, and Required is sometimes used to mean "this work is test automation." The definitions above replace that.
+
+### 2. Implement
+
+The dev writes the feature with unit tests and E2E tests for the basic paths of each acceptance criterion: the happy path and the main failure path. Edge cases and coverage beyond the AC are Quality's work after merge. Each case goes to the lowest layer that proves it:
+
+| Layer | Use it for | Location |
+| --- | --- | --- |
+| Unit | Logic, validation, mapping, single components | Next to the code |
+| API | Business rules, permissions, status codes, data changes | `e2e/api/tests/` |
+| UI | User journeys, and behavior only visible in the browser | `e2e/ui/tests/` |
+
+For example, an ownership conflict returning 409 is an API test, and the lock icon a blocked user sees is a UI test.
+
+### 3. PR to `develop`
+
+Dev review works as it does today. On top of it:
+
+- **E2E jobs are required.** Tests in the PR must pass to merge.
+- **The E2E check** compares the Automation field with the PR and opens a review thread when tests look missing. The run never fails, because missing tests don't prove the code is wrong. The thread blocks merge until it is closed (see [Closing a thread](#closing-a-thread)).
+- **Quality approves any PR that changes tests**, and checks that the tests cover the AC as it stands at PR time and follow the suite's conventions.
+- **AI tooling expects tests.** The `/pr-review` command reads the Automation field and flags missing tests, and AI feature flows write E2E tests by default.
+- **Dev reviewers** call out missing tests when they notice. The check and Quality are the backstops.
+
+### 4. After merge
+
+1. Quality runs a timeboxed exploratory session on the merged code, starting at about an hour.
+2. Quality opens a follow-up PR with edge cases and other extra coverage, tagged to the same work item.
+3. Quality adds ADO manual cases only for critical cases where automation isn't viable, such as flows the test stack can't run (Infios Platform, Keycloak, Kong).
+4. When that work is merged and validated, the PBI moves to Done.
+
+Issues found during this work are Story Defects. Issues in related code after Done are Bugs. Both match today's definitions.
+
+### 5. Nightly and end of iteration
+
+- A nightly workflow runs the full regression suite against `develop` and posts failures to the team channel. Devs respond first to failures in their area.
+- PR CI runs the full suite until run time becomes a problem, then a `@smoke` subset.
+- The squad joins a Quality-led exploratory session across the iteration's changes, using time the manual regression pass used to take.
+- The end-of-iteration manual plan holds only manual cases, kept current by a query-based suite.
+
+## The E2E check
+
+On each PR to `develop`, the check reads the Automation field for the branch's work item, looks for Playwright tests tagged with that work item's ID, and checks whether the PR touches UI or API code.
+
+| Automation | PR | Result |
+| --- | --- | --- |
+| Required | Has tagged tests | No thread. Tests are listed for Quality |
+| Required | No tagged tests | Thread: tests expected |
+| Not Required | No UI or API changes | Nothing |
+| Not Required | UI or API changes | Thread: confirm the field |
+| Not set | Anything | Thread: set the field |
+
+### Closing a thread
+
+**Devs never resolve the check's threads.** A thread closes in one of these ways:
+
+| Scenario | How it closes | Skip? |
+| --- | --- | --- |
+| Tests expected, and the dev adds them | The check closes it on re-run | No |
+| Tests expected, but they turn out not to be needed (UI scope cut, unit tests prove it) | Quality sets the field to Not Required, and the check closes it on re-run | Yes, recorded in the field's history |
+| Tests expected, but Quality agrees to write them in the follow-up PR | Quality resolves it with a comment | Yes, recorded in the thread |
+| Field is Not Required, but the PR touches UI or API code | Quality confirms and resolves it, or sets the field to Required and the dev adds tests | Yes, if Quality confirms |
+| Field not set | Squad or Quality sets it, and the check re-runs | Depends on the value |
+
+A **skip** is a PR whose question "does this need Playwright tests?" is closed by a decision instead of by tests. Every skip is Quality's decision and leaves a record.
+
+## Approvals
+
+`neptune-qe` approval becomes required on test paths (`e2e/**`, `database/liquibase/tables_e2e/**`), alongside the existing `neptune-devs` requirement on everything else. The team has three members:
+
+- **The Quality engineer**, who approves all PRs that change tests.
+- **The squad lead.**
+- **A dev backup**, to be chosen by the team.
+
+The squad lead and the backup are in both teams, so one approval from either could satisfy both requirements. To keep two sets of eyes on test changes:
+
+- They approve as Quality only on the Quality engineer's own PRs, or while the Quality engineer is out. Otherwise they review as devs.
+- On a PR that changes tests, one person doesn't approve in both roles. Say which role you're approving as in the review.
+
+### When Quality is out
+
+The backup covers approvals. The squad lead is the override for everything else: deciding skips, and whether a PBI waits for its post-merge work or moves to Done with that work logged as a follow-up item. The squad lead and the Quality engineer avoid overlapping time off.
+
+### Weekly audit
+
+GitHub can't enforce these conventions, so a weekly job lists, in the team channel:
+
+- merged PRs whose work item is Required but has no tagged tests in the suite, which clears when a deferred follow-up merges
+- check threads resolved by someone outside `neptune-qe`
+- PRs that changed tests where one person satisfied both approval requirements
+
+One entry is a reminder. A pattern means a convention isn't holding, and the squad revisits it.
+
+## Decision: kickoff
+
+Should a dev and Quality agree on test cases when the dev picks up a PBI? The Automation field already settles *whether* tests are needed, so this is only about *which* cases. Refinement isn't an option, because Tuesday refinement is fully used preparing for estimation.
+
+| | For | Against |
+| --- | --- | --- |
+| Quality | An early say in the cases they own and enforce | Wasted if the AC change before the PR |
+| Devs | Devs read the AC before building, not at the end; a step toward TDD | Waiting on Quality's schedule could delay the start of work |
+
+- **A. No kickoff.** Lowest overhead. Loses the early AC read.
+- **B. Async kickoff (recommended).** When starting the PBI, the dev comments on it with the AC paths they plan to test and the layer for each. Quality replies with changes, and the dev doesn't wait for the reply. Updating the comment when the AC change takes minutes.
+- **C. Synchronous kickoff.** A short call before development starts. Most alignment, but has both groups' costs.
+
+## Roles
+
+| Stage | Devs | Quality |
+| --- | --- | --- |
+| Estimation | Propose the Automation field | Final say on the field |
+| Kickoff (if adopted) | List the planned tests | Add or correct cases |
+| Implement | Write core AC tests | None |
+| PR review | Review code; add tests or ask Quality about check threads | Approve test changes; decide skips |
+| After merge | Fix Story Defects | Exploratory session, follow-up PR, manual cases; move the PBI to Done |
+| Nightly | First response to failures in their area | Suite health; decide when existing manual cases leave the regression plan |
+| Iteration | Join the exploratory session | Run it; review run time, flaky tests and coverage |
+
+Quality also owns curation (dedupe, move tests to a lower layer, delete dead tests), keeping PR CI under 10 minutes, and quarantining flaky tests with `test.fixme()` and a linked bug within a working day.
+
+## Conventions (preview)
+
+The full conventions are a separate change.
+
+```ts
+test('Draft request shows pencil status icon', {
+  tag: ['@pbi-476603', '@regression', '@tenant-ui'],
+}, async ({ page }) => {
+  await test.step('Create a tenant with a draft request', async () => { /* ... */ })
+  await test.step('Pencil icon shows on the tenant', async () => { /* ... */ })
+})
+```
+
+- `@pbi-<id>` links a test to its PBI or Bug. The E2E check and the audit depend on it.
+- `@regression`, `@smoke` and area tags such as `@tenant-ui` define the suites.
+- `test.step()` names read like test case steps in the HTML report.
+- Existing ADO test case IDs stay in their tests. New tests don't need one.
+
+## Rollout
+
+1. **Agree on the proposal** with the squad, including the kickoff and the backup.
+2. **Update the `develop` ruleset:** make the E2E jobs required, require `neptune-qe` approval on test paths, and set `neptune-qe` membership to the Quality engineer, the squad lead and the backup.
+3. **Land the supporting changes:** the conventions and retagging of existing tests, the E2E check, the weekly audit, the `/pr-review` update and the nightly workflow.
+4. **Set the Automation field** at estimation for all new work items.
+5. **Pilot for one iteration** on tenant UI PBIs, running manual regression as usual alongside the nightly run.
+6. **Switch** once the nightly run meets the reliability bar: remove existing manual cases that are now automated from the manual plan, and apply the workflow to all PBIs.
+
+| Pilot measure | Why |
+| --- | --- |
+| Hours to build and run regression per iteration | The reason for the change. Record a baseline first |
+| Time PRs wait for Quality | Whether Quality is a bottleneck |
+| Time from merge to Done | The cost of post-merge work |
+| Check threads, and false alarms | Tunes the check |
+| Audit entries | Whether the conventions hold |
+
+**Reliability bar.** The target for the suite is: over the last 10 nightly runs, at least a 98% pass rate (excluding real defects), under 2% flaky tests, no missed runs, and no defects the manual pass found that the nightly run missed. The bar decides when an existing manual case that has been automated leaves the regression plan. It doesn't create manual work:
+
+- **Existing manual cases** stay in the plan until their area meets the bar.
+- **New tests** never get a manual case, unless automation isn't viable. If an area drops below the bar, the fix is the suite: quarantine flaky tests, fix or file bugs, and prioritize that work. Quality can cover the area with an exploratory session in the meantime, which needs no scripted cases.
+
+## Risks
+
+- **Limited Quality availability.** Approvals, skips, post-merge work and suite health all land on one person. The backup, devs owning nightly response, the squad sessions and the pilot measures are the controls.
+- **Quality's load during the pilot.** The new work runs alongside the full manual regression pass until the switch.
+- **Conventions not followed.** Hand-resolved threads and one-person approvals can bypass Quality. The weekly audit makes patterns visible.
+- **Wrong field, missed by the check.** A work item wrongly set to Not Required, with changes outside the UI and API code the check watches, gets no thread. Squad review at estimation, Quality's post-merge session and the audit are the controls.
+- **Flaky or slow runs.** Required E2E jobs raise the cost of flakiness, and a nightly run the team learns to ignore is worse than a manual pass. With no manual fallback for new tests, suite fixes have to take priority when an area drops below the bar.
+- **UI suite sprawl.** Testing at the lowest layer and Quality's curation keep the suite fast.
+- **Ramp-up.** Devs need to learn the page objects and the uikit shadow-DOM patterns. Early PRs will be slower. Pairing on pilot PBIs helps.
+- **Environment gaps.** Integration with Infios Platform, Keycloak and Kong stays manual.
+
+## Open questions
+
+1. **Kickoff:** option A, B or C?
+2. **Backup:** who is the dev backup in `neptune-qe`?
+3. **Quality turnaround:** what target, so PRs don't wait?
+4. **Pilot:** is tenant UI for one iteration the right scope?
+5. **Thresholds:** are the reliability bar and the one-hour exploratory session the right starting points?
+
+## Out of scope
+
+- Publishing automated results to ADO Test Plans.
+- Reconciling existing ADO test cases with the tests already in `e2e/`.
+- Changes to unit test expectations.
+
+## Appendix: implementation notes
+
+- **E2E check inputs:** the work item ID comes from `pbi/<id>_...` and `bug/<id>_...` branch names; other branches are skipped. The field is read with the org secret `AZURE_DEVOPS_PAT`, which today serves the package feeds and needs Work Items (Read) scope added. UI changes are source under `adminUi/`, `tenantUi/` and `sharedUIComponents/`. API changes are controllers and models in `devPortalService/`. Tune both lists during the pilot. Older work items set to Approved or In Progress are treated like Required.
+- **Threads:** the check posts a review comment, because only review threads count toward the ruleset's conversation-resolution rule. It keeps one thread per PR and closes it when the condition clears. Changing the field in ADO doesn't trigger GitHub, so the author re-runs the check afterward.
+- **Ruleset `8889824`:** today `neptune-qe` has a minimum of 0 approvals on test paths, so test changes can merge without Quality and `e2e/`-only PRs need no approval at all. Raising the minimum to 1 fixes both.
+- **Existing tags:** tests currently mix `@Tenants`, `@[413280]` and IDs in titles, so retagging to `@pbi-<id>` has to happen before the check ships.
+- **AI tooling:** `pr-review.md` is maintained in `neptune-sdlc-config`. `.kiro/team-config.local.yaml` already sets `testing.types.e2e` and `require_e2e_tests` to true. Confirm the feature flow acts on them.
