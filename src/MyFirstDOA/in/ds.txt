@@ -1,0 +1,8 @@
+**What’s up?**  
+I validated the Dev Portal setup fixes for PBI 513634, opened PR #354, and requested a review in the Pull Requests channel.
+
+**Top priority**  
+Today I’ll review the new Dev Portal codebase and go through the Shift Test Automation Lab proposal to understand how it would work in practice.
+
+**Blockers**  
+No blockers at the moment. I’ve used 80% of my Kiro credits and am close to reaching my limit, which could affect my ability to use Kiro for today’s code review. PR #354 is awaiting review.
