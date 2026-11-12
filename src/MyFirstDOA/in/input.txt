@@ -1,1 +1,8 @@
-                find "$cache" -user root -exec chown -h "$1" {} +
+cd /workspaces/dev-portal &&
+for service in dev-portal-admin-ui dev-portal-tenant-ui; do
+    docker compose -f ./docker-compose-devui.yml run --rm --no-deps \
+        --user 0 --entrypoint sh "$service" -ec '
+            probe=$(mktemp node_modules/.vite/pbi-513634-check.XXXXXX)
+            ls -ln "$probe"
+        ' || break
+done
