@@ -1,1 +1,1 @@
-fix: repair root-owned Vite cache before UI startup
+Thanks, Eli. I updated the PR in bed1a3f. Dev: Start UI now repairs root-owned Vite cache entries before starting both UIs. I verified that a test file in each UI’s cache changed ownership from 0:0 to 1000:1000 when I ran the task. I also set HOME=/tmp for both services and removed the duplicate EACCES wording. Could you take another look when you have a chance?
