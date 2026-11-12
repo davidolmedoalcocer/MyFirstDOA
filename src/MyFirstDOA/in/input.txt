@@ -1,1 +1,1 @@
-cd /workspaces/dev-portal && ls -ln {adminUi,tenantUi}/node_modules/.vite/pbi-513634-check.*
+rm -f -- /workspaces/dev-portal/{adminUi,tenantUi}/node_modules/.vite/pbi-513634-check.*
