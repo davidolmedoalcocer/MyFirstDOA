@@ -1,1 +1,1 @@
-cd /workspaces/dev-portal && find adminUi/node_modules/.vite tenantUi/node_modules/.vite -uid 0 -print
+                find "$cache" -user root -exec chown -h "$1" {} +
