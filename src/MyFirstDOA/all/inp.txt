@@ -1,0 +1,15 @@
+1. What went well? — ¿Qué estuvo bien?
+Esta semana investigaste con Charles el comportamiento de bloqueo y desbloqueo de tareas en CSAR Legacy. Revisaste el código e identificaste una posible situación en la que las tareas permanecen bloqueadas cuando una sesión termina inesperadamente.
+
+Esto es positivo porque permitió identificar un posible problema y compartir los hallazgos con Charles para continuar la investigación.
+
+En inglés:
+We made good progress investigating the task locking and unlocking behavior in CSAR Legacy. I was able to identify some potential issues and share my findings with Charles.
+
+2. What didn't go well? — ¿Qué estuvo mal?
+Aquí pondría exactamente lo que me comentaste de los tickets en SNOW Platform.
+
+En inglés:
+While creating SNOW requests to execute database scripts, I accidentally selected the wrong approver account because Jayati has two different accounts.
+
+No necesitas exagerarlo ni indicar que provocó retrasos si eso no ocurrió.
