@@ -1,8 +1,177 @@
-Revisa el repositorio dev-portal en modo solo lectura. Quiero entender cómo se hacen las pruebas hoy para compararlo con la propuesta Automation First de Eli.
+ 1. Suites de pruebas que existen
+  
+  Backend (.NET)
+  
+  Hay un solo proyecto de pruebas: devPortalService/test/DevPortalService.Tests.csproj. Usa xUnit, FluentAssertions, Moq, MockQueryable, EF Core InMemory y
+  Microsoft.AspNetCore.Mvc.Testing (DevPortalService.Tests.csproj:11-23). No usa [Trait] ni categorías, así que todo corre junto. La separación entre tipos
+  solo se ve en las carpetas y en [Collection("IntegrationTests")].
+  
+  ┌─────────────────────────────────┬────────────────────────────┬────────────────────────────────────┬─────────────────────────────────────────────────┐
+  │ Tipo                            │ Carpetas (archivos         │ Cómo prueba                        │ Ejemplo                                         │
+  │                                 │ *Tests.cs)                 │                                    │                                                 │
+  ├─────────────────────────────────┼────────────────────────────┼────────────────────────────────────┼─────────────────────────────────────────────────┤
+  │ Unitarias                       │ Core.Test (16), Api.Test   │ Clases aisladas, con Moq           │ Core.Test/Utilities/SemverValidatorTests.cs:5-1 │
+  │                                 │ (54), Domain.Services.Test │                                    │ 6: SemverValidator.IsValid("1.0.0-alpha")       │
+  │                                 │ (41), Middleware.Test (3)  │                                    │ devuelve true y "1.0" devuelve false (:28-34)   │
+  ├─────────────────────────────────┼────────────────────────────┼────────────────────────────────────┼─────────────────────────────────────────────────┤
+  │ De componente con BD en memoria │ Infrastructure.Repositorie │ EF Core UseInMemoryDatabase, no    │ RepositoryTestBase.cs:14-17. El comentario en   │
+  │                                 │ s.Test (19)                │ Postgres                           │ :24-25 admite que InMemory no aplica el índice  │
+  │                                 │                            │                                    │ único                                           │
+  ├─────────────────────────────────┼────────────────────────────┼────────────────────────────────────┼─────────────────────────────────────────────────┤
+  │ Integración en proceso          │ Startup.Test (3)           │ WebApplicationFactory<Program> con │ DeploymentRequestVerbsTests.cs:17-55: PUT y     │
+  │                                 │                            │ el pipeline HTTP real, marcadas    │ PATCH sobre                                     │
+  │                                 │                            │ [Collection("IntegrationTests")]   │ /{admin,customer}/odata/DeploymentRequests(key) │
+  │                                 │                            │                                    │ devuelven 405 o 404 (PBI 506548)                │
+  └─────────────────────────────────┴────────────────────────────┴────────────────────────────────────┴─────────────────────────────────────────────────┘
+  
+  No verificado: si las pruebas de Startup.Test necesitan un Postgres real. Usan la cadena Host=localhost;Database=test; (DeploymentRequestVerbsTests.cs:25).
+  
+  Frontend (Vitest)
+  
+  ┌─────────────────────┬───────┬───────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────┐
+  │ Proyecto            │ Specs │ Framework y entorno                                   │ Ejemplo                                                        │
+  ├─────────────────────┼───────┼───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────┤
+  │ sharedUIComponents/ │ 75    │ Vitest, happy-dom, @vue/test-utils, Testing Library   │ src/helpers/__tests__/versionUtils.spec.ts:22-34:              │
+  │                     │       │ (package.json:38-51, vitest.config.ts:25). Umbral de  │ compareVersions ordena por major y minor.                      │
+  │                     │       │ cobertura 80/80/80/70 (vitest.config.ts:44-49)        │ src/services/__tests__/tenantService.spec.ts:13-40: getTenants │
+  │                     │       │                                                       │ con odataClient mockeado                                       │
+  ├─────────────────────┼───────┼───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────┤
+  │ adminUi/            │ 7     │ Vitest, jsdom (vitest.config.ts:14). Umbral: líneas   │ src/views/__tests__/*.spec.ts                                  │
+  │                     │       │ 80, ramas 70 (:39-42)                                 │                                                                │
+  ├─────────────────────┼───────┼───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────┤
+  │ tenantUi/           │ 3     │ Vitest, jsdom (vitest.config.ts:14). Mismo umbral     │ src/views/__tests__/CustomerDashboardView.spec.ts:34-49: monta │
+  │                     │       │ (:39-42)                                              │ la vista con dependencias stub y comprueba la cabecera         │
+  │                     │       │                                                       │ "Dashboard" y la prop customer                                 │
+  └─────────────────────┴───────┴───────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────┘
+  
+  Todas son unitarias o de componente con mocks. No hay pruebas de integración de frontend contra la API.
+  
+  Playwright (e2e/)
+  
+  Usa @playwright/test 1.59.1 (e2e/package.json:16), con dos proyectos definidos en playwright.config.ts:
+  
+  - api (:22-33): una sola suite, api/tests/Tenants.test.ts. Por ejemplo, un POST de tenant espera 201 y un GET posterior lo verifica (:9-38, ADO 413280). Solo
+  usa APIRequestContext, sin navegador (e2e/README.md:68).
+  - ui (:34-47): 9 archivos en ui/tests/tenantUi/. Por ejemplo, AddProducts.test.ts:24-58 abre y cierra el drawer "Add New Products" (ADO 442613).
+  - Las pruebas corren contra un stack real en Docker: Postgres con datos semilla, Liquibase, la API y tenantUi (docker-compose-testing.yml:16-108). Ese stack
+  no incluye adminUi, así que la UI de admin no tiene cobertura de Playwright.
+  
+  2. Cómo se ejecutan en local
+  
+  El README raíz solo documenta E2E. Para las unitarias tiene un <!-- TODO: unit test commands for the UIs and the API --> (README.md:67-68).
+  
+  ┌────────────────────────┬─────────────────────┬────────────────────────────────────────────────────────┬──────────────────────────────────────────────┐
+  │ Suite                  │ Directorio          │ Comando                                                │ Evidencia                                    │
+  ├────────────────────────┼─────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────┤
+  │ API (.NET)             │ raíz del repo       │ dotnet test                                            │ Solo aparece en CI (ci.yml:349-356). No está │
+  │                        │                     │ devPortalService/test/DevPortalService.Tests.csproj    │ documentado para desarrolladores, así que lo │
+  │                        │                     │                                                        │ deduzco del CI. El dev container instala     │
+  │                        │                     │                                                        │ .NET (.devcontainer/devcontainer.json:23)    │
+  ├────────────────────────┼─────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────┤
+  │ sharedUIComponents     │ sharedUIComponents/ │ pnpm test, pnpm test:watch, pnpm test:coverage         │ package.json:20-22. Este paquete no tiene    │
+  │                        │                     │                                                        │ README                                       │
+  ├────────────────────────┼─────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────┤
+  │ adminUi                │ adminUi/            │ pnpm test:unit (o pnpm test:coverage)                  │ adminUi/README.md:44-47, package.json:13-14  │
+  ├────────────────────────┼─────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────┤
+  │ tenantUi               │ tenantUi/           │ pnpm test:unit (o pnpm test:coverage)                  │ tenantUi/README.md:44-47, package.json:13-14 │
+  ├────────────────────────┼─────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────┤
+  │ Playwright             │ raíz del repo       │ Tarea VS Code E2E: Run Tests, o bash                   │ .vscode/tasks.json:45-51,                    │
+  │                        │                     │ .workspaceScripts/task_e2eRun.sh [--project=api |      │ task_e2eRun.sh:3-6, e2e/README.md:12-21      │
+  │                        │                     │ --project=ui | -g <id> | <archivo>]                    │                                              │
+  ├────────────────────────┼─────────────────────┼────────────────────────────────────────────────────────┼──────────────────────────────────────────────┤
+  │ Playwright sin VS Code │ raíz del repo       │ docker compose -p dev-portal-testing -f                │ e2e/README.md:54-57                          │
+  │                        │                     │ docker-compose-testing.yml up -d --build --wait        │                                              │
+  │                        │                     │ dev-portal-service dev-portal-tenant-ui y luego ...    │                                              │
+  │                        │                     │ --profile e2e run --build --rm e2e pnpm exec           │                                              │
+  │                        │                     │ playwright test --project=api                          │                                              │
+  └────────────────────────┴─────────────────────┴────────────────────────────────────────────────────────┴──────────────────────────────────────────────┘
+  
+  Detalles que afectan al día a día:
+  
+  - adminUi y tenantUi no tienen script test, solo test:unit (package.json:13). En CI se instalan antes las dependencias de sharedUIComponents (ci.yml:118-120,
+  :222-224). Que esto sea obligatorio en local no está verificado, pero es probable.
+  - Playwright necesita un token de ADO para los feeds (e2e-common.sh:14-25). Cada ejecución reconstruye la imagen del runner, porque los tests se copian
+  dentro de ella (task_e2eRun.sh:12-16). La primera ejecución tarda varios minutos (e2e/README.md:8).
+  - Para depurar existe el modo UI de Playwright en :8082 (task_e2eUiMode.sh, e2e/README.md:25).
+  
+  3. Qué corre en un PR y qué bloquea el merge
+  
+  ci.yml se dispara en pull_request hacia cualquier rama y en push a develop y release/** (ci.yml:2-7).
+  
+  ┌───────────────────────┬──────────────────────────────────────────────────────────┬─────────────────────┬─────────────────────────────────────────────┐
+  ┌──────────────────────┬────────────────────────────────────────────────────────┬─────────────────────┬───────────────────────────────────────────────┐
+  │ Job (nombre del      │ Qué ejecuta                                            │ Tipo                │ ¿Obligatorio para el merge?                   │
+  │ check)               │                                                        │                     │                                               │
+  ├──────────────────────┼────────────────────────────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────┤
+  │ API (.NET)           │ dotnet test del proyecto completo (:349-356),          │ Unitarias, InMemory │ Sí                                            │
+  │ (:321-322)           │ cobertura total ≥60 % de líneas y ≥40 % de ramas       │ e integración en    │                                               │
+  │                      │ (:372, :376), diff-cover ≥90 % en el código nuevo      │ proceso, todas      │                                               │
+  │                      │ (:389-396)                                             │ juntas              │                                               │
+  ├──────────────────────┼────────────────────────────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────┤
+  │ Admin UI (pnpm)      │ build, pnpm test:coverage (:128-129) con umbral Vitest │ Unitarias           │ Sí                                            │
+  │ (:53-54)             │ 80/70, diff-cover ≥90 % (:138-147)                     │                     │                                               │
+  ├──────────────────────┼────────────────────────────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────┤
+  │ Tenant UI (pnpm)     │ igual que Admin UI (:232-233, :242-251)                │ Unitarias           │ Sí                                            │
+  │ (:156-157)           │                                                        │                     │                                               │
+  ├──────────────────────┼────────────────────────────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────┤
+  │ Shared UI Components │ pnpm test sin cobertura (:50-51)                       │ Unitarias           │ No                                            │
+  │ (pnpm) (job          │                                                        │                     │                                               │
+  │ shared-ui-components │                                                        │                     │                                               │
+  │ , :10-51)            │                                                        │                     │                                               │
+  ├──────────────────────┼────────────────────────────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────┤
+  │ Shared UI Components │ pnpm test:coverage con umbral 80/80/80/70, diff-cover  │ Unitarias           │ No                                            │
+  │ (pnpm) (job          │ ≥90 % (:300-319)                                       │                     │                                               │
+  │ shared-ui, :260-319) │                                                        │                     │                                               │
+  ├──────────────────────┼────────────────────────────────────────────────────────┼─────────────────────┼───────────────────────────────────────────────┤
+  │ E2E (Playwright)     │ pnpm exec playwright test sin --project (:457-465),    │ Playwright API y    │ No. El propio YAML dice que es informativo    │
+  │ (:410-413)           │ así que corre API y UI, con 2 reintentos en CI         │ Playwright UI       │ hasta evaluar duración y flakiness (PBI       │
+  │                      │ (playwright.config.ts:8). Se salta en PRs desde forks  │                     │ 507927) (ci.yml:411-412), y lo confirma       │
+  │                      │ (ci.yml:415)                                           │                     │ e2e/README.md:64                              │
+  └──────────────────────┴────────────────────────────────────────────────────────┴─────────────────────┴───────────────────────────────────────────────┘
+  
+  Origen de la columna "obligatorio": no se puede verificar desde el repositorio, porque no hay reglas de rama versionadas. Lo comprobé con gh api
+  repos/infios-tools/dev-portal/rulesets/8889824. El ruleset "Pull request" está activo sobre ~DEFAULT_BRANCH (hoy origin/HEAD es develop), release/** y
+  master. Exige solo Admin UI (pnpm), Tenant UI (pnpm) y API (.NET), con strict_required_status_checks_policy: false. Es configuración de GitHub y puede
+  cambiar sin pasar por un commit.
+  
+  Lo que esto implica:
+  
+  - Las pruebas de sharedUIComponents y su diff-cover del 90 % corren en el PR pero no bloquean. Además hay dos jobs con el mismo nombre de check (ci.yml:11 y
+  :261), y uno de ellos duplica al otro sin cobertura.
+  - Ningún Playwright bloquea el merge, ni el de API ni el de UI.
+  - No hay integración contra Postgres real en ningún check obligatorio. Esa capa solo existe en el job E2E, que es informativo.
+  
+  4. Desarrollo, PR y después
+  
+  Durante el desarrollo, un desarrollador puede ejecutar todas las capas en local:
+  
+  - Unitarias e integración en proceso de la API con dotnet test (sin documentar para desarrolladores, README.md:68).
+  - Vitest en los tres proyectos de frontend, incluido el modo watch en sharedUIComponents (package.json:21).
+  - Playwright API y UI contra el stack de testing en Docker, filtrando por ID de work item con -g (e2e/README.md:18, :71).
+  
+  Ningún hook ni documento exige ejecutarlas antes del PR.
+  
+  En el PR corren todas las suites anteriores, incluido el Playwright completo (ci.yml:410-465). Solo bloquean API (.NET), Admin UI y Tenant UI con sus
+  umbrales de cobertura. Shared UI y E2E son informativos. La parte de "bloquea" sale del ruleset de GitHub, no del repo.
+  
+  Después del merge, según la documentación del repo:
+  
+  - Un push a develop o release/** vuelve a ejecutar ci.yml (:3-4), incluido E2E. También ejecuta cd.yml (:2-7), que construye las imágenes, las escanea con
+  Wiz y las publica, sin ejecutar pruebas (cd.yml:21-228, solo hay pasos de build, scan y push).
+  - Un tag v* ejecuta release-promotion.yml (:3-5, :22), que solo re-etiqueta y promociona imágenes a OCIR (:74-108), sin pruebas.
+  - El repo no documenta regresión manual, smoke tras el despliegue, firma de QA ni pruebas en un entorno desplegado. Esto queda como no verificado. Hay
+  indicios de que existen fuera del repo, pero no de cuándo se ejecutan:
+    - Plan de pruebas manuales en ADO, que e2e/fetchAdoTests.mjs descarga como contexto de automatización (e2e/README.md:74-87).
+    - Etiqueta @Regression en un solo test (Tenants.test.ts:11), que ninguna configuración ni workflow filtra.
+    - El ADR 004 menciona datasets de "developer/QA" (adr-004-product-version-and-build-model.md:148).
+  
+  Para comparar con Automation First: hoy las pruebas automáticas existen en todas las capas, pero las únicas que cierran el paso al merge son las unitarias e
+  integración en proceso de API, adminUi y tenantUi. Para que Playwright bloquee haría falta convertir el check E2E (Playwright) en obligatorio, que es lo que
+  tiene pendiente la PBI 507927.
+ 
+▸ Credits: turn 9.97 • session 9.97 | Time: 2m 34s
 
-1. ¿Existen proyectos o suites de pruebas unitarias para el backend y el frontend? Para cada uno que encuentres, indica su ruta, framework y un ejemplo concreto de lo que prueba. Distingue las pruebas unitarias de las de integración y de las de Playwright.
-2. ¿Cómo ejecuta un desarrollador esas pruebas localmente mientras implementa un PBI? Dame los comandos exactos y el directorio desde donde se ejecutan, con evidencia en el repo.
-3. ¿Qué pruebas se ejecutan automáticamente al abrir o actualizar un PR? Revisa los workflows y separa unitarias, integración, Playwright API y Playwright UI según lo que encuentres. Si una prueba se ejecuta en CI, distingue eso de que su resultado sea obligatorio para hacer merge. Si el repositorio no permite verificar esta última parte, indícalo.
-4. Con esa evidencia, responde: ¿qué pruebas se pueden hacer durante el desarrollo, cuáles corren en el PR y qué validaciones quedan para después según la documentación disponible?
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 14%                                                             /workspaces/dev-portal · (pbi/513634_dev-environment-fixes)
 
-Cita archivo y línea para cada afirmación. Marca como «no verificado» lo que no puedas demostrar. No modifiques archivos ni ejecutes las suites.
+›  ask a question or describe a task ↵
