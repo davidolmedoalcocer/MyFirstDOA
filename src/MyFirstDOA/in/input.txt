@@ -1,8 +1,8 @@
-**What’s up?**  
-Yesterday, I addressed the review feedback on PBI 513634. After PR #354 was approved, I merged it into `develop`, confirmed that CI passed, and moved the PBI to Done. I also reviewed and approved other pull requests.
+Revisa el repositorio dev-portal en modo solo lectura. Quiero entender cómo se hacen las pruebas hoy para compararlo con la propuesta Automation First de Eli.
 
-**Top Priority**  
-Today, I’ll take a closer look at how we write, review, and run tests in Dev Portal and compare that workflow with the “Shift Test Automation Left” proposal.
+1. ¿Existen proyectos o suites de pruebas unitarias para el backend y el frontend? Para cada uno que encuentres, indica su ruta, framework y un ejemplo concreto de lo que prueba. Distingue las pruebas unitarias de las de integración y de las de Playwright.
+2. ¿Cómo ejecuta un desarrollador esas pruebas localmente mientras implementa un PBI? Dame los comandos exactos y el directorio desde donde se ejecutan, con evidencia en el repo.
+3. ¿Qué pruebas se ejecutan automáticamente al abrir o actualizar un PR? Revisa los workflows y separa unitarias, integración, Playwright API y Playwright UI según lo que encuentres. Si una prueba se ejecuta en CI, distingue eso de que su resultado sea obligatorio para hacer merge. Si el repositorio no permite verificar esta última parte, indícalo.
+4. Con esa evidencia, responde: ¿qué pruebas se pueden hacer durante el desarrollo, cuáles corren en el PR y qué validaciones quedan para después según la documentación disponible?
 
-**Blockers**  
-None.
+Cita archivo y línea para cada afirmación. Marca como «no verificado» lo que no puedas demostrar. No modifiques archivos ni ejecutes las suites.
