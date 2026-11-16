@@ -1,15 +1,19 @@
-1. What went well? — ¿Qué estuvo bien?
-Esta semana investigaste con Charles el comportamiento de bloqueo y desbloqueo de tareas en CSAR Legacy. Revisaste el código e identificaste una posible situación en la que las tareas permanecen bloqueadas cuando una sesión termina inesperadamente.
+Jayati cuestionó la evidencia que le proporcionamos sobre el seguimiento de usuarios en CSAR.
 
-Esto es positivo porque permitió identificar un posible problema y compartir los hallazgos con Charles para continuar la investigación.
+Me comentó que actualmente existen dos versiones de CSAR ejecutándose en producción: Legacy y K8. Necesita identificar qué usuario real crea o trabaja en cada CSAR.
 
-En inglés:
-We made good progress investigating the task locking and unlocking behavior in CSAR Legacy. I was able to identify some potential issues and share my findings with Charles.
+Necesito que revises nuevamente el código y la base de datos para responder estas preguntas:
 
-2. What didn't go well? — ¿Qué estuvo mal?
-Aquí pondría exactamente lo que me comentaste de los tickets en SNOW Platform.
+1. ¿La aplicación K8 realmente guarda el usuario autenticado en el campo `CSAR_ENTRY_OPERATOR_LOGIN_NM`?
+2. ¿Cómo podemos demostrar que el registro que consultamos fue creado desde K8 y no desde Legacy?
+3. ¿Por qué `TASK_TB.USER_NM` contiene una cuenta de servicio en lugar del usuario real?
+4. ¿K8 registra correctamente qué usuario realiza cada acción sobre un CSAR o existen situaciones donde se pierde esa información?
 
-En inglés:
-While creating SNOW requests to execute database scripts, I accidentally selected the wrong approver account because Jayati has two different accounts.
+**Instrucciones importantes:**
+- Utiliza evidencia real del código y de la base de datos.
+- Indica los archivos, métodos y líneas que respaldan cada conclusión.
+- Diferencia claramente lo comprobado de lo que todavía no podemos confirmar.
+- No hagas suposiciones ni presentes hipótesis como hechos.
+- No modifiques código ni registros de la base de datos.
 
-No necesitas exagerarlo ni indicar que provocó retrasos si eso no ocurrió.
+Necesito entender exactamente qué está ocurriendo para poder discutirlo con Jayati y Charles.
