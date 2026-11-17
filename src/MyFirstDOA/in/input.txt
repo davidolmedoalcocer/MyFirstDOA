@@ -1,1 +1,59 @@
-Revisa únicamente e2e/ en modo de solo lectura. Busca si ya hay una prueba Playwright que seleccione un producto en Product Management y compruebe Display Name, Name y Namespace. Si no la hay, muéstrame una prueba similar del Admin Portal que podamos usar como ejemplo. Cita archivo y líneas. No modifiques archivos.
+En e2e/ todavía no hay ninguna prueba Playwright que seleccione un producto en Product Management y compruebe Display Name, Name y Namespace. No modifiqué
+  ningún archivo.
+  
+  Lo que busqué
+  - Pruebas del Admin Portal: en e2e/ui/tests/adminUi/ solo existe SettingsCatalog.test.ts.
+  - Page objects: en e2e/ui/src/pages/ no hay ninguno para Product Management. Los que hay son Settings, Tenant, ProductPanel, ProductTab y algunos diálogos.
+  - Texto de la pantalla: busqué Product Management, ProductManagement, product-select, product-display-name y displayName en e2e/{ui,shared,api} y no aparecen
+  en ninguna prueba de UI.
+  - Coincidencias que no sirven: displayName y namespace solo salen en pruebas de API que crean productos por la API, por ejemplo
+  e2e/api/tests/ProductVersionSettings.test.ts, línea 35, y e2e/api/tests/ReferenceStatus.test.ts, líneas 50–54. Esas pruebas no abren ninguna página.
+  - Carpetas excluidas: dejé fuera playwright-report/ y test-results/ porque son resultados generados.
+  
+  Prueba de ejemplo del Admin Portal
+  
+  e2e/ui/tests/adminUi/SettingsCatalog.test.ts es la única prueba del Admin Portal, y el README de e2e la pone como modelo:
+  
+  - Líneas 16–20, beforeEach: vacía los IDs que guardó la prueba anterior y crea el page object.
+  - Líneas 24–47: crea datos con claves aleatorias (e2e.cfg.${suffix}) a través de ApiHelpers.
+  - Línea 50: abre el Admin UI con settingsPage.navigate(ROUTES.ADMIN_UI). La ruta está en e2e/ui/src/utils/Constants.ts, línea 7.
+  - Líneas 53–65, afterEach: borra cada registro y no relanza el error hasta haber intentado todos los borrados.
+  - Líneas 67–88: la prueba lleva el ID del work item en el título ([508224]), abre la página desde la navegación y comprueba valores dentro de expect(async ()
+  => …).toPass({ timeout: 5000 }).
+  
+  Su page object, e2e/ui/src/pages/SettingsPage.wrapper.ts, también sirve de plantilla:
+  - Líneas 10–20: extiende BasePage y usa los wrappers de @infios/uikit.test. Filtra el page header con infios-page-header:not([hidden]) porque el panel de
+  navegación tiene otro oculto (líneas 16–17).
+  - Líneas 65–69, openFromNav(): hace clic en el menú lateral con getSidebarItem('Settings') y espera a que el header y la tabla sean visibles. No espera a que
+  la red quede inactiva.
+  
+  La navegación compartida está en e2e/ui/src/pages/BasePage.wrapper.ts: getSidebarItem en la línea 63 y navigate en las líneas 72–74.
+  
+  Ejemplo para seleccionar un valor en infios-select
+  
+  Este ejemplo es del Tenant UI, no del Admin Portal, pero es la única selección en un infios-select que encontré. Está en
+  e2e/ui/src/pages/ProductPanelPage.wrapper.ts:
+  - Líneas 44–46: envuelve el select con SelectComponent.
+  - Líneas 190–201, selectProductBuild: espera a que la opción esté oculta, abre el select, espera a que la opción sea visible, hace clic y vuelve a esperar a
+  que se cierre. El comentario de las líneas 192–194 (PBI 507939) explica por qué: un select que se abre mientras termina su animación de cierre se queda
+  cerrado.
+  
+  Lo que hay que decidir antes de escribir la prueba
+  
+  Según la revisión anterior, la pantalla todavía lee los productos de sharedUIComponents/src/mocks/productManagementMockData.ts, no de la API. Si una prueba
+  crea un producto con ApiHelpers, como hace el patrón de SettingsCatalog, ese producto no aparecerá en el selector. Además, ApiHelpers no tiene métodos para
+  crear ni borrar productos, solo para tenants y Settings.
+  
+  Tienes dos opciones:
+  - Esperar a la API de productos (PBI 509997): cuando llegue, la prueba podrá seguir el patrón de SettingsCatalog con datos propios.
+  - Escribir la prueba ya: tendría que comprobar los datos simulados del front-end. Va en contra de la idea del README de no comprobar datos compartidos y
+  fallará en cuanto se cambien esos datos.
+  
+  Tampoco revisé fuera de e2e/ cómo se llama la entrada de Product Management en el menú lateral, que es lo que usaría getSidebarItem.
+ 
+▸ Credits: turn 4.90 • session 8.51 | Time: 1m 15s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 11%                                                                                      /workspaces/dev-portal · (develop)
+
+›  ask a question or describe a task ↵
