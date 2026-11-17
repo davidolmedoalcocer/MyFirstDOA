@@ -1,16 +1,17 @@
-Necesito resolver una sola pregunta para mi reunión con Jayati:
+Necesito resolver las dudas que planteó Jayati.
 
-**¿Cómo puedo identificar si un CSAR registrado en la base de datos de producción fue creado desde K8 o desde Legacy?**
+Tenemos dos aplicaciones en producción: Legacy y K8.
 
-Ya revisaste el código y las tablas. Utiliza esa investigación para determinar si existe algún campo, identificador, log o mecanismo que permita diferenciarlos.
+Investiga en el código, la base de datos y Datadog:
 
-Si no existe una forma directa en la base de datos, explícame qué evidencia necesitaríamos para identificar el origen.
+¿Cómo registra Legacy al usuario que crea o modifica un CSAR?
 
-Responde en español, con un máximo de 150 palabras, sin explicaciones extensas.
+¿Cómo lo registra K8?
 
-Quiero una respuesta concreta:
-1. ¿Se puede identificar? Sí, no o todavía no está comprobado.
-2. ¿Cómo se identifica? Indica el campo o mecanismo exacto.
-3. Si no se puede, ¿qué necesitamos para comprobarlo?
+¿Podemos identificar en la base de datos qué aplicación creó un CSAR?
 
-No modifiques nada ni ejecutes nuevas consultas. Usa lo que ya investigaste.
+¿Podemos generar un reporte confiable de los usuarios que crearon o trabajaron en cada CSAR?
+
+Dime qué está comprobado y qué no.
+
+Responde en español, máximo 200 palabras, con conclusiones concretas y evidencia. No modifiques nada.
