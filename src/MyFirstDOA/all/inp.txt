@@ -1,17 +1,12 @@
-Necesito resolver las dudas que planteó Jayati.
+Necesito que profundices la investigación. No quiero que te limites a decir que no encontraste un campo en la base de datos.
 
-Tenemos dos aplicaciones en producción: Legacy y K8.
+Investiga todas las opciones disponibles para determinar si un CSAR fue creado desde Legacy o K8, incluyendo código, bases de datos y logs de Datadog.
 
-Investiga en el código, la base de datos y Datadog:
+El objetivo es identificar el origen de los registros existentes de forma masiva, para generar un reporte, no solamente analizar un CSAR específico.
 
-¿Cómo registra Legacy al usuario que crea o modifica un CSAR?
+Distingue entre:
+1. Una solución que funciona actualmente.
+2. Una solución que requiere implementar cambios.
+3. Información histórica que ya no se puede recuperar.
 
-¿Cómo lo registra K8?
-
-¿Podemos identificar en la base de datos qué aplicación creó un CSAR?
-
-¿Podemos generar un reporte confiable de los usuarios que crearon o trabajaron en cada CSAR?
-
-Dime qué está comprobado y qué no.
-
-Responde en español, máximo 200 palabras, con conclusiones concretas y evidencia. No modifiques nada.
+Dame una conclusión concreta, con evidencia, en máximo 150 palabras. No modifiques nada.
