@@ -1,82 +1,24 @@
-Con la markup actual no hay ningún elemento que contenga solo el valor, así que toHaveText exacto no puede funcionar desde e2e sin tocar la
-  pantalla. Para conservarlo hay que envolver cada valor en un <span> con su propio data-testid, en sharedUIComponents. Si no quieres tocar la
-  pantalla, la alternativa es comparar textContent exacto en lugar de usar toHaveText. No modifiqué ningún archivo ni ejecuté la prueba.
-  
-  Por qué el locator incluye la etiqueta
-  - La pantalla (ProductManagementDashboard.vue, líneas 40–42) escribe el valor directamente dentro de <infios-text-block pretext="Display
-  Name">. El valor es un nodo de texto sin elemento propio.
-  - El componente (sharedUIComponents/node_modules/@infios/uikit/dist/chunks/chunk.ZJIJRNZX.js) pinta el pretext dentro de su shadow DOM, como
-  <div class="text-block__pretext"><span>${this.pretext}</span> (líneas 92–94). El valor se proyecta en <slot class="text-block__default">
-  (líneas 101–102).
-  - El page object (e2e/ui/src/pages/ProductManagementPage.wrapper.ts, líneas 22–24) apunta al host infios-text-block. Cuando calcula el texto
-  de un host, toHaveText también lee el texto de su shadow DOM, y de ahí sale "Display Name". Esto explica el fallo que viste en la línea 24
-  de la prueba. No lo reproduje.
-  
-  Lo que ofrece el wrapper del UI kit
-  
-  Revisé @infios/uikit.test 1.524.0 dentro de la imagen dev-portal-e2e-testing:local, porque e2e/node_modules no existe en local:
-  - TextBlockComponent (dist/components/text-block/text-block-component.wrapper.d.ts, líneas 5–17) no tiene ningún método que lea el texto
-  principal. Solo trae getPretextValue(), que lee el atributo pretext, y métodos para los slots con nombre (prefix, suffix, subtext-*). El
-  valor va en el slot por defecto, así que esos métodos no sirven.
-  - El wrapper base (dist/chunks/chunk.H6PMOIRL.js, líneas 98–101) tiene textContent(), que devuelve el textContent del DOM. Ese texto incluye
-  solo los nodos de texto de la pantalla, no el del shadow DOM, así que da "Warehouse Service" sin la etiqueta. getByDefaultSlot() (líneas
-  129–131) devuelve el <slot> interno, no el valor.
-  - No hay ::part() para el valor. El componente solo expone part="base" (línea 80 del chunk). Las clases .text-block__* son internas y pueden
-  cambiar sin aviso.
-  
-  Opción A: conservar toHaveText exacto (recomendada)
-  
-  Hay que cambiar la pantalla, fuera de e2e/, en ProductManagementDashboard.vue, líneas 40–42:
-  
-  <infios-text-block data-testid="product-display-name" pretext="Display Name">
-    <span data-testid="product-display-name-value">{{ selectedProduct?.displayName }}</span>
-  </infios-text-block>
-  <infios-text-block data-testid="product-name" pretext="Name">
-    <span data-testid="product-name-value">{{ selectedProduct?.productName }}</span>
-  </infios-text-block>
-  <infios-text-block data-testid="product-namespace" pretext="Namespace">
-    <span data-testid="product-namespace-value">{{ selectedProduct?.namespace }}</span>
-  </infios-text-block>
-  
-  El page object pasaría a usar locators para los valores y conservaría los text blocks para las etiquetas:
-  
-  readonly displayNameValue: Locator
-  readonly nameValue: Locator
-  readonly namespaceValue: Locator
-  // constructor
-  this.displayNameValue = page.getByTestId('product-display-name-value')
-  this.nameValue = page.getByTestId('product-name-value')
-  this.namespaceValue = page.getByTestId('product-namespace-value')
-  
-  Y la prueba quedaría así:
-  
-  await expect(productManagementPage.displayNameValue).toHaveText('Warehouse Service')
-  await expect(productManagementPage.nameValue).toHaveText('warehouse')
-  await expect(productManagementPage.namespaceValue).toHaveText('warehouse-ns')
-  // Optional: check the labels too, through the existing wrapper.
-  expect(await productManagementPage.displayName.getPretextValue()).toBe('Display Name')
-  
-  Mantengo el data-testid actual en el text block por la prueba Vitest
-  sharedUIComponents/src/components/__tests__/ProductManagementDashboard.spec.ts. Esa prueba lee pretext con esos IDs (líneas 60–62) y también
-  el texto, que espera vacío sin selección (líneas 85–87). Con un <span> dentro, el texto del host sigue siendo el mismo, así que esas
-  comprobaciones no deberían cambiar. No lo he ejecutado para confirmarlo.
-  
-  Opción B: solo e2e, sin toHaveText
-  
-  Si prefieres no tocar la pantalla, puedes comparar el textContent exacto con una aserción que también reintenta:
-  
-  await expect(productManagementPage.displayName.locator).toHaveJSProperty('textContent', 'Warehouse Service')
-  
-  También puedes usar expect.poll(() => productManagementPage.displayName.textContent()).toBe('Warehouse Service'). El repo ya lee
-  textContent() en e2e/ui/src/pages/DeploymentRequestDialogPage.wrapper.ts, líneas 46–48, aunque allí sin reintento. Ojo: textContent incluye
-  los espacios que deja la plantilla. En esta pantalla el valor está pegado a las etiquetas, en una sola línea, así que no debería haber
-  espacios extra. Tampoco lo he comprobado al ejecutar.
-  
-  Dime qué opción prefieres y la aplico.
- 
-▸ Credits: turn 7.80 • session 29.00 | Time: 1m 59s
+Hi Eli, I’m using PBI 494905 (Manage Products) to practice writing a Playwright E2E test. The acceptance criterion I picked says that selecting a product should display its Display Name, Name, and Namespace.
 
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-opus-5.5 · medium · ◔ 15%                                       /workspaces/dev-portal · (practice/494905-product-selection-e2e)
+I selected Warehouse Service and confirmed that the portal showed the correct details. The first assertion failed because it targeted the entire Display Name block. Playwright read Warehouse Service followed by Display Name, but the assertion expected only Warehouse Service.
 
-›  ask a question or describe a task ↵
+Current assertion
+await expect(productManagementPage.displayName.locator).toHaveText('Warehouse Service')
+
+1. Change only the test and check the full block. Use the value and label in the order Playwright reported. This checks both pieces of text and makes the test depend on their wording and order.
+await expect(productManagementPage.displayName.locator).toHaveText('Warehouse Service Display Name')
+
+2. Change only the test and check the value. Keep the current locator and read textContent. In this component, that property contains the product value. This checks the value exactly. It doesn’t check whether the value is visible on screen.
+await expect(productManagementPage.displayName.locator).toHaveJSProperty('textContent', 'Warehouse Service')
+
+3. Change both the Vue template and the test. In ProductManagementDashboard.vue, keep the existing label and wrap the value in a span with its own test ID.
+<infios-text-block data-testid="product-display-name" pretext="Display Name">
+  <span data-testid="product-display-name-value">{{ selectedProduct?.displayName }}</span>
+</infios-text-block>
+
+Then point the test at that span and check both its visibility and its exact text.
+const displayNameValue = productManagementPage.displayName.locator.getByTestId('product-display-name-value')
+await expect(displayNameValue).toBeVisible()
+await expect(displayNameValue).toHaveText('Warehouse Service')
+
+I’d lean toward option 3 for all three fields because the criterion says the values should be displayed, and this lets the test verify each value directly. Would you make that small Vue change, or does the team prefer to handle this in the test alone?
