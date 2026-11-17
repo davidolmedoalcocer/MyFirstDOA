@@ -22,3 +22,18 @@ await expect(displayNameValue).toBeVisible()
 await expect(displayNameValue).toHaveText('Warehouse Service')
 
 I’d lean toward option 3 for all three fields because the criterion says the values should be displayed, and this lets the test verify each value directly. Would you make that small Vue change, or does the team prefer to handle this in the test alone?
+
+
+
+
+
+
+
+Subject — PTO inquiry for early February 2027
+
+Hi Paige,
+
+As we discussed on Teams, I’m getting married at the end of January 2027 and may need to take three days of PTO in early February. Could you confirm whether that would be possible and let me know how to request the time off?
+
+Thanks,
+David Olmedo
