@@ -1,1 +1,57 @@
-Revisa el repositorio local en modo de solo lectura. Busca la pantalla Vue de Product Management. Si ya existe el flujo para seleccionar un producto, explícame en español qué código recibe la selección y dónde se muestran Display Name, Name y Namespace. Cita el archivo y las líneas para cada hallazgo. Si alguna parte todavía no está implementada, dime qué encontraste. No modifiques archivos.
+Sí, el flujo para seleccionar un producto ya existe, pero solo funciona con datos simulados. La pantalla está en
+  sharedUIComponents/src/components/ProductManagementDashboard.vue. No modifiqué ningún archivo.
+  
+  Cómo se llega a la pantalla
+  - adminUi/src/router/index.ts, líneas 26–28: la ruta /products (nombre ProductManagement) carga ProductManagementView.vue.
+  - adminUi/src/views/ProductManagementView.vue, líneas 3 y 8: esa vista solo importa ProductManagementDashboard desde @devportal/shared-ui y lo muestra.
+  
+  Qué código recibe la selección
+  1. El selector, en ProductManagementDashboard.vue, líneas 5–16. Es un <infios-select> con una opción por producto. El valor de cada opción es product.id y el
+  texto visible es product.displayName (líneas 13–14). Su valor está enlazado a selectedProduct?.id (línea 11).
+  2. El evento, en la línea 12: @infios-change="onProductChange".
+  3. El estado, en la línea 139: const selectedProduct = ref<ManagedProduct | undefined>(). Al cargar la pantalla no hay ningún producto seleccionado
+  (comentario en las líneas 137–138).
+  4. El manejador onProductChange, en la línea 151 y siguientes:
+    - Línea 152: lee el value (el id) del event.target.
+    - Línea 153: busca el producto en products.
+    - Línea 154: si es el mismo producto que ya estaba seleccionado, no hace nada.
+    - Líneas 155–157: guarda el producto en selectedProduct.value y limpia la versión seleccionada y la búsqueda de versiones.
+    - Líneas 158–160: si no hay producto, llama a store.clearVersions().
+    - Desde la línea 162 aproximadamente: llama a store.fetchVersions(product.id) y abre la versión más reciente. Leí este tramo completo, pero no confirmé
+  cada número de línea por separado.
+  
+  5. La carga de la lista, en la línea 145: onMounted(() => store.fetchProducts()).
+  
+  Dónde se muestran Display Name, Name y Namespace
+  
+  Todo está en ProductManagementDashboard.vue, dentro del slot sidebar-content (líneas 38–43):
+  
+  ┌──────────────┬───────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Campo        │ Línea │ Código                                                                                                          │
+  ├──────────────┼───────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Display Name │ 40    │ <infios-text-block data-testid="product-display-name" pretext="Display Name">{{ selectedProduct?.displayName }} │
+  ├──────────────┼───────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Name         │ 41    │ <infios-text-block data-testid="product-name" pretext="Name">{{ selectedProduct?.productName }}                 │
+  ├──────────────┼───────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Namespace    │ 42    │ <infios-text-block data-testid="product-namespace" pretext="Namespace">{{ selectedProduct?.namespace }}         │
+  └──────────────┴───────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  
+  El displayName también aparece como título de la barra lateral, en las líneas 25–26, con el texto 'Product' cuando no hay selección.
+  
+  Qué está pendiente
+  - No hay API real. sharedUIComponents/src/stores/productManagement.ts, líneas 24–27: el store lee datos locales de mocks/productManagementMockData.ts, y la
+  API llega con la PBI 509997. Por ejemplo, fetchProducts (líneas 35–39) solo ordena y copia mockProducts.
+  - displayName no existe en el backend. sharedUIComponents/src/models/productManagement.ts, líneas 6–12: el backend tiene productName y namespace (también en
+  models/product.ts, líneas 5–6), pero no DisplayName, que se añadirá en la PBI 510001. ManagedProduct añade displayName y removable solo para esta pantalla.
+  - Faltan las operaciones de alta, edición y baja (CRUD) y los cambios de estado. ProductManagementDashboard.vue, líneas 132–133 y los comentarios de las
+  líneas 17, 46 y 79: los botones Add Product, Remove, Add Version, Release y Deprecate se muestran pero no hacen nada todavía. El alcance actual (PBI 495005)
+  es solo seleccionar y mostrar.
+  - Hay pruebas. sharedUIComponents/src/components/__tests__/ProductManagementDashboard.spec.ts cubre la pantalla con el store real y los datos simulados. No
+  ejecuté esas pruebas.
+ 
+▸ Credits: turn 3.60 • session 3.60 | Time: 52s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 8%                                                                                       /workspaces/dev-portal · (develop)
+
+›  ask a question or describe a task ↵
