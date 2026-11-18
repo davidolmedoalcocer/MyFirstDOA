@@ -1,1 +1,27 @@
-Agrega una segunda prueba en e2e/ui/tests/adminUi/ProductManagement.test.ts. Al abrir Products y desplegar el selector sin elegir un producto, verifica que Empty Product, New Product y Warehouse Service estén visibles como opciones, en cualquier orden. Describe la prueba como una comprobación de que el selector carga los productos simulados. Reutiliza el page object y conserva la prueba existente. Escribe el código en inglés, explícame en español qué cambiaste y deja la ejecución para que yo la haga desde VS Code. No hagas commit, push ni PR.
+• Agregué la segunda prueba en e2e/ui/tests/adminUi/ProductManagement.test.ts. No la ejecuté, como pediste, y no hice commit, push ni PR.
+  
+  Qué cambié
+  
+  - Conservé la prueba existente [494905] ... Selecting a Product shows its Display Name, Name, and Namespace sin tocarla.
+  - Añadí una prueba nueva al final del describe: [494905] Admin UI - Products - Product selector loads the mock products. El título la describe como
+  comprobación de que el selector carga los productos simulados.
+  - La prueba abre Products desde el menú lateral, despliega el selector con productSelect.click() y verifica que cada opción sea visible: Empty Product, New
+  Product y Warehouse Service. Como revisa cada una por separado, no depende del orden.
+  - No elige ningún producto, así que no cambia el estado del selector.
+  - Reutilicé el page object ProductManagementPage (e2e/ui/src/pages/ProductManagementPage.wrapper.ts), que ya tenía openFromNav(), productSelect y
+  getProductOption(). No modifiqué el page object.
+  
+  Qué revisar al ejecutarla desde VS Code
+  
+  - Usé productSelect.click() directamente. El método selectProduct del page object espera a que el selector esté cerrado antes de abrirlo, por un problema de
+  animación de cierre. Si la nueva prueba falla al abrir el selector, copia esa espera.
+  - Los nombres de las opciones salen de productManagementMockData.ts. Si cambian los datos mock, la prueba fallará por diseño.
+  
+  Para ejecutarla, usa la tarea E2E: Run Tests con el filtro -g 494905 o ui/tests/adminUi/ProductManagement.test.ts.
+ 
+▸ Credits: turn 0.15 • session 0.32 | Time: 30s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-haiku-5.5 · thinking · medium · ◔ 10%                                            /workspaces/dev-portal · (practice/494905-product-selection-e2e)
+
+›  ask a question or describe a task ↵
