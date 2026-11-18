@@ -1,29 +1,32 @@
-Continuemos investigando el problema de stale locks en CSAR.
+TASK_TB.UPDATE_DT se escribe al adquirir el bloqueo, pero no queda reservado como fecha de adquisición. Y VERSION_CT no impide que una pantalla antigua guarde después de que otra persona tomó la subtarea: el servidor vuelve a leer la versión al guardar, y la nota se guarda antes de esa comprobación.
 
-Charles pidió liberar tareas bloqueadas obsoletas como parte de GetTeamMgrTaskListDetails o GetTaskListDetails. Jayati indicó que la solución debe mantenerse sencilla, sin utilizar SignalR.
+Verifiqué el flujo en la copia local de la API, el paquete CSAR.Core 1.0.4 y las definiciones de CSAR_PROD. No ejecuté el flujo contra datos reales ni verifiqué la versión de la API desplegada.
 
-Estamos considerando dos posibles reglas:
+1. Cuándo cambia UPDATE_DT y qué actividad refleja
+Operación verificada	Qué ocurre en TASK_TB
+Abrir CallUpdate con resoluciones	ShowHideTasks lee la subtarea y, si no está en 'Y', llama a UpdateTaskLock con 'Y' y la versión leída. TaskRepo.UpdateAsync llama a dbo.TASK_TB_USP. Si coinciden TASK_ID y VERSION_CT, SQL escribe 'Y', UPDATE_DT = CURRENT_TIMESTAMP e incrementa la versión en la misma actualización.
+Tomar una subtarea por cola o por tipo	dbo.TASK_TB_GET_WORK_BY_QUEUE_USP y dbo.TASK_TB_GET_WORK_BY_TASK_TYPE_CD_USP también guardan la hora de SQL al poner 'Y' e incrementar la versión. Son rutas de toma de trabajo, no los dos procedimientos que listan tareas.
+Actualizar una fila ya bloqueada	dbo.TASK_TB_USP vuelve a escribir UPDATE_DT y USER_NM en cada actualización exitosa. Si no se indica otro LOCKED_IN, conserva el valor actual. Así, una actualización de prioridad o paso de trabajo puede cambiar la fecha y dejar la fila en 'Y'. La API permite actualizar la fila mediante TaskController.UpdateTask, y UpdateTaskLock tampoco exige una transición de 'N' a 'Y'.
+Escribir en la pantalla, agregar una nota o guardar una resolución	Escribir comentarios y seleccionar una resolución son cambios locales en CallUpdate.razor; no encontré una llamada periódica que actualice la subtarea. Al enviar, una nota y el historial escriben en sus propias tablas, no en TASK_TB. Cuando UpdateTaskStatusAsync actualiza la subtarea, cambia la fecha y pone 'N'.
+Por tanto, una operación externa que tenga la versión vigente puede actualizar la fila mientras CallUpdate está abierto: el procedimiento general no rechaza la escritura por estar en 'Y'. No encontré que editar localmente en esa pantalla lo haga, ni confirmé con qué frecuencia otros consumidores actualizan la misma subtarea en producción.
 
-1. Liberar una subtarea después de cierto período sin actividad registrada.
-2. Liberar una subtarea cuando alcance un tiempo máximo de bloqueo, independientemente de si el usuario sigue trabajando.
+No encontré otro campo que registre el inicio del bloqueo. WORK_STEP_CHANGE_DT y las fechas de TASK_HISTORY_TB corresponden al flujo de trabajo. _taskBeginTime se inicializa al cargar CallUpdate, antes de confirmar la adquisición, y se envía al guardar; no es un registro persistido de la adquisición. En CSAR_PROD, TASK_TB tampoco es temporal ni tiene CDC habilitado.
 
-Estas son propuestas, NO requisitos aprobados. Charles o Jayati deberán decidir cuál utilizar y el tiempo permitido.
+2. Qué pasa si el usuario guarda después de perder el bloqueo
+El orden importa. En la rama de Auditoría o Team Manager:
 
-Antes de proponer una implementación, necesito que investigues el código existente y respondas:
+HandleSubmitAsync envía el ID, el comentario y la resolución, pero no envía la versión resultante de adquirir ni un identificador de ese bloqueo.
+CsarApiProvider.CreateTaskNote primero envía la nota, si hay texto, a TaskNoteController.InsertTaskNote. TaskNoteRepo.InsertAsync ejecuta dbo.TASK_NOTE_TB_ISP sin comprobar el bloqueo de la subtarea.
+Si hay resolución, el cliente llama a TaskController.UpdateTaskStatus. UpdateTaskStatusAsync vuelve a leer la subtarea con dbo.TASK_TB_SPK. No comprueba que siga bloqueada por esa pantalla. Después guarda el historial: aunque invoca TaskHistoryRepo.UpdateAsync, el objeto nuevo tiene Version = -1, por lo que el repositorio usa dbo.TASK_HISTORY_TB_ISP. Luego cambia el estado, pone 'N' y llama a dbo.TASK_TB_USP con la versión que acaba de leer.
+Si lo anterior termina sin error, la pantalla llama a UpdateCall, que puede guardar una nota o historial de la tarea principal y la deja en 'N'.
+Consecuencia del flujo: si A pierde el bloqueo y B toma la subtarea antes de que el servicio de guardado de A lea la fila, A puede usar la versión de B, guardar su resolución y quitarle el bloqueo. Si B la toma después de esa lectura y su adquisición incrementa la versión, dbo.TASK_TB_USP puede rechazar el cambio de estado de A. Pero la nota y el historial que ya se guardaron no se revierten: se ejecutan antes, en llamadas o conexiones separadas. Si nadie vuelve a tomar la subtarea, el flujo tampoco rechaza el guardado solo porque ya esté en 'N'.
 
-1. ¿Cuándo se actualiza TASK_TB.UPDATE_DT al adquirir el bloqueo de una subtarea?
-2. ¿Qué otras operaciones modifican UPDATE_DT mientras LOCKED_IN = 'Y'?
-3. ¿Esas operaciones pueden ejecutarse mientras el usuario trabaja en CallUpdate?
-4. ¿Existe algún otro campo que registre cuándo comenzó el bloqueo?
-5. ¿Podemos utilizar UPDATE_DT para implementar alguna de las dos reglas propuestas? Explica exactamente sus limitaciones.
-6. Si una subtarea se desbloquea mientras el usuario mantiene CallUpdate abierto, ¿qué sucede cuando intenta guardar?
-7. ¿El control VERSION_CT realmente impide que ese usuario guarde cambios después de que otra persona adquirió la subtarea? Verifica el flujo completo, incluyendo notas, estado e historial.
-8. ¿Qué cambios mínimos serían necesarios para implementar cada alternativa utilizando los stored procedures y componentes existentes?
+3. Cambios mínimos según la regla que se apruebe
+Regla propuesta	¿Sirve UPDATE_DT?	Cambio mínimo para medir lo que pide la regla
+Tiempo sin actividad registrada	Solo si se define explícitamente como tiempo desde la última actualización de esa fila de TASK_TB. No mide actividad del operador: una persona puede seguir escribiendo sin actualizar la fila, y una operación ajena puede actualizarla y reiniciar el contador. Tampoco refleja notas guardadas en otra tabla.	Si se acepta esa definición limitada, se puede usar el campo actual, sin agregar columnas, y volver a comprobar fecha, versión y estado en la misma escritura de limpieza. Si se quiere medir actividad de la sesión, registrar una fecha separada, asociada al bloqueo, y actualizarla desde CallUpdate con una llamada HTTP. Negocio debe decidir si cuenta una edición del usuario o solo que la pantalla siga conectada; no significan lo mismo.
+Tiempo máximo desde la adquisición	No con su significado actual. Cualquier actualización que conserve 'Y' puede mover UPDATE_DT y aplazar el vencimiento.	Persistir una fecha de adquisición que no cambie mientras dure el mismo bloqueo, junto con un identificador de esa adquisición. Escribirla al adquirir desde UpdateTaskLock y desde cualquier ruta legacy o SQL que pueda bloquear las mismas subtareas, o dejar esas rutas fuera del alcance inicial. No necesita renovaciones ni SignalR. Los bloqueos anteriores sin fecha confirmada no se pueden clasificar automáticamente con esta regla.
+Cambio común a ambas opciones: antes de habilitar la limpieza, el guardado de edición debe enviar la identidad de la adquisición original. El servidor debe comprobarla antes de guardar la nota y proteger en una misma transacción la validación, la nota, el historial, el estado y la liberación de la subtarea. Esto afecta a HandleSubmitAsync, CsarApiProvider, el contrato de guardado y UpdateTaskStatusAsync. Se pueden reutilizar los procedimientos de nota, historial y estado si se ejecutan en esa transacción, no como las llamadas independientes actuales. Si el bloqueo se perdió, devolver un conflicto y no continuar a la actualización de la tarea principal.
 
-No modifiques código ni datos. No ejecutes operaciones de escritura.
+Para incorporar la limpieza al flujo de GetTeamMgrTaskListDetails y GetTaskListDetails, la pondría en una operación compartida antes de listar. Debe usar los filtros de elegibilidad de cada vista, pero buscar las subtareas bloqueadas directamente: los procedimientos actuales ya las excluyen. No hace falta duplicar la regla en ambos procedimientos de listado. Sigue pendiente decidir si la escritura debe ocurrir dentro de los GET actuales o en una acción explícita de refresco.
 
-No elijas una alternativa ni inventes tiempos de expiración.
-
-Separa los comportamientos verificados de los riesgos y las decisiones pendientes.
-
-Explícame los resultados en español sencillo, con referencias a los métodos y stored procedures reales.
+Pendiente de Charles o Jayati: elegir la regla, definir qué cuenta como actividad si se elige la primera, aprobar el plazo y confirmar qué rutas legacy comparten esas subtareas. No elegí una alternativa ni un tiempo. No modifiqué código, procedimientos ni datos; solo consulté código y metadatos.
