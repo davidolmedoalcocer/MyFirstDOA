@@ -1,117 +1,16 @@
-features/csar-stale-lock-cleanup
+En features/csar-stale-lock-cleanup agregué y validé la configuración del timeout. La limpieza automática no está implementada ni activa.
 
-Estoy trabajando en la solución `csar-api` y necesito implementar una mejora de stale-lock cleanup que Charles ya autorizó desarrollar en una feature branch para su revisión.
+Confirmé las firmas de ambos endpoints y que TranTaskDetailRepo usa la conexión de CSAR mediante DatabaseOptions. El paquete compilado CSAR.Core 1.0.4 confirma los nombres de TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP y TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP, pero no encontré sus definiciones SQL en el repositorio, una copia de CSAR en LocalDB ni una operación de mass unlock reutilizable en la API. Sin los filtros verificados de Audit, Pending y Team Manager, no preparé un script de desbloqueo ni conecté una operación de limpieza a los endpoints. No hay un UPDATE global.
 
-Rama: `features/csar-stale-lock-cleanup`
-
-**Contexto técnico confirmado en una investigación anterior**
-
-En el proyecto API se identificaron estos endpoints dentro de `TranTaskDetailController.cs`:
-
-- `GetTaskListDetails` → `TranTaskDetailRepo.GetTaskListDetailsAsync` → `TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP`
-- `GetTeamMgrTaskListDetails` → `TranTaskDetailRepo.GetTeamMgrTaskListDetailsAsync` → `TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP`
-
-Ambos procedimientos consultan subtareas de `TASK_TB` relacionadas mediante `TRAN_TASK_TB` y excluyen aquellas con `LOCKED_IN = 'Y'`.
-
-Actualmente no ejecutan limpieza automática.
-
-Charles aprobó avanzar con una implementación sencilla que reutilice los campos existentes:
-
-- `TASK_TB.LOCKED_IN`
-- `TASK_TB.UPDATE_DT`
-
-La regla propuesta es identificar subtareas bloqueadas cuya última actualización supere un timeout configurable.
-
-Charles también indicó que mañana revisará si existe una lógica de mass unlock que podamos reutilizar.
-
-### Cambios que necesitamos implementar
-
-**1. API — TranTaskDetailController.cs**
-
-Modificar únicamente estas dos acciones:
-
-- `GetTaskListDetails`
-- `GetTeamMgrTaskListDetails`
-
-Antes de consultar las listas existentes, cada acción debe invocar una operación compartida de stale-lock cleanup.
-
-No ejecutar la limpieza desde otros endpoints del controller.
-
-**2. SQL Server**
-
-Preparar un script versionable de stored procedure para la limpieza:
-
-- Buscar subtareas con `LOCKED_IN = 'Y'`.
-- Evaluar `UPDATE_DT` contra el timeout configurable.
-- Utilizar la hora de SQL Server de forma consistente con los datos existentes.
-- Limitar los registros a las subtareas elegibles de la cola y vista solicitadas.
-- Respetar las diferencias entre Audit, Pending y Team Manager.
-- Volver a verificar estado y antigüedad en la operación de desbloqueo.
-- Establecer `LOCKED_IN = 'N'` solo en los registros que cumplan las condiciones.
-
-No modificar los stored procedures de listado existentes, salvo que exista una necesidad técnica demostrable.
-
-**3. API — Acceso a datos**
-
-Crear o reutilizar una operación compartida que ejecute el procedimiento de limpieza antes de llamar al repositorio actual.
-
-Revisa primero los patrones disponibles en esta solución.
-
-Si `CSAR.Core` es una dependencia compilada, no modifiques su DLL. Implementa el acceso nuevo siguiendo los patrones disponibles o identifica si es indispensable cambiar el paquete.
-
-**4. Configuración**
-
-Agregar un timeout configurable mediante `TaskLocking:LockTimeoutMinutes`, utilizando el patrón de configuración existente en la API.
-
-No fijar un valor definitivo de producción. Si no hay valor configurado, no debe ejecutarse una limpieza automática con un timeout elegido por ti.
-
-### Restricciones
-
-- Mantén los cambios pequeños y localizados.
-- No modifiques Blazor.
-- No agregues columnas a `TASK_TB`.
-- No implementes lógica nueva de adquisición de bloqueos.
-- No cambies la lógica de guardado de resoluciones.
-- No modifiques componentes legacy.
-- No introduzcas un mecanismo nuevo de identificación de usuario.
-- No hagas cambios en otros endpoints.
-- No ejecutes ningún procedimiento de desbloqueo contra bases de datos compartidas.
-- No hagas commit, push, merge ni deployment.
-
-### Antes de escribir código
-
-Revisa dentro del repositorio API:
-
-1. Las firmas reales de los dos endpoints.
-2. Las dependencias existentes para acceder a SQL Server.
-3. La estructura de configuración de la API.
-4. Si ya existe lógica reutilizable de limpieza masiva en este repositorio.
-
-No repitas una investigación general sobre locking. Solo verifica lo necesario para implementar estos cambios.
-
-Si no puedes verificar los filtros SQL que delimitan las subtareas elegibles, no implementes un UPDATE global ni inventes esos filtros. Explica el impedimento y continúa únicamente con las partes independientes que sean seguras.
-
-### Implementación y validación
-
-Implementa los cambios en los archivos locales de esta rama.
-
-Después:
-
-- Compila la solución API.
-- Verifica que solamente los dos endpoints indicados invoquen la limpieza.
-- Comprueba que la lógica original de consulta permanezca intacta.
-- Prepara pruebas locales con datos controlados para el timeout y los límites de las colas.
-- No ejecutes escrituras sobre QA o producción.
-
-### Resultado esperado
-
-Al finalizar, entrégame:
-
-1. Lista de archivos modificados.
-2. Explicación breve de cada cambio.
-3. Script SQL preparado.
-4. Configuración agregada.
-5. Resultado de compilación y pruebas.
-6. Riesgos o limitaciones pendientes para revisar con Charles.
-
-**Puedes implementar los cambios locales dentro del alcance indicado. Explica los resultados en español y conserva los nombres técnicos originales.**
+Archivos modificados
+Archivo	Cambio
+appsettings.json	Agrega TaskLocking:LockTimeoutMinutes con valor null, sin timeout predeterminado.
+TaskLockingOptions.cs	Define el timeout como un entero nullable.
+ServiceCollectionExtensions.cs	Registra las opciones y valida que el valor, si se configura, sea positivo.
+TaskLockingOptionsTests.cs	Prueba el valor ausente, null en JSON, valores positivos, cero y negativos.
+README.md	Documenta la configuración y los casos de prueba SQL pendientes: límite del timeout, alcance por cola y vista, y actualización concurrente del bloqueo.
+Validación y pendientes
+Compilación: exitosa, con 0 errores y 10 advertencias en código no modificado.
+Pruebas locales: 8 aprobadas: 6 de configuración y 2 de regresión de los endpoints. Verifiqué que TranTaskDetailController.cs conserva las consultas originales. Ningún endpoint invoca limpieza en este estado.
+Para revisar con Charles: obtener las definiciones SQL de ambos procedimientos, confirmar la convención horaria de UPDATE_DT y determinar si la lógica de mass unlock existente puede respetar los mismos filtros. Con eso se podrá preparar el script y ejecutar los casos de elegibilidad en una base local aislada.
+No modifiqué CSAR.Core, no ejecuté desbloqueos ni escrituras en bases compartidas y no hice commit, push, merge ni deployment.
