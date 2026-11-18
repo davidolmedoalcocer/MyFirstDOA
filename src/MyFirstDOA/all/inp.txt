@@ -1,19 +1,19 @@
-Ya ejecuté correctamente la consulta consolidada de ARO y obtuve las columnas ParentAroId, ChildAroId, DisplayName, AroLogin, LoginKey, AroTypeCode, LegacyRole y ProposedSsoRole.
+La explicación anterior es demasiado complicada para mí. Necesito que me ayudes a completar la tarea de forma práctica y sencilla.
 
-Ahora necesito completar la siguiente parte de la tarea que Charles me asignó: verificar qué usuarios ARO ya existen en SSO.
+Ya ejecuté la consulta ARO y tengo las 968 membresías correspondientes a 762 cuentas.
 
-Según tu investigación anterior, la información de SSO está en dbSSO-PROD, en dbo.User.
+No quiero copiar manualmente 762 usuarios dentro de un bloque VALUES.
 
-Ayúdame a:
+Necesito que investigues si, con las conexiones disponibles a TRKDB01_PROD y dbSSO-PROD, existe una forma de comparar automáticamente los usuarios sin escribirlos uno por uno.
 
-1. Preparar la consulta SQL de solo lectura necesaria para obtener los usuarios de SSO y compararlos con los registros ARO.
-2. Verificar cómo deben compararse AroLogin y ADLogin, sin asumir que dos cuentas con nombres parecidos corresponden a la misma persona.
-3. Obtener el resultado ExistsInSSO con los valores Yes, No o Not verified cuando no exista evidencia suficiente.
-4. Explicarme cómo unir los resultados de ambas bases de datos sin perder usuarios ni membresías ARO.
-5. Conservar las 968 membresías originales reportadas anteriormente, verificando nuevamente el total antes de generar el Excel.
+Primero verifica si es posible hacerlo directamente mediante SQL o si las bases requieren exportar e importar los resultados.
 
-No modifiques datos, permisos ni código. No ejecutes INSERT, UPDATE o DELETE.
+Si se necesita utilizar Excel o Power Query, explícame cómo hacerlo paso a paso, indicando exactamente qué debo seleccionar.
 
-Indícame qué consultas debo ejecutar y en qué base de datos.
+No modifiques datos, código ni permisos. No ejecutes consultas de escritura.
 
-Vamos paso a paso. Primero quiero obtener correctamente la información de SSO.
+No me des todas las instrucciones de golpe.
+
+**Quiero que me indiques únicamente el siguiente paso concreto que debo ejecutar. Cuando lo termine, te compartiré el resultado y continuamos.**
+
+Explícame todo en español sencillo y evita terminología técnica innecesaria.
