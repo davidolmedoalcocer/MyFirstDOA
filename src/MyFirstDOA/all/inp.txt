@@ -1,30 +1,44 @@
-Gracias por la investigación. Ahora necesito avanzar hacia una solución técnica concreta para el problema de locking que Charles me asignó.
+Recomiendo corregir primero la liberación al salir de CallUpdate y usar un registro de bloqueo renovable para la limpieza automática. La primera medida reduce los bloqueos abandonados sin cambiar el esquema; la segunda permite cumplir la instrucción de Charles sin tratar una actualización antigua como prueba de abandono.
 
-Ya identificaste que:
+1. Qué podemos saber con los datos actuales
+Confirmado: las dos listas filtran CHILD_TASK_TB.LOCKED_IN = 'N'. El bloqueo que impide que una fila aparezca es el de la subtarea (TRAN_TASK_TB.TRAN_TASK_ID), no el de la tarea principal (CSAR_TASK_ID).
 
-- GetTeamMgrTaskListDetails utiliza TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP.
-- GetTaskListDetails utiliza TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP.
-- Ambos excluyen subtareas con LOCKED_IN = 'Y'.
-- Existe un script manual para desbloquear tareas.
-- UPDATE_DT no representa necesariamente el momento de adquisición del bloqueo.
-- El legacy tiene mecanismos de desbloqueo que podrían no estar presentes en la nueva UI.
+Límite: con LOCKED_IN, UPDATE_DT, USER_NM y VERSION_CT no se puede distinguir una pantalla abandonada de un operador que sigue trabajando sin guardar. UPDATE_DT cambia por otros motivos y la versión solo detecta ciertas escrituras concurrentes. El script manual libera IDs concretos, pero no aporta una regla para elegirlos. Por eso no automatizaría el desbloqueo de filas que solo tienen LOCKED_IN = 'Y' y una fecha antigua.
 
-**Ahora quiero que elabores una propuesta de implementación basada en estos hallazgos.**
+2. Alternativa A: liberar al salir, sin agregar columnas
+Se puede recuperar la idea del legacy de recordar qué subtareas bloqueó la pantalla y liberarlas al salir. No copiaría literalmente UnLockAuditTask: vuelve a leer cada fila y, si está en 'Y', la libera sin comprobar que siga siendo el mismo bloqueo. Tampoco confiaría en onbeforeunload como garantía: el navegador puede cerrarse o perder conexión antes de que llegue la llamada.
 
-Necesito que determines:
+Cambios concretos:
 
-1. Qué cambios concretos serían necesarios para incorporar la limpieza de stale locks cuando se ejecutan las dos operaciones mencionadas por Charles.
-2. Cómo podemos identificar de manera confiable que una subtarea está obsoleta, considerando que no encontramos un timestamp exclusivo del bloqueo.
-3. Si podemos reutilizar mecanismos existentes de la aplicación sin agregar columnas o modificar el esquema de la base de datos.
-4. Si no existe una manera segura de identificar stale locks con la información actual, explica qué alternativas técnicas tenemos y qué cambios requeriría cada una.
-5. Si el mecanismo de desbloqueo del legacy puede aprovecharse para evitar que las subtareas permanezcan bloqueadas al abandonar una pantalla.
-6. Qué archivos, métodos y stored procedures tendríamos que modificar para cada alternativa.
-7. Cómo podríamos probar cada alternativa en QA sin desbloquear tareas de usuarios que siguen trabajando.
+En CallUpdate.razor.cs y CallUpdate.razor, registrar solo las subtareas cuyo bloqueo confirmó el servidor. Al pulsar Back/Cancelar, liberar esas subtareas antes de volver a la lista. Si la carga falla después de adquirir algunos bloqueos, intentar liberar solo los ya confirmados. Al guardar, conservar la liberación normal por resolución y limpiar el registro local de los bloqueos ya liberados.
+En TaskController.cs y el cliente CsarApiProvider.cs, introducir un contrato de adquisición/liberación que devuelva la versión resultante de adquirir y la exija al liberar. No usar la versión más reciente leída al salir ni reintentar con ella si hubo conflicto. Para la ruta controlada por la API, se puede reutilizar la comprobación de versión de dbo.TASK_TB_USP; preferiría una operación SQL dedicada que compruebe el estado esperado y la versión en la misma escritura, sin actualizar otros campos de negocio.
+Validar que la liberación provenga de la sesión que adquirió el bloqueo. La versión no acredita propiedad y no basta si otra ruta puede cambiar el bloqueo sin incrementarla. Hasta verificar que todos los escritores del alcance respetan el mismo control, limitaría esta mejora a bloqueos adquiridos por el flujo actualizado.
+Resultado: reduce los bloqueos que deja una salida normal y no requiere modificar los dos procedimientos de listado. No recupera por sí sola los bloqueos tras un cierre abrupto, una caída o una pérdida de conexión. Para filas antiguas sin evidencia de propiedad, mantendría la revisión manual, no un barrido.
 
-**No quiero que inventes una regla de expiración ni que asumas que UPDATE_DT es la fecha de bloqueo.**
+3. Alternativa B: bloqueo renovable en SQL, recomendada para la limpieza automática
+Agregar una tabla de bloqueos de subtarea, sin necesidad de añadir columnas a TASK_TB. Guardaría el ID de la subtarea, un identificador único por adquisición, la sesión propietaria y las fechas UTC de adquisición, renovación y vencimiento. TASK_TB.LOCKED_IN seguiría siendo el indicador que consumen las listas.
 
-Todavía no modifiques archivos, procedimientos ni datos.
+Adquirir: crear el registro y poner LOCKED_IN = 'Y' en una sola transacción. Dos sesiones no pueden adquirir la misma subtarea. Si ya está en 'Y' y no tiene registro administrado, no asumir que está abandonada.
+Renovar: mientras la sesión conserve la edición, enviar una señal periódica. El servidor solo renueva el registro que corresponde a esa adquisición. La duración, la frecuencia y el margen para desconexiones requieren aprobación; no usaría UPDATE_DT ni fijaría un plazo por defecto. Una renovación perdida indica que el servidor dejó de recibir señales, no que la persona necesariamente dejó de trabajar.
+Liberar o guardar: validar en el servidor que la adquisición sigue vigente y pertenece a esa sesión. Si ya venció o fue reemplazada, rechazar el guardado con un conflicto y pedir que se vuelva a abrir la tarea. La validación y la escritura deben quedar protegidas juntas; un guardado antiguo no debe poder insertar notas, escribir historial o cambiar el estado después de que otra sesión adquirió la subtarea.
+Limpiar: en una sola transacción, volver a comprobar que el registro corresponde a la misma adquisición, sigue vencido y el indicador sigue en 'Y'; solo entonces poner 'N' y retirar el registro. Si hubo una renovación o una nueva adquisición, no tocar la tarea. Procesar lotes acotados, con auditoría y un interruptor para desactivar la limpieza.
+Dónde conectarlo a las listas. Usaría un servicio compartido por Auditoría y Team Manager que primero limpie los bloqueos vencidos dentro del alcance autorizado de la cola y la vista, y luego ejecute la consulta existente. No reutilizaría la salida del listado para buscar candidatos: ya excluye las filas en 'Y'. Los candidatos deben obtenerse con los mismos filtros de elegibilidad, pero buscando bloqueos administrados y vencidos. Hay que preservar las diferencias entre Auditoría, Pendientes y Team Manager, incluido el caso especial iSeries, sin dejar que ese caso amplíe el alcance de escritura autorizado.
 
-Quiero una propuesta técnica concreta, con las alternativas, sus riesgos y los cambios necesarios, para poder decidir cómo implementar la solución solicitada por Charles.
+Preferiría exponer dos acciones POST de refresco —o una acción compartida con una vista explícita— y conservar los GET actuales como consultas de solo lectura. Así, abrir o refrescar desde la UI puede limpiar y listar, pero una precarga, monitor o reintento de un GET no dispara escrituras. Si Charles requiere que las URLs GET actuales hagan la limpieza literalmente, eso sería una decisión explícita de compatibilidad: ambos métodos llamarían al mismo servicio antes del listado, con la escritura desactivada por defecto y documentada; no escondería el cambio dentro de los procedimientos de consulta.
 
-Explica todo en español sencillo y distingue qué está confirmado por el código de lo que requiere una decisión técnica o de negocio.
+Archivos y objetos afectados:
+
+Capa	Cambios propuestos
+SQL	Tabla y procedimientos nuevos para adquirir, renovar, liberar y limpiar bloqueos. Mantener TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP y TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP como lecturas; modificarlos solo si se extraen sus filtros a un objeto compartido para evitar que la selección y la limpieza diverjan.
+API / acceso a datos	TranTaskDetailController.cs para el refresco; ServiceCollectionExtensions.cs para registrar el servicio y el acceso a datos; TaskController.cs, TaskNoteController.cs y CsarRequestService.UpdateTaskStatusAsync para proteger las escrituras de edición. Si el acceso nuevo se incorpora a CSAR.Core, publicar y referenciar una versión nueva del paquete; no modificar el DLL instalado.
+UI / legacy	AuditRequestGrid.razor.cs y CsarApiProvider.cs para llamar al refresco; CallUpdate.razor.cs para conservar y renovar el identificador de adquisición. Si MortUpdateCall u otros consumidores legacy editan las mismas subtareas, deben respetar ese contrato o quedar fuera del alcance inicial de la limpieza.
+Si no se permite ningún cambio de esquema: un almacén persistente compartido por todas las réplicas podría guardar los bloqueos renovables, pero introduce un problema: puede fallar la escritura en SQL después de guardar el bloqueo externo, o al revés. Requeriría reconciliación ante fallos y que SQL pudiera rechazar las escrituras de una adquisición anterior. No usaría memoria local ni el vencimiento de una clave externa como orden directa de desbloqueo. Si no se puede garantizar esa coordinación, elegiría A sin limpieza automática, en lugar de sumar dos fuentes de estado que pueden contradecirse.
+
+4. Pruebas en QA sin afectar trabajo real
+Primero, solo observación. En QA compartido, ejecutar la selección de candidatos sin escribir y revisar qué identificaría y por qué. Para probar escrituras, usar una base aislada o limitar la operación mediante una lista explícita de IDs sintéticos; no confiar solo en que la cola sea de pruebas.
+Alternativa A: dos sesiones sobre una subtarea sintética. Verificar que Back/Cancelar libere únicamente lo adquirido por esa pantalla; que un fallo a mitad de carga intente liberar solo lo ya adquirido; y que una liberación tardía de la primera sesión no quite el bloqueo de la segunda. El cierre abrupto debe quedar documentado como caso no cubierto.
+Alternativa B: probar con un reloj controlado o registros sintéticos preparados. Una subtarea con renovación vigente debe seguir bloqueada aunque tenga UPDATE_DT antiguo. Una vencida debe volver a la lista correcta; una sin registro administrado no debe cambiar. Simular renovación y limpieza simultáneas, dos refrescos concurrentes y un guardado tardío: la renovación válida no se pierde, la limpieza no libera dos veces y el guardado anterior no deja notas, historial ni cambios de estado. Confirmar que no cambien tareas principales ni filas fuera del alcance.
+Si se evalúa el almacén externo: añadir reinicio de una réplica, caída del almacén y fallo entre las dos escrituras. Si no se puede demostrar que esos casos conservan el bloqueo o permiten recuperarlo sin liberar trabajo ajeno, no habilitar la limpieza.
+Decisiones antes de implementar: confirmar si el refresco puede usar POST, qué clientes comparten las subtareas, quién puede activar la limpieza y qué política de renovación, desconexión y vencimiento acepta negocio. Mi orden sería A primero para reducir el problema; B en modo observación y luego habilitada solo para bloqueos nuevos administrados. Los bloqueos anteriores no entrarían automáticamente en el barrido.
+
+No modifiqué archivos, procedimientos ni datos, y no ejecuté operaciones de desbloqueo.
