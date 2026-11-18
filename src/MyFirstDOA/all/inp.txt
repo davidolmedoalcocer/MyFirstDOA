@@ -1,53 +1,19 @@
-Estoy trabajando en la migración de usuarios y permisos de la aplicación CSAR desde el sistema anterior de seguridad ARO/Traxor hacia SSO.
+Ya ejecuté correctamente la consulta consolidada de ARO y obtuve las columnas ParentAroId, ChildAroId, DisplayName, AroLogin, LoginKey, AroTypeCode, LegacyRole y ProposedSsoRole.
 
-Charles, el desarrollador principal del proyecto, me pidió preparar un Excel con los usuarios actuales y los roles que tienen, para que Jayati y el equipo de negocio validen quién debe conservar acceso a la nueva aplicación.
+Ahora necesito completar la siguiente parte de la tarea que Charles me asignó: verificar qué usuarios ARO ya existen en SSO.
 
-Me compartió estas consultas que se ejecutan contra TRKDB01:
+Según tu investigación anterior, la información de SSO está en dbSSO-PROD, en dbo.User.
 
-```sql
-SELECT ARO_NM, LOGIN_ID, *
-FROM aro_xref_tb x
-JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
-WHERE PARENT_ARO_ID = 7836;
+Ayúdame a:
 
-SELECT ARO_NM, LOGIN_ID, *
-FROM aro_xref_tb x
-JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
-WHERE PARENT_ARO_ID = 7837;
+1. Preparar la consulta SQL de solo lectura necesaria para obtener los usuarios de SSO y compararlos con los registros ARO.
+2. Verificar cómo deben compararse AroLogin y ADLogin, sin asumir que dos cuentas con nombres parecidos corresponden a la misma persona.
+3. Obtener el resultado ExistsInSSO con los valores Yes, No o Not verified cuando no exista evidencia suficiente.
+4. Explicarme cómo unir los resultados de ambas bases de datos sin perder usuarios ni membresías ARO.
+5. Conservar las 968 membresías originales reportadas anteriormente, verificando nuevamente el total antes de generar el Excel.
 
-SELECT ARO_NM, LOGIN_ID, *
-FROM aro_xref_tb x
-JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
-WHERE PARENT_ARO_ID = 7838;
+No modifiques datos, permisos ni código. No ejecutes INSERT, UPDATE o DELETE.
 
-SELECT ARO_NM, LOGIN_ID, *
-FROM aro_xref_tb x
-JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
-WHERE PARENT_ARO_ID = 7839;
-```
+Indícame qué consultas debo ejecutar y en qué base de datos.
 
-Los grupos son:
-
-- 7836 = CSARMortCSUser
-- 7837 = CSARMortLSUser
-- 7838 = CSARMortManager
-- 7839 = CSARMortAdmin, que se mapeará a CSARMortManager
-
-**Necesito que me ayudes a entender y completar esta tarea.**
-
-1. Investiga en el código disponible cómo se utilizan actualmente estos roles.
-2. Explica qué representan las tablas aro_xref_tb y aro_tb y qué información devolverían las consultas.
-3. Ayúdame a preparar una consulta SQL de solo lectura que obtenga los usuarios y roles necesarios para generar el Excel.
-4. Explica cómo comprobar si estos usuarios ya existen en SSO y cómo se relacionan con User y UserEntitlement.
-5. Investiga si existe código o algún script anterior de migración de usuarios desde ARO hacia SSO.
-6. Indica qué columnas debería incluir el Excel para que negocio pueda validar los accesos.
-7. Explica cómo detectar usuarios duplicados o con varios roles sin perder información.
-8. Indica qué validaciones debo realizar antes de entregar el archivo a Charles.
-
-No modifiques código, no ejecutes scripts y no realices INSERT, UPDATE o DELETE.
-
-Si las tablas o el repositorio de SSO no están disponibles, indícalo claramente.
-
-Responde en español, conserva los nombres técnicos originales y explica los pasos de manera práctica.
-
-Comienza explicándome cómo funciona el mapeo de roles y qué consulta SQL debería revisar primero.
+Vamos paso a paso. Primero quiero obtener correctamente la información de SSO.
