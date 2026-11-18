@@ -1,33 +1,36 @@
-LockTimeoutMinutes puede configurarse por ambiente sin usar EnvironmentDetector. Para LOCK_USER, encontré la identidad que usa Blazor, pero no un mecanismo confirmado que la entregue validada a la API. Y en el legacy hay una diferencia importante: Mortgage adquiere el bloqueo al editar; Auto puede liberar una subtarea que solo registró en sesión, sin haberla bloqueado en esa pantalla.
+Hey Charles, I've been looking into the stale locking issue, and I'd like to propose the following approach.
 
-1. Configuración de LockTimeoutMinutes
-Tema	Hallazgo confirmado	Reutilización y cambio posible	No verificado
-Configuración por ambiente	La API y Blazor usan WebApplication.CreateBuilder y tienen appsettings.json y archivos para Development, QA, Staging y Production. La API registra opciones tipadas en ServiceCollectionExtensions.cs; Blazor hace lo propio en Program.cs.	LockTimeoutMinutes podría ser una opción numérica de la API, por ejemplo TaskLocking:LockTimeoutMinutes, configurada en los appsettings de la API o mediante TaskLocking__LockTimeoutMinutes en el despliegue. El patrón existente de opciones permite validarla y pasar el valor a SQL si la limpieza se ejecuta allí.	No encontré la clave implementada ni comprobé qué variables aplica el despliegue real.
-EnvironmentDetector	Inspeccioné el ensamblado 2.0.2 que referencia la API. GetResource no detecta el ambiente por su cuenta: lee IHostEnvironment.EnvironmentName, traduce Development → DEV, QA → QA, Staging → UAT y Production → PROD, y consulta por HTTP el recurso solicitado. Devuelve texto y lo guarda en memoria según CacheRefreshIntervalInMinutes. En CSAR se usa para resolver recursos como URLs y conexiones.	Técnicamente podría devolver un plazo si se registra como recurso y se convierte y valida al leerlo. Eso añadiría una consulta remota y una caché para un valor que la API también puede leer directamente de sus opciones. CacheRefreshIntervalInMinutes no es un plazo de bloqueo.	No encontré un recurso existente para LockTimeoutMinutes ni evidencia de que los plazos de negocio se administren allí.
-Configuración centralizada	La API obtiene SettingsData de ProcessMonitorService.GetSystemFunctionSettingData(SystemFunctionId). DatabaseOptionsSetup.cs y MailOptionsSetup.cs aplican valores alternativos sobre la configuración local mediante SettingsHelper.GetOverride. Blazor usa un patrón similar en SettingsProvider.cs.	Si se necesita administrar el plazo centralmente, se puede seguir ese patrón y validar el valor numérico. No es lo mismo que registrarlo en EnvironmentDetector.	No confirmé quién administraría la clave ni si se necesita cambiar el plazo sin reiniciar. En la API revisada, SettingsData se registra como singleton; no vi recarga automática de ese objeto.
-2. Identidad: del portal a la API
-Tramo	Hallazgo confirmado	Reutilización o cambio necesario	No verificado
-Portal → Blazor	App.razor integra los callbacks del portal; Login.razor espera la cookie del portal. Lo que usa el servidor Blazor es esa cookie: AuthStateProvider.GetAuthenticationStateAsync lee su JWT, mapea LoginName a NameIdentifier y Operations a claims de la UI. ReadJwtToken solo interpreta el token: ese método no valida firma ni vigencia y usa "CSAR" si falta LoginName.	LoginName es el dato existente que podría alimentar LOCK_USER si procede de una identidad validada. El fallback "CSAR" no identifica a un operador.	No confirmé dónde se valida el token del portal fuera de este componente.
-Blazor → API	CallUpdate.GetOperatorLoginName obtiene el claim al guardar y lo manda como dato en el cuerpo de notas y solicitudes de estado. CsarApiProvider.UpdateTaskLock solo manda taskId, lockedIndicator y, si aplica, taskVersion. El constructor de CsarApiProvider crea su propio HttpClient con BaseAddress; no agrega una credencial de usuario ni reenvía la cookie entrante.	CsarApiProvider es el punto común de las llamadas CSAR. Aunque Program.cs registra AddHttpClient y LoggingHandler, el proveedor no se construye con un cliente de esa fábrica ni con ese handler. El CorrelationIdDelegatingHandler de la API es saliente, para TaskCommonApiClient, y solo propaga correlación.	No encontré un handler central conectado a las solicitudes de CsarApiProvider que propague la identidad. El UserName del cuerpo no prueba quién hizo la solicitud.
-Entrada a la API / gateway	En el Program.cs de la API y en TaskController.UpdateTaskLock no encontré validación del operador para esta ruta. El pipeline DS.CSAR.k8s.yml muestra construcción y publicación de imagen, no la configuración de autenticación de un gateway.	Antes de plantear otra autenticación, confirmar si el SSO o gateway existente entrega una identidad validada del operador a la API. Si lo hace, esa identidad podría reutilizarse. Autenticar solo al servicio Blazor no identifica al operador.	No pude verificar el ingress/gateway desplegado, sus políticas, qué identidad entrega ni si se puede acceder a la API por otra ruta. No hay evidencia suficiente para tomar hoy LOCK_USER de un valor que ya llegue validado a la API.
-3. Cuándo se cargarían y limpiarían las listas
-El recorrido exacto es: AuditTree.OnQueueSelected → AuditForm.razor o TeamManager.razor → AuditRequestGrid.OnParametersSetAsync. Sin QueueId o LenderId, no consulta. Con ambos:
+**Database changes (TASK_TB)**
 
-Audit: CsarApiProvider.GetTaskListDetails hace GET /TranTaskDetail/GetTaskListDetails, con id=1 para Auditoría o id=2 para Pendientes. SQL ejecuta TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP.
-Team Manager: CsarApiProvider.GetTeamMgrTaskListDetails hace GET /TranTaskDetail/GetTeamMgrTaskListDetails, con id=0. SQL ejecuta TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP.
-Al seleccionar una fila, ambas páginas sustituyen la grilla por CallUpdate. Al volver, la vuelven a montar con la cola seleccionada y se consulta de nuevo. Por tanto, si se integra en la carga actual, la limpieza puede ejecutarse al seleccionar cola, al volver a la lista y en otras nuevas cargas del componente, no solo cuando el usuario pide un refresco manual.
+Add four fields:
+- `LOCK_USER`: User who acquired the lock.
+- `LOCK_START_DT`: When the lock was acquired.
+- `LOCK_END_DT`: When the lock was released.
+- `LOCK_ID`: Unique identifier for each lock acquisition.
 
-Alternativa	Qué se reutiliza y qué cambia	Implicación
-Limpiar dentro de los GET actuales	Se mantienen AuditRequestGrid.razor.cs y las URLs. Ambas acciones de TranTaskDetailController.cs llamarían a una limpieza compartida antes del repositorio de listado.	Menor cambio en clientes, pero una operación que hoy es de lectura pasaría a modificar datos. Una precarga o un reintento podría dispararla; una respuesta servida desde caché podría evitar que se ejecute.
-Usar POST para limpiar y listar	Se preservan los GET de lectura. Haría falta una acción de refresco en TranTaskDetailController.cs y cablearla en CsarApiProvider.cs y en la grilla.	El efecto de escritura queda explícito. Si la grilla hace el POST automáticamente en OnParametersSetAsync, seguirá limpiando con la misma frecuencia; para limitarlo a un refresco manual hay que cambiar el disparador.
-En ambos casos, la selección de candidatos debe consultar las subtareas bloqueadas directamente: los listados ya las excluyen. Debe respetar los filtros de Auditoría, Pendientes y Team Manager, incluido iSeries, sin dejar que los parámetros del cliente amplíen el alcance autorizado de escritura. La liberación tendría que comprobar de nuevo el vencimiento y el mismo LOCK_ID en la escritura. Si solo se limpia al listar, superar el plazo no cambia por sí solo LOCKED_IN; queda por definir si un guardado debe rechazarse desde que vence el plazo o solo después de que se libera el bloqueo.
+**Frontend (Blazor)**
+- `CsarApiProvider.cs`: Include the current `LoginName` in a common HTTP request header.
+- `CallUpdate.razor / CallUpdate.razor.cs`: Store the `LOCK_ID` returned by the API when acquiring a lock.
+- On Back/Cancel, call the API to release the current lock.
+- On Save, send the `LOCK_ID` along with the resolution and comments so the API can validate the lock before saving.
+- **The UI will not generate or send lock timestamps.**
 
-4. Legacy: operaciones que hay que revisar o adaptar
-Operación localizada	Comportamiento confirmado	Qué tendría que adaptarse
-Mortgage: adquisición — MortUpdateCall.ShowHideTasks → UpdateTaskLock	Cuando forCall es falso, comprueba el indicador, persiste 'Y' para la subtarea y registra su ID en SessionMgr.TranTaskId. TaskFactory.Update llama a TASK_TB_USP con @INPUT_USER_ID = SecurityContext.GetCurrentUser(). Ese método también puede devolver la identidad Windows del proceso; el parámetro no garantiza por sí solo un operador verificado.	Registrar LOCK_USER, LOCK_START_DT y LOCK_ID al adquirir y guardar en sesión el identificador de esa adquisición, no solo el ID de tarea.
-Mortgage y Auto: resolución — MortUpdateCall.UpdateTaskStatus y UpdateCall.UpdateTaskStatus	Ambos persisten 'N' para la subtarea al cambiar su estado. En Auto, UpdateCall.ShowHideTasks registra IDs en sesión, pero no adquiere el bloqueo en ese método.	Si editan las mismas subtareas administradas por la nueva UI, exigir la adquisición correspondiente al guardar y liberar. En Auto, registrar un ID de tarea en sesión no puede sustituir la adquisición ni dar permiso para liberar.
-Limpieza de sesión y navegación — CommonRoutines.UnLockAuditTask	Relee cada ID de SessionMgr.TranTaskId y cambia a 'N' si la fila está en 'Y', sin comprobar quién adquirió el bloqueo. Lo invocan las rutinas de limpieza de Auditoría, Team Manager y sesión común; también AuditTree y MortAuditTree. Global.Session_End está vacío.	Conservar el disparador de limpieza, pero liberar solo una adquisición confirmada de esa sesión. La navegación legacy no es una garantía contra cierres abruptos.
-Toma de trabajo por SQL — UserAccountInfoFactory.GetUserCallInfoByTaskType y GetTaskByQueue	Sus procedimientos, TASK_TB_GET_WORK_BY_TASK_TYPE_CD_USP y TASK_TB_GET_WORK_BY_QUEUE_USP, ponen 'Y' directamente sobre la subtarea. La llamada de UpdateCall.Page_Load a GetTaskByQueue está comentada. No confirmé consumidores activos de esos procedimientos en el alcance revisado.	Si un consumidor activo puede tomar las mismas subtareas, adaptar esa adquisición SQL y devolverle el LOCK_ID, o excluir esas subtareas del alcance. Cambiar solo el controlador de la API no cubre estas escrituras directas.
-No conté como desbloqueos de subtarea las altas que inicializan tareas con 'N', ni Call.aspx.UnLock, cuya llamada revisada usa el ID de la tarea principal. El inventario cubre el código y los objetos disponibles; no confirma qué binarios legacy, jobs o consumidores externos están activos en cada ambiente.
+**API**
+- `TaskController.UpdateTaskLock`: Record `LOCK_USER` and generate/return `LOCK_ID` when acquiring a lock. Validate `LOCK_ID` when releasing it.
+- `TaskController.UpdateTaskStatus / CsarRequestService.UpdateTaskStatusAsync`: Validate that the current user and `LOCK_ID` match the active lock before saving notes, history, or resolution. Handle the validation and related writes in a single transaction, then release the lock.
+- `TranTaskDetailController.cs`: Run a shared stale-lock cleanup before returning results from `GetTeamMgrTaskListDetails` and `GetTaskListDetails`.
 
-Para revisar con Charles y Jayati, quedan por confirmar el origen validado de la identidad en el despliegue, cómo se administrará el plazo, qué llamadas deben disparar la limpieza y qué escritores legacy comparten las subtareas. No seleccioné una alternativa ni un plazo, y no modifiqué código, configuración ni bases de datos.
+**SQL and configuration**
+- Update the locking/unlocking SQL operations to maintain the new fields.
+- **SQL Server generates `LOCK_START_DT` and `LOCK_END_DT` using the database time standard, rather than timestamps supplied by Blazor.**
+- Use `LOCK_START_DT` to determine lock age, with a configurable `TaskLocking:LockTimeoutMinutes` setting in the API's `appsettings`.
+- Evaluate expiration using the same database time reference.
+- When cleanup runs, release only qualifying expired locks and record `LOCK_END_DT`.
+
+This would let us identify who locked a task, when the lock started and ended, and calculate how long it remained locked, using consistent database timestamps.
+
+It would also prevent an older CallUpdate session from saving changes after its lock has been released or acquired by another user.
+
+I haven't made any code or database changes yet. This is a proposed implementation for your review.
+
+What do you think about this approach?
