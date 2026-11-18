@@ -1,15 +1,16 @@
-Necesito aclarar algo específico sobre el mecanismo de locking de CSAR.
+No: TASK_TB.USER_NM no identifica de forma confiable al usuario que bloqueó una subtarea. En el flujo de CallUpdate que revisé, al adquirir el bloqueo se guarda el login SQL bajo el que la API ejecuta la actualización, no el usuario autenticado de Blazor como tal.
 
-Cuando una subtarea tiene TASK_TB.LOCKED_IN = 'Y', ¿podemos identificar qué usuario adquirió ese bloqueo?
+Qué se escribe al adquirir el bloqueo
+CallUpdate.ShowHideTasks llama a CsarApiProvider.UpdateTaskLock con el ID de la subtarea, 'Y' y la versión. El PUT no envía el nombre del operador.
+TaskController.UpdateTaskLock lee la fila, asigna el indicador y la versión, y llama a TaskRepo.UpdateAsync. El controlador no toma el usuario autenticado para esta escritura.
+Verifiqué en CSAR.Core 1.0.4 que TaskRepo.UpdateAsync ejecuta dbo.TASK_TB_USP sin enviar @INPUT_USER_ID. Al quedar ese parámetro en NULL, el procedimiento llama a dbo.CORP_GETLOGIN_SP, que obtiene SUSER_SNAME(), elimina el prefijo de dominio si existe y toma hasta 32 caracteres. Ese resultado es el que se escribe en USER_NM.
+La cadena de conexión se configura para la API; no confirmé el nombre concreto del login en el despliegue. Si la API usa una cuenta compartida, distintos operadores pueden dejar el mismo USER_NM.
 
-Investiga el flujo completo desde CallUpdate hasta TaskController.UpdateTaskLock, TaskRepo.UpdateAsync y TASK_TB_USP.
+Qué significa USER_NM después
+Sí, puede cambiar mientras LOCKED_IN sigue en 'Y'. dbo.TASK_TB_USP conserva el indicador si no se le pasa otro valor, pero vuelve a escribir USER_NM y UPDATE_DT en cada actualización exitosa. Si otro consumidor actualiza la fila con un @INPUT_USER_ID explícito, o desde otro login SQL, puede reemplazar USER_NM sin liberar el bloqueo.
 
-Confirma:
+No encontré en el código ni en el esquema revisado de CSAR_PROD un campo o tabla que conserve el propietario original de cada bloqueo. TASK_HISTORY_TB.OPERATOR_LOGIN_NM registra al operador de un paso de trabajo, no a quien adquirió el bloqueo. VERSION_CT tampoco identifica al propietario.
 
-1. ¿Qué usuario se escribe en TASK_TB.USER_NM cuando se adquiere el bloqueo?
-2. ¿Ese valor corresponde al usuario autenticado que abrió CallUpdate?
-3. ¿USER_NM puede cambiar mientras LOCKED_IN continúa en 'Y'?
-4. ¿Existe otro campo o tabla que conserve de manera confiable el propietario original del bloqueo?
-5. ¿Podemos utilizar USER_NM para identificar y mostrar quién tiene bloqueada una subtarea, o solo como referencia de la última actualización?
+Para la UI: mostraría «Subtarea bloqueada», no «Bloqueada por USER_NM». Si el dato se muestra para diagnóstico, lo etiquetaría como «Usuario registrado en la actualización», aclarando que puede ser un login técnico. No lo usaría para autorizar un desbloqueo.
 
-No modifiques código ni datos. Responde con hechos comprobados en el código y SQL, sin asumir comportamientos.
+No modifiqué código ni datos; solo leí código, el ensamblado y definiciones SQL.
