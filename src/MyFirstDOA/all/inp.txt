@@ -1,16 +1,42 @@
-No: TASK_TB.USER_NM no identifica de forma confiable al usuario que bloqueó una subtarea. En el flujo de CallUpdate que revisé, al adquirir el bloqueo se guarda el login SQL bajo el que la API ejecuta la actualización, no el usuario autenticado de Blazor como tal.
+Quiero evaluar una propuesta concreta y sencilla para resolver el problema de stale locks que Charles me asignó en CSAR.
 
-Qué se escribe al adquirir el bloqueo
-CallUpdate.ShowHideTasks llama a CsarApiProvider.UpdateTaskLock con el ID de la subtarea, 'Y' y la versión. El PUT no envía el nombre del operador.
-TaskController.UpdateTaskLock lee la fila, asigna el indicador y la versión, y llama a TaskRepo.UpdateAsync. El controlador no toma el usuario autenticado para esta escritura.
-Verifiqué en CSAR.Core 1.0.4 que TaskRepo.UpdateAsync ejecuta dbo.TASK_TB_USP sin enviar @INPUT_USER_ID. Al quedar ese parámetro en NULL, el procedimiento llama a dbo.CORP_GETLOGIN_SP, que obtiene SUSER_SNAME(), elimina el prefijo de dominio si existe y toma hasta 32 caracteres. Ese resultado es el que se escribe en USER_NM.
-La cadena de conexión se configura para la API; no confirmé el nombre concreto del login en el despliegue. Si la API usa una cuenta compartida, distintos operadores pueden dejar el mismo USER_NM.
+Jayati pidió mantener la solución simple y descartó utilizar SignalR.
 
-Qué significa USER_NM después
-Sí, puede cambiar mientras LOCKED_IN sigue en 'Y'. dbo.TASK_TB_USP conserva el indicador si no se le pasa otro valor, pero vuelve a escribir USER_NM y UPDATE_DT en cada actualización exitosa. Si otro consumidor actualiza la fila con un @INPUT_USER_ID explícito, o desde otro login SQL, puede reemplazar USER_NM sin liberar el bloqueo.
+Mi propuesta es aprovechar la tabla TASK_TB, que actualmente contiene LOCKED_IN, y agregar:
 
-No encontré en el código ni en el esquema revisado de CSAR_PROD un campo o tabla que conserve el propietario original de cada bloqueo. TASK_HISTORY_TB.OPERATOR_LOGIN_NM registra al operador de un paso de trabajo, no a quien adquirió el bloqueo. VERSION_CT tampoco identifica al propietario.
+- LOCK_USER: usuario autenticado que adquirió el bloqueo.
+- LOCK_START_DT: fecha y hora en que comenzó.
+- LOCK_END_DT: fecha y hora en que terminó.
+- LOCK_ID: identificador único por adquisición, solo si resulta necesario para distinguir sesiones del mismo usuario.
 
-Para la UI: mostraría «Subtarea bloqueada», no «Bloqueada por USER_NM». Si el dato se muestra para diagnóstico, lo etiquetaría como «Usuario registrado en la actualización», aclarando que puede ser un login técnico. No lo usaría para autorizar un desbloqueo.
+El objetivo sería:
 
-No modifiqué código ni datos; solo leí código, el ensamblado y definiciones SQL.
+1. Registrar quién bloquea una subtarea y cuándo.
+2. Permitir que GetTeamMgrTaskListDetails y GetTaskListDetails liberen bloqueos que hayan superado un plazo aprobado.
+3. Cuando un usuario intente guardar, comprobar que sigue teniendo el bloqueo correspondiente.
+4. Impedir que una pantalla antigua guarde notas, resoluciones o historial después de perder el bloqueo.
+5. Mantener la implementación lo más sencilla posible y reutilizar componentes existentes.
+
+**Necesito que analices el código real y respondas:**
+
+1. ¿Qué archivos, métodos, endpoints y stored procedures habría que modificar?
+2. ¿Dónde se puede obtener actualmente el usuario autenticado de forma confiable?
+3. ¿Podemos centralizar la adquisición y liberación de bloqueos para evitar duplicar lógica?
+4. ¿Es suficiente validar LOCK_USER y LOCKED_IN, o el código demuestra que necesitamos LOCK_ID?
+5. ¿Cómo garantizar que se valide la propiedad del bloqueo antes de guardar notas, resoluciones e historial?
+6. ¿Qué operaciones legacy tendrían que adaptarse para mantener consistentes los nuevos campos?
+7. ¿Cómo integrar la limpieza con los dos endpoints que Charles mencionó?
+8. ¿Qué riesgos y limitaciones tendría esta solución?
+9. ¿Cuál sería el conjunto mínimo de cambios para implementarla?
+
+No modifiques archivos, tablas, stored procedures ni datos.
+
+No ejecutes operaciones de escritura.
+
+No inventes un tiempo de expiración ni elijas una solución por mí.
+
+Distingue claramente los hallazgos verificados del código de las propuestas técnicas.
+
+**Quiero como resultado un plan concreto de implementación, con los archivos afectados y sus dependencias, para revisarlo con Charles antes de comenzar a programar.**
+
+Responde en español y conserva los nombres técnicos originales.
