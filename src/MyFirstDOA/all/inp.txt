@@ -1,36 +1,11 @@
-Hey Charles, I've been looking into the stale locking issue, and I'd like to propose the following approach.
+Hey Charles, I understand we need to keep the locking changes simple and compatible with legacy.
 
-**Database changes (TASK_TB)**
+I was thinking we could potentially reuse TASK_TB.UPDATE_DT along with LOCKED_IN to identify stale tasks, without adding new columns.
 
-Add four fields:
-- `LOCK_USER`: User who acquired the lock.
-- `LOCK_START_DT`: When the lock was acquired.
-- `LOCK_END_DT`: When the lock was released.
-- `LOCK_ID`: Unique identifier for each lock acquisition.
+For example, we could check for tasks where LOCKED_IN = 'Y' and UPDATE_DT is older than a configurable timeout, using database time.
 
-**Frontend (Blazor)**
-- `CsarApiProvider.cs`: Include the current `LoginName` in a common HTTP request header.
-- `CallUpdate.razor / CallUpdate.razor.cs`: Store the `LOCK_ID` returned by the API when acquiring a lock.
-- On Back/Cancel, call the API to release the current lock.
-- On Save, send the `LOCK_ID` along with the resolution and comments so the API can validate the lock before saving.
-- **The UI will not generate or send lock timestamps.**
+One limitation I found is that UPDATE_DT also changes during other task updates, so this would measure time since the last update, not necessarily when the lock was originally acquired.
 
-**API**
-- `TaskController.UpdateTaskLock`: Record `LOCK_USER` and generate/return `LOCK_ID` when acquiring a lock. Validate `LOCK_ID` when releasing it.
-- `TaskController.UpdateTaskStatus / CsarRequestService.UpdateTaskStatusAsync`: Validate that the current user and `LOCK_ID` match the active lock before saving notes, history, or resolution. Handle the validation and related writes in a single transaction, then release the lock.
-- `TranTaskDetailController.cs`: Run a shared stale-lock cleanup before returning results from `GetTeamMgrTaskListDetails` and `GetTaskListDetails`.
+We would also need to consider what happens if a user is still in CallUpdate when the lock is released.
 
-**SQL and configuration**
-- Update the locking/unlocking SQL operations to maintain the new fields.
-- **SQL Server generates `LOCK_START_DT` and `LOCK_END_DT` using the database time standard, rather than timestamps supplied by Blazor.**
-- Use `LOCK_START_DT` to determine lock age, with a configurable `TaskLocking:LockTimeoutMinutes` setting in the API's `appsettings`.
-- Evaluate expiration using the same database time reference.
-- When cleanup runs, release only qualifying expired locks and record `LOCK_END_DT`.
-
-This would let us identify who locked a task, when the lock started and ended, and calculate how long it remained locked, using consistent database timestamps.
-
-It would also prevent an older CallUpdate session from saving changes after its lock has been released or acquired by another user.
-
-I haven't made any code or database changes yet. This is a proposed implementation for your review.
-
-What do you think about this approach?
+Would this approach fit what you had in mind for GetTeamMgrTaskListDetails and GetTaskListDetails?
