@@ -1,16 +1,39 @@
-En features/csar-stale-lock-cleanup agregué y validé la configuración del timeout. La limpieza automática no está implementada ni activa.
+Ahora que ya tienes acceso a las definiciones SQL de:
 
-Confirmé las firmas de ambos endpoints y que TranTaskDetailRepo usa la conexión de CSAR mediante DatabaseOptions. El paquete compilado CSAR.Core 1.0.4 confirma los nombres de TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP y TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP, pero no encontré sus definiciones SQL en el repositorio, una copia de CSAR en LocalDB ni una operación de mass unlock reutilizable en la API. Sin los filtros verificados de Audit, Pending y Team Manager, no preparé un script de desbloqueo ni conecté una operación de limpieza a los endpoints. No hay un UPDATE global.
+- `TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP`
+- `TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP`
 
-Archivos modificados
-Archivo	Cambio
-appsettings.json	Agrega TaskLocking:LockTimeoutMinutes con valor null, sin timeout predeterminado.
-TaskLockingOptions.cs	Define el timeout como un entero nullable.
-ServiceCollectionExtensions.cs	Registra las opciones y valida que el valor, si se configura, sea positivo.
-TaskLockingOptionsTests.cs	Prueba el valor ausente, null en JSON, valores positivos, cero y negativos.
-README.md	Documenta la configuración y los casos de prueba SQL pendientes: límite del timeout, alcance por cola y vista, y actualización concurrente del bloqueo.
-Validación y pendientes
-Compilación: exitosa, con 0 errores y 10 advertencias en código no modificado.
-Pruebas locales: 8 aprobadas: 6 de configuración y 2 de regresión de los endpoints. Verifiqué que TranTaskDetailController.cs conserva las consultas originales. Ningún endpoint invoca limpieza en este estado.
-Para revisar con Charles: obtener las definiciones SQL de ambos procedimientos, confirmar la convención horaria de UPDATE_DT y determinar si la lógica de mass unlock existente puede respetar los mismos filtros. Con eso se podrá preparar el script y ejecutar los casos de elegibilidad en una base local aislada.
-No modifiqué CSAR.Core, no ejecuté desbloqueos ni escrituras en bases compartidas y no hice commit, push, merge ni deployment.
+Necesito que continúes y completes los cambios locales en la rama `features/csar-stale-lock-cleanup`.
+
+Ya implementaste `TaskLockingOptions` y la configuración del timeout. No repitas ese trabajo.
+
+**Implementa lo siguiente:**
+
+1. Crear un stored procedure compartido para liberar subtareas con `LOCKED_IN = 'Y'` y `UPDATE_DT` anterior al tiempo configurable.
+2. Utilizar los filtros reales de los procedimientos existentes para limitar el desbloqueo a las subtareas elegibles de Audit, Pending y Team Manager.
+3. Agregar la operación de acceso a datos necesaria para ejecutar ese stored procedure.
+4. Modificar únicamente los métodos `GetTaskListDetails` y `GetTeamMgrTaskListDetails` dentro de `TranTaskDetailController.cs`, para invocar la limpieza antes de obtener sus listas.
+5. Mantener sin cambios la lógica actual de consulta de tareas.
+6. Reutilizar `TaskLocking:LockTimeoutMinutes` y no ejecutar la limpieza si el valor no está configurado.
+
+**Restricciones:**
+
+- No agregar columnas a `TASK_TB`.
+- No modificar Blazor ni componentes legacy.
+- No ejecutar procedimientos de desbloqueo en QA o PROD.
+- No hacer commit, push ni deployment.
+- No modificar endpoints distintos de los dos indicados.
+- Utilizar la hora de SQL Server, verificando que sea consistente con `UPDATE_DT`.
+- No inventar filtros ni ampliar el alcance del desbloqueo.
+
+**Esta vez necesito cambios concretos en los archivos locales, no solamente un análisis o una propuesta.**
+
+Cuando termines, compila la solución, ejecuta las pruebas locales disponibles y muéstrame:
+
+- Archivos creados y modificados.
+- Stored procedure de limpieza.
+- Cambios en los dos endpoints.
+- Resultado de compilación y pruebas.
+- Cualquier impedimento técnico real que haya evitado completar alguna parte.
+
+Si encuentras un impedimento que pueda causar desbloqueos incorrectos, no improvises una solución: identifica el punto exacto y conserva los cambios seguros que sí puedas completar.
