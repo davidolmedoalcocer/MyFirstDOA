@@ -1,19 +1,34 @@
-La explicación anterior es demasiado complicada para mí. Necesito que me ayudes a completar la tarea de forma práctica y sencilla.
+Estoy investigando el problema de locking/unlocking de CSAR que me asignó Charles.
 
-Ya ejecuté la consulta ARO y tengo las 968 membresías correspondientes a 762 cuentas.
+Encontré un script SQL que consulta registros bloqueados en dbo.TASK_TB utilizando LOCKED_IN = 'Y', UPDATE_DT y USER_NM.
 
-No quiero copiar manualmente 762 usuarios dentro de un bloque VALUES.
+Charles me indicó lo siguiente:
 
-Necesito que investigues si, con las conexiones disponibles a TRKDB01_PROD y dbSSO-PROD, existe una forma de comparar automáticamente los usuarios sin escribirlos uno por uno.
+"We need to unlock stale items similar to our script we submitted a few times already as part of these actions: GetTeamMgrTaskListDetails or GetTaskListDetails."
 
-Primero verifica si es posible hacerlo directamente mediante SQL o si las bases requieren exportar e importar los resultados.
+También mencionó que el comportamiento de locking podría ser diferente en la aplicación legacy, especialmente cuando se entra a CallUpdate.
 
-Si se necesita utilizar Excel o Power Query, explícame cómo hacerlo paso a paso, indicando exactamente qué debo seleccionar.
+**Necesito que investigues lo siguiente utilizando el código y los objetos de base de datos disponibles:**
 
-No modifiques datos, código ni permisos. No ejecutes consultas de escritura.
+1. Explícame exactamente qué hace el script SQL que te compartí. Revisa especialmente la condición UPDATE_DT < DATEADD(hour, 1, GETDATE()).
+2. Confirma qué significa LOCKED_IN y qué representa UPDATE_DT en dbo.TASK_TB según la implementación real.
+3. Identifica dónde se establece LOCKED_IN = 'Y' y dónde se cambia nuevamente para desbloquear una tarea.
+4. Localiza GetTeamMgrTaskListDetails y GetTaskListDetails. Confirma si son stored procedures, métodos de la API u otro tipo de operación.
+5. Identifica qué tablas utiliza cada operación y cómo se relacionan con el mecanismo de locking.
+6. Busca si existe un script anterior que hayan utilizado para desbloquear stale items. Si no lo encuentras, indícalo.
+7. Investiga cómo se determina actualmente que una tarea tiene un bloqueo obsoleto.
+8. Revisa si el código legacy disponible contiene mecanismos adicionales de desbloqueo relacionados con CallUpdate.
 
-No me des todas las instrucciones de golpe.
+**Importante:**
 
-**Quiero que me indiques únicamente el siguiente paso concreto que debo ejecutar. Cuando lo termine, te compartiré el resultado y continuamos.**
+- No modifiques código ni stored procedures.
+- No ejecutes UPDATE, DELETE ni scripts de desbloqueo.
+- No asumas que TASK_TB es la única tabla involucrada.
+- No asumas que UPDATE_DT indica necesariamente cuándo comenzó el bloqueo.
+- No inventes el tiempo necesario para considerar un bloqueo obsoleto.
+- Indica los archivos, métodos y stored procedures reales que encuentres.
+- Separa los comportamientos confirmados de los que todavía no puedes verificar.
 
-Explícame todo en español sencillo y evita terminología técnica innecesaria.
+Quiero comprender primero cómo funciona actualmente el locking para después determinar qué cambios son necesarios.
+
+**Comienza únicamente identificando dónde se bloquean y desbloquean las tareas en la implementación actual. Explícamelo en español, paso a paso.**
