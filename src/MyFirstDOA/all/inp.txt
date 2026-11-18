@@ -1,13 +1,32 @@
-En el código revisado, abrir CallUpdate desde Auditoría o Team Manager solicita el bloqueo de la subtarea transaccional, no el de la tarea principal del CSAR. El desbloqueo depende de cómo se guarda o se sale de la pantalla, y ahí Blazor y el legacy se comportan de forma distinta.
+Gracias. Ahora entiendo que las tareas principales y las subtareas pueden tener mecanismos diferentes de locking.
 
-1. Blazor: dónde se solicita el bloqueo y el desbloqueo
-Al abrir desde Auditoría o Team Manager. AuditForm.razor y TeamManager.razor pasan EnableResolutions=true. En ShowHideTasks, el componente lee la subtarea: si LockedIndicator == "Y", no muestra esa subtarea para edición; si no, llama a UpdateTaskLock con el ID de la subtarea, "Y" y su versión. El proveedor envía un PUT a Tasks/UpdateTaskLock.
-Al guardar con resoluciones. HandleSubmitAsync llama a CreateTaskNote por cada subtarea y luego a UpdateCall para la tarea principal. Esa rama no envía un "N" explícito desde Blazor. No encontré la implementación del servidor que atiende esas rutas en el código disponible, así que no puedo confirmar si al guardar se libera la subtarea ni qué procedimiento ejecuta la API.
-Al guardar desde Call Search, sin resoluciones. CallSearch.razor no habilita resoluciones. En esa rama, la pantalla no solicita el bloqueo de las subtareas al abrir; al guardar, sí envía explícitamente UpdateTaskLock(CsarTaskId, "N"), sin versión, para la tarea principal. El botón Back solo invoca el callback de navegación; no encontré una llamada de desbloqueo asociada a ese botón.
-2. Legacy: dónde sí se confirma la escritura
-Bloqueo de la subtarea al editar en Mortgage. En MortUpdateCall.ShowHideTasks, cuando forCall es falso, el control comprueba el indicador, pide "Y" con el ID y la versión de la subtarea y registra su ID en SessionMgr.TranTaskId. MortUpdateCall.UpdateTaskLock persiste el cambio mediante TaskFactory.Update. Confirmé en CSAR_PROD que dbo.TASK_TB_USP escribe el valor recibido en dbo.TASK_TB.LOCKED_IN y exige que coincidan TASK_ID y VERSION_CT.
-Desbloqueo al resolver o guardar. MortUpdateCall.UpdateTaskStatus y UpdateCall.UpdateTaskStatus persisten "N" al actualizar el estado de la subtarea. El guardado de Mortgage también persiste "N" para la tarea principal al actualizar su prioridad.
-Desbloqueo al limpiar la sesión o salir de la página. CommonRoutines.UnLockAuditTask recorre los IDs registrados en sesión y persiste "N" si siguen en "Y". Además, Call.aspx intenta llamar a Call.UnLock desde onbeforeunload, usando el ID y la versión de la tarea principal. Eso no demuestra que esa página haya adquirido el bloqueo: la carga usa GetCallAccountInfoByID, que llama a dbo.CSAR_LOAN_SEARCH_TB_ACCOUNT_INFO_SSP. Verifiqué que ese procedimiento lee el indicador, pero no lo cambia.
-Otras rutas de bloqueo confirmadas en SQL: dbo.TASK_TB_LOCK_CSAR_USP sí escribe "Y" para la tarea principal si está libre o si coincide USER_NM; es la ruta de GetUserAccountInfoByID, no la consulta de cuenta mencionada arriba. dbo.TASK_TB_GET_WORK_BY_QUEUE_USP y dbo.TASK_TB_GET_WORK_BY_TASK_TYPE_CD_USP también escriben "Y", pero sobre la subtarea que toman para trabajar. La relación entre ambas pasa por TRAN_TASK_TB: su TRAN_TASK_ID identifica la fila de la subtarea en TASK_TB, y su CSAR_TASK_ID identifica la fila principal.
+Necesito avanzar hacia la implementación de la tarea que me asignó Charles.
 
-Esta primera revisión fue de solo lectura: no modifiqué código ni procedimientos, no invoqué las rutas de escritura y no ejecuté UPDATE, DELETE ni scripts de desbloqueo.
+Su instrucción fue:
+
+"We need to unlock stale items similar to our script we submitted a few times already as part of these actions: GetTeamMgrTaskListDetails or GetTaskListDetails."
+
+Ya investigamos el comportamiento del frontend y del legacy.
+
+Ahora quiero que investigues específicamente la solución API y los stored procedures relacionados.
+
+Necesito saber:
+
+1. ¿Dónde están implementadas las operaciones GetTeamMgrTaskListDetails y GetTaskListDetails?
+2. ¿Qué endpoints, métodos y stored procedures ejecutan?
+3. ¿Qué tablas consultan y cómo se relacionan con TASK_TB y TRAN_TASK_TB?
+4. ¿Actualmente realizan algún desbloqueo automático?
+5. ¿Existe un script o stored procedure que ya libere tareas bloqueadas obsoletas? Identifica su implementación exacta si está disponible.
+6. ¿Qué dato permite determinar cuánto tiempo lleva bloqueada una tarea? No asumas que UPDATE_DT representa el inicio del bloqueo.
+7. ¿Qué mecanismos existentes protegen contra desbloquear una tarea que todavía está siendo trabajada?
+8. ¿Qué partes de la implementación actual podrían reutilizarse para cumplir la instrucción de Charles?
+
+No modifiques todavía ningún archivo ni stored procedure.
+
+No ejecutes UPDATE, DELETE ni llamadas que modifiquen bloqueos.
+
+No inventes reglas de negocio ni tiempos de expiración que no estén confirmados.
+
+Explícame el resultado en español sencillo, indicando los nombres reales de los archivos, métodos y procedimientos.
+
+**Quiero que comiences por localizar las dos operaciones que Charles mencionó y seguir su ejecución hasta la base de datos.**
