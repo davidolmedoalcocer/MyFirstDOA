@@ -1,28 +1,52 @@
-La propuesta cabe en TASK_TB y no requiere SignalR. Para cumplir el objetivo de impedir que una pantalla antigua guarde, hay dos condiciones: identificar cada adquisición, no solo al usuario, y validarla dentro de la misma transacción que guarda la nota, la resolución y el historial. Agregar columnas sin cambiar el flujo de guardado no sería suficiente.
+Quiero continuar evaluando mi propuesta de locking para CSAR, pero antes necesito comprobar cuatro puntos directamente en el código.
 
-Hallazgos verificados
-La UI tiene un nombre de usuario, pero la API no recibe hoy una identidad de operador verificada para el bloqueo. AuthStateProvider.cs lee LoginName de la cookie del portal, lo expone como NameIdentifier y usa "CSAR" si falta. En ese método, ReadJwtToken lee el token, pero no valida su firma ni su vigencia. CallUpdate.GetOperatorLoginName usa ese valor al guardar. El cliente de bloqueo no envía la identidad, y no encontré validación del operador para esa ruta en el arranque de la API local. No pude confirmar si el despliegue tiene un gateway que la valide. USER_NM tampoco resuelve esto: en esta ruta se deriva del login SQL.
-El guardado actual tiene escrituras separadas. CsarApiProvider.CreateTaskNote inserta la nota antes de llamar a Tasks/UpdateTaskStatus. CsarRequestService.UpdateTaskStatusAsync lee la versión actual, inserta el historial y luego cambia el estado y libera la subtarea. Si falla el cambio de estado, las escrituras anteriores no se revierten automáticamente. VERSION_CT protege esa escritura de fila, no acredita que el solicitante conserve el bloqueo original.
-Los dos listados solo muestran subtareas libres. TranTaskDetailController.cs llama a TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP o TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP. Ambos filtran CHILD_TASK_TB.LOCKED_IN = 'N'; ninguno libera bloqueos.
-Plan propuesto y dependencias
-Paso	Archivos y operaciones afectados	Cambio
-1. Establecer la identidad	API: Program.cs, ServiceCollectionExtensions.cs. UI: AuthStateProvider.cs, CsarApiProvider.cs.	Confirmar primero el mecanismo SSO disponible: una credencial de usuario validada por la API o una identidad certificada por un gateway de confianza. Derivar LOCK_USER en el servidor a partir de esa identidad, nunca de UserName en el cuerpo, del fallback "CSAR" ni de un encabezado sin verificar. Sin identidad verificable, no adquirir ni guardar.
-2. Centralizar el ciclo de vida	SQL: TASK_TB.sql y operaciones SQL nuevas de adquisición, liberación y limpieza. API: TaskController.UpdateTaskLock, un servicio compartido y su acceso a datos. UI: CallUpdate.ShowHideTasks y CallUpdate.razor.	Adquirir solo si la subtarea está libre y actualizar LOCKED_IN, LOCK_USER, LOCK_START_DT y LOCK_ID en una sola escritura. Devolver LOCK_ID a la pantalla. Al volver o cancelar, liberar solo la adquisición que esa pantalla conserva. La salida normal ayuda, pero no sustituye la limpieza tras un cierre abrupto. No cambiar silenciosamente el contrato genérico Tasks/UpdateTaskLock, que también tiene usos para la tarea principal.
-3. Proteger el guardado	CallUpdate.HandleSubmitAsync, CsarApiProvider.cs, TaskStatusUpdateRequest.cs, TaskController.UpdateTaskStatus y CsarRequestService.UpdateTaskStatusAsync.	Enviar una sola solicitud de guardado por subtarea con el comentario, la resolución y LOCK_ID. Validar tarea, 'Y', propietario e ID de adquisición antes de la primera escritura, manteniendo la validación protegida hasta confirmar nota, historial, estado y liberación. Devolver 409 Conflict si se perdió el bloqueo; la UI debe conservar el texto para que el usuario pueda recuperarlo y no continuar a UpdateCall.
-4. Limpiar antes de listar	TranTaskDetailController.cs, AuditRequestGrid.razor.cs, TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP.sql y TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP.sql.	Invocar una sola operación de limpieza antes de la consulta de cada vista. Buscar las subtareas bloqueadas con los filtros de elegibilidad de la vista, no en la salida del listado, que ya las excluye. Limitar la escritura a la cola y vista autorizadas y volver a comprobar el vencimiento y el mismo LOCK_ID al liberar. Mantener los procedimientos de listado como lecturas; solo extraer filtros compartidos si es necesario para evitar que ambas selecciones diverjan.
-Por qué LOCK_ID sí aporta algo necesario
-Si un usuario abre la subtarea en la pestaña A, pierde el bloqueo y la vuelve a adquirir en la pestaña B, ambas pantallas tienen el mismo usuario y la fila vuelve a estar en 'Y'. LOCK_USER + LOCKED_IN no distingue A de B. Hace falta una identidad por adquisición; un LOCK_ID generado por el servidor es la forma directa de hacerlo. El VERSION_CT actual no cumple esa función: cambia con otras escrituras y el servicio vuelve a leerlo al guardar.
+Mi propuesta incluye LOCK_USER, LOCK_START_DT, LOCK_END_DT y un LOCK_ID generado por cada adquisición de bloqueo.
 
-LOCK_START_DT debe ser una fecha UTC del servidor que no cambie durante esa adquisición. LOCK_END_DT, si se incluye, sería la hora real de liberación, no la fecha prevista de vencimiento. No es necesario para calcular el plazo ni para validar la propiedad; conservarlo en la misma fila solo permite ver el último ciclo, no un historial completo. Si se aprueba una regla de inactividad en vez de un máximo desde la adquisición, estos campos no bastan: se necesita una señal de actividad registrada por separado, que puede enviarse por HTTP, sin SignalR.
+También quiero que el tiempo máximo de bloqueo sea configurable, sin hardcodearlo.
 
-Qué significa guardar en una sola transacción
-Se pueden reutilizar TASK_NOTE_TB_ISP, TASK_HISTORY_TB_ISP y TASK_TB_USP, pero no mediante las llamadas independientes actuales. Un procedimiento que los coordine, o un repositorio que los invoque con la misma conexión y transacción, debe impedir que una limpieza o una nueva adquisición se interponga entre la validación y la escritura. Si se amplía CSAR.Core, toca publicar una nueva versión del paquete, no editar el DLL instalado.
+Investiga lo siguiente:
 
-También hay que cerrar los caminos alternativos para subtareas administradas: TaskNoteController.InsertTaskNote, TaskHistoryController.UpdateTaskHistory y TaskController.UpdateTask no deben permitir que un cliente antiguo se salte la validación. Eso no implica prohibir las notas de otros flujos: hay que distinguirlas de las escrituras de edición protegidas. Si un envío abarca varias subtareas, una transacción por subtarea no hace que todo el envío sea atómico; ese alcance debe acordarse.
+**1. Configuración del tiempo**
 
-Compatibilidad con legacy y puesta en marcha
-Escritores legacy que comparten subtareas: adaptar MortUpdateCall.ShowHideTasks y MortUpdateCall.UpdateTaskLock para adquirir y conservar el mismo identificador; MortUpdateCall.UpdateTaskStatus, UpdateCall.UpdateTaskStatus y CommonRoutines.UnLockAuditTask para validar la adquisición al guardar o liberar. Revisar también TASK_TB_GET_WORK_BY_QUEUE_USP y TASK_TB_GET_WORK_BY_TASK_TYPE_CD_USP, que escriben 'Y' directamente. Call.aspx.UnLock y TASK_TB_LOCK_CSAR_USP no necesitan entrar en el alcance inicial si se confirma que solo operan sobre tareas principales. Si un escritor no se adapta, la limpieza no debe habilitarse sobre subtareas que ese escritor pueda modificar.
-Contrato de refresco: una acción POST de refresco permite limpiar y listar sin dar efectos de escritura a un GET. Si Charles exige que las dos URLs actuales limpien directamente, ambos métodos pueden llamar al mismo servicio, pero hay que aceptar y documentar que precargas y reintentos de esos GET podrían provocar escrituras.
-Conjunto mínimo seguro: identidad validada → columnas y adquisición única → guardado y liberación protegidos → control de escritores legacy → limpieza acotada. Las filas antiguas en 'Y' sin LOCK_ID ni fecha confirmada quedan fuera del barrido; no se rellenan desde UPDATE_DT. LOCK_END_DT puede quedar fuera del mínimo si no se necesita registrar el fin.
-Criterio de aceptación en QA: con subtareas sintéticas y dos pestañas del mismo usuario, comprobar que A no pueda insertar nota, historial ni resolución después de que B adquiera la tarea. Repetir con limpieza y guardado simultáneos, y verificar que no cambien filas fuera de la cola autorizada, tareas principales ni bloqueos antiguos sin metadatos. Antes de habilitar escrituras en QA compartido, revisar candidatos en modo de solo lectura.
-Para revisión con Charles y Jayati quedan cuatro decisiones: regla y plazo, fuente de identidad confiable, GET o refresco explícito, y qué consumidores legacy comparten las subtareas del piloto. No elegí esas opciones ni ejecuté cambios en archivos, procedimientos o datos.
+Busca cómo se manejan actualmente las configuraciones por ambiente.
+
+- ¿Existe EnvironmentDetector? ¿Qué hace exactamente?
+- ¿Se utiliza appsettings.json u otro mecanismo?
+- ¿Dónde sería técnicamente posible configurar LockTimeoutMinutes siguiendo los patrones existentes?
+
+No asumas que EnvironmentDetector es adecuado sin revisar su implementación.
+
+**2. Identidad del usuario**
+
+- ¿Cómo obtiene Blazor el usuario autenticado?
+- ¿Cómo envía actualmente la UI la información de usuario a la API?
+- ¿Existe algún HttpClient, handler o mecanismo centralizado para agregar headers a todas las solicitudes?
+- ¿Cómo valida la API la identidad del usuario?
+- ¿Existe un gateway que autentique las solicitudes antes de llegar a la API?
+- ¿Podemos reutilizar la infraestructura existente para obtener LOCK_USER de forma confiable?
+
+No propongas implementar otra autenticación si ya existe una solución reutilizable.
+
+**3. Limpieza de bloqueos**
+
+Revisa exactamente cómo Audit y Team Manager llaman a GetTaskListDetails y GetTeamMgrTaskListDetails.
+
+Explica las implicaciones de limpiar los bloqueos antes de devolver las listas, utilizando los componentes actuales.
+
+Compara las posibilidades de GET y POST, sin seleccionar una automáticamente.
+
+**4. Compatibilidad con legacy**
+
+Identifica todas las operaciones de la aplicación legacy que bloquean o desbloquean las mismas subtareas utilizadas por la nueva CSAR UI.
+
+Indica cuáles tendrían que adaptarse para registrar LOCK_USER, LOCK_START_DT y LOCK_ID.
+
+**Resultado esperado**
+
+Quiero una tabla de hallazgos confirmados, componentes que podrían reutilizarse, modificaciones necesarias y puntos que no pudiste verificar.
+
+No modifiques código, archivos de configuración ni bases de datos.
+
+No implementes ninguna alternativa ni tomes decisiones de arquitectura.
+
+Responde en español, con rutas reales de archivos, métodos y evidencia del código.
