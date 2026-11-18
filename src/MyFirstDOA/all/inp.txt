@@ -1,94 +1,117 @@
 features/csar-stale-lock-cleanup
 
-Necesito implementar una solución sencilla para limpiar stale locks en CSAR.
+Estoy trabajando en la solución `csar-api` y necesito implementar una mejora de stale-lock cleanup que Charles ya autorizó desarrollar en una feature branch para su revisión.
 
-Estoy trabajando en la rama `features/csar-stale-lock-cleanup`.
+Rama: `features/csar-stale-lock-cleanup`
 
-Charles indicó que debemos aprovechar los endpoints `GetTaskListDetails` y `GetTeamMgrTaskListDetails` para liberar subtareas que permanezcan bloqueadas después de cierto tiempo.
+**Contexto técnico confirmado en una investigación anterior**
 
-También consideró razonable utilizar `TASK_TB.UPDATE_DT` como referencia para determinar la antigüedad del bloqueo.
+En el proyecto API se identificaron estos endpoints dentro de `TranTaskDetailController.cs`:
 
-Quiero implementar la siguiente propuesta en mi rama, para revisión de Charles.
+- `GetTaskListDetails` → `TranTaskDetailRepo.GetTaskListDetailsAsync` → `TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP`
+- `GetTeamMgrTaskListDetails` → `TranTaskDetailRepo.GetTeamMgrTaskListDetailsAsync` → `TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP`
 
-### 1. Alcance de la implementación
+Ambos procedimientos consultan subtareas de `TASK_TB` relacionadas mediante `TRAN_TASK_TB` y excluyen aquellas con `LOCKED_IN = 'Y'`.
 
-**API**
+Actualmente no ejecutan limpieza automática.
 
-En `TranTaskDetailController.cs`, modificar únicamente estos dos endpoints:
+Charles aprobó avanzar con una implementación sencilla que reutilice los campos existentes:
+
+- `TASK_TB.LOCKED_IN`
+- `TASK_TB.UPDATE_DT`
+
+La regla propuesta es identificar subtareas bloqueadas cuya última actualización supere un timeout configurable.
+
+Charles también indicó que mañana revisará si existe una lógica de mass unlock que podamos reutilizar.
+
+### Cambios que necesitamos implementar
+
+**1. API — TranTaskDetailController.cs**
+
+Modificar únicamente estas dos acciones:
 
 - `GetTaskListDetails`
 - `GetTeamMgrTaskListDetails`
 
-Cada endpoint deberá llamar a una operación compartida de limpieza antes de ejecutar su lógica actual para obtener la lista.
+Antes de consultar las listas existentes, cada acción debe invocar una operación compartida de stale-lock cleanup.
 
-La limpieza NO debe ejecutarse en otros endpoints del controller.
+No ejecutar la limpieza desde otros endpoints del controller.
 
-**SQL Server**
+**2. SQL Server**
 
-Preparar un stored procedure compartido que:
+Preparar un script versionable de stored procedure para la limpieza:
 
-- Identifique subtareas bloqueadas mediante `TASK_TB.LOCKED_IN = 'Y'`.
-- Utilice `TASK_TB.UPDATE_DT` para determinar si superaron el tiempo configurado desde su última actualización.
-- Utilice la hora de SQL Server con una referencia temporal consistente.
-- Limite los candidatos a las subtareas elegibles para la cola y vista solicitadas.
-- Respete las diferencias de filtrado existentes entre Auditoría, Pendientes y Team Manager.
-- Vuelva a comprobar las condiciones de bloqueo y antigüedad al ejecutar la actualización.
-- Cambie `LOCKED_IN` a `'N'` únicamente para los registros elegibles.
+- Buscar subtareas con `LOCKED_IN = 'Y'`.
+- Evaluar `UPDATE_DT` contra el timeout configurable.
+- Utilizar la hora de SQL Server de forma consistente con los datos existentes.
+- Limitar los registros a las subtareas elegibles de la cola y vista solicitadas.
+- Respetar las diferencias entre Audit, Pending y Team Manager.
+- Volver a verificar estado y antigüedad en la operación de desbloqueo.
+- Establecer `LOCKED_IN = 'N'` solo en los registros que cumplan las condiciones.
 
-No modificar los stored procedures de listado existentes, salvo que encuentres una dependencia indispensable y la expliques antes de continuar.
+No modificar los stored procedures de listado existentes, salvo que exista una necesidad técnica demostrable.
 
-**Configuración**
+**3. API — Acceso a datos**
 
-Agregar `TaskLocking:LockTimeoutMinutes` a la configuración de la API utilizando el patrón existente de `appsettings` y opciones tipadas.
+Crear o reutilizar una operación compartida que ejecute el procedimiento de limpieza antes de llamar al repositorio actual.
 
-No hardcodear el tiempo de expiración. Si necesitas un valor para pruebas, utiliza una configuración local de desarrollo claramente identificada como provisional; no establezcas un plazo de producción sin aprobación.
+Revisa primero los patrones disponibles en esta solución.
 
-### 2. Flujo esperado
+Si `CSAR.Core` es una dependencia compilada, no modifiques su DLL. Implementa el acceso nuevo siguiendo los patrones disponibles o identifica si es indispensable cambiar el paquete.
 
-1. Blazor llama a uno de los dos endpoints.
-2. El endpoint ejecuta la operación compartida de limpieza correspondiente a su cola y vista.
-3. SQL identifica y libera únicamente los bloqueos que cumplen las condiciones.
-4. El endpoint ejecuta el procedimiento de listado existente.
-5. La API devuelve los resultados a Blazor.
+**4. Configuración**
 
-### 3. Restricciones
+Agregar un timeout configurable mediante `TaskLocking:LockTimeoutMinutes`, utilizando el patrón de configuración existente en la API.
 
-- Mantener la implementación lo más sencilla posible.
-- No agregar columnas a `TASK_TB`.
-- No modificar Blazor inicialmente.
-- No implementar nuevos mecanismos de locking.
-- No modificar los demás endpoints.
-- No ejecutar scripts de desbloqueo sobre bases de datos compartidas.
-- No ejecutar UPDATE, DELETE ni procedimientos de escritura contra QA o PROD.
-- No hacer commits, push, merge ni deployment automáticamente.
-- No modificar componentes legacy.
+No fijar un valor definitivo de producción. Si no hay valor configurado, no debe ejecutarse una limpieza automática con un timeout elegido por ti.
 
-Antes de modificar el código, inspecciona las firmas reales, las dependencias y los filtros SQL necesarios. No inventes métodos, parámetros ni reglas.
+### Restricciones
 
-Si descubres que no puedes limitar de forma segura la limpieza a las subtareas elegibles, detén esa parte y explícame el impedimento. No implementes una limpieza global como alternativa.
+- Mantén los cambios pequeños y localizados.
+- No modifiques Blazor.
+- No agregues columnas a `TASK_TB`.
+- No implementes lógica nueva de adquisición de bloqueos.
+- No cambies la lógica de guardado de resoluciones.
+- No modifiques componentes legacy.
+- No introduzcas un mecanismo nuevo de identificación de usuario.
+- No hagas cambios en otros endpoints.
+- No ejecutes ningún procedimiento de desbloqueo contra bases de datos compartidas.
+- No hagas commit, push, merge ni deployment.
 
-### 4. Validación
+### Antes de escribir código
 
-Después de implementar el cambio en los archivos locales:
+Revisa dentro del repositorio API:
 
-1. Compila la solución API.
-2. Ejecuta las pruebas locales disponibles que no modifiquen datos compartidos.
-3. Revisa que solo los dos endpoints indicados invoquen la limpieza.
-4. Verifica que los procedimientos de listado sigan funcionando como antes.
-5. Prepara pruebas para los límites del timeout y para actualizaciones concurrentes.
-6. Documenta el riesgo identificado anteriormente: una pantalla CallUpdate podría intentar guardar después de que su bloqueo haya sido liberado.
+1. Las firmas reales de los dos endpoints.
+2. Las dependencias existentes para acceder a SQL Server.
+3. La estructura de configuración de la API.
+4. Si ya existe lógica reutilizable de limpieza masiva en este repositorio.
 
-### 5. Resultado que necesito
+No repitas una investigación general sobre locking. Solo verifica lo necesario para implementar estos cambios.
 
-Al terminar, muéstrame:
+Si no puedes verificar los filtros SQL que delimitan las subtareas elegibles, no implementes un UPDATE global ni inventes esos filtros. Explica el impedimento y continúa únicamente con las partes independientes que sean seguras.
 
-- Archivos modificados.
-- Stored procedure nuevo y su contenido.
-- Cambios realizados en cada endpoint.
-- Configuración agregada.
-- Resultado de compilación y pruebas.
-- Riesgos o limitaciones pendientes de revisión.
+### Implementación y validación
 
-Implementa únicamente el alcance descrito en mi rama local. No realices despliegues ni modificaciones en bases de datos compartidas.
+Implementa los cambios en los archivos locales de esta rama.
 
-Explícame los cambios en español, conservando los nombres técnicos en inglés.
+Después:
+
+- Compila la solución API.
+- Verifica que solamente los dos endpoints indicados invoquen la limpieza.
+- Comprueba que la lógica original de consulta permanezca intacta.
+- Prepara pruebas locales con datos controlados para el timeout y los límites de las colas.
+- No ejecutes escrituras sobre QA o producción.
+
+### Resultado esperado
+
+Al finalizar, entrégame:
+
+1. Lista de archivos modificados.
+2. Explicación breve de cada cambio.
+3. Script SQL preparado.
+4. Configuración agregada.
+5. Resultado de compilación y pruebas.
+6. Riesgos o limitaciones pendientes para revisar con Charles.
+
+**Puedes implementar los cambios locales dentro del alcance indicado. Explica los resultados en español y conserva los nombres técnicos originales.**
