@@ -1,31 +1,30 @@
-Localicé las dos operaciones en la API y seguí ambas hasta SQL Server. Hoy no desbloquean tareas: los dos procedimientos excluyen de la lista las subtareas cuyo LOCKED_IN no sea 'N'. Por eso una subtarea que se queda en 'Y' no vuelve a aparecer en esas listas hasta que otra operación la libere.
+Gracias por la investigación. Ahora necesito avanzar hacia una solución técnica concreta para el problema de locking que Charles me asignó.
 
-1. De la API a la base de datos
-La copia local de la solución está en csar-api. Las dos operaciones son endpoints GET de TranTaskDetailController.cs, no procedimientos almacenados con el mismo nombre.
+Ya identificaste que:
 
-Operación	Endpoint	Método del repositorio → procedimiento almacenado
-GetTeamMgrTaskListDetails	GET /TranTaskDetail/GetTeamMgrTaskListDetails	TranTaskDetailRepo.GetTeamMgrTaskListDetailsAsync → dbo.TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP
-GetTaskListDetails	GET /TranTaskDetail/GetTaskListDetails	TranTaskDetailRepo.GetTaskListDetailsAsync → dbo.TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP
-Ambos endpoints reciben queueId, lenderGrpId e id y devuelven una lista de TranTaskDetail. El controlador delega en ITranTaskDetailRepo; ServiceCollectionExtensions.cs registra TranTaskDetailRepo con CsarDbConnectionString. Verifiqué las llamadas SQL inspeccionando CSAR.Core.dll, del paquete CSAR.Core 1.0.4 que referencia el proyecto de la API, y contrasté las definiciones de los procedimientos en CSAR_PROD. Esto confirma el recorrido de la copia local; no verifiqué qué versión de la API está desplegada.
+- GetTeamMgrTaskListDetails utiliza TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP.
+- GetTaskListDetails utiliza TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP.
+- Ambos excluyen subtareas con LOCKED_IN = 'Y'.
+- Existe un script manual para desbloquear tareas.
+- UPDATE_DT no representa necesariamente el momento de adquisición del bloqueo.
+- El legacy tiene mecanismos de desbloqueo que podrían no estar presentes en la nueva UI.
 
-2. Qué consultan y qué bloqueo afecta a la lista
-Las dos consultas siguen la misma relación:
+**Ahora quiero que elabores una propuesta de implementación basada en estos hallazgos.**
 
-QUEUE_TB aporta la configuración de la cola: tipos de tarea, pasos de trabajo y grupos de origen permitidos.
-TASK_TB AS CHILD_TASK_TB representa la subtarea. Se une por CHILD_TASK_TB.TASK_ID = TRAN_TASK_TB.TRAN_TASK_ID. El filtro de bloqueo se aplica a esta fila: CHILD_TASK_TB.LOCKED_IN = 'N'.
-TRAN_TASK_TB.CSAR_TASK_ID enlaza con TASK_TB AS MAIN_TASK_TB, la tarea principal. De ella se consultan el estado y la prioridad, pero no se filtra por su LOCKED_IN.
-CSAR_TASK_TB aporta la fecha de entrada del caso; CSAR_LOAN_SEARCH_TB, el préstamo y el nombre; y GLOBAL_CONFIG_LIST_TB, la descripción del estado. dbo.CORP_PARSED_PARAM_LIST_FN separa las listas de configuración de la cola.
-La diferencia es el paso de la subtarea: Team Manager exige PREI; Auditoría distingue entre la vista normal (@ID = 1, excluye PREI, REJT y PEND) y pendientes (@ID = 2, exige PEND). Ninguno de los dos actualiza filas, consulta la antigüedad del bloqueo ni llama a un procedimiento de desbloqueo.
+Necesito que determines:
 
-3. Qué existe para desbloquear y qué no demuestra
-Encontré el script manual sql-script-unlock.sql, duplicado en scripts general.sql. Cambia LOCKED_IN a 'N' en CSAR_PROD para cinco TASK_ID fijos. No comprueba antigüedad, versión, usuario ni siquiera que el indicador siga en 'Y'. Es un antecedente de desbloqueo manual, no una regla para detectar bloqueos obsoletos. No pude verificar que sea el script exacto que Charles presentó.
-locking-users.sql es una consulta, no un desbloqueo. UPDATE_DT < DATEADD(hour, 1, GETDATE()) compara con una hora en el futuro, no con una hora en el pasado. Puede incluir tareas recién actualizadas; no demuestra que lleven una hora bloqueadas.
-El procedimiento LENDER_REQUEST_TRAN_TB_GET_STALE_TASK_USP.sql sí usa un criterio de antigüedad, pero para otro flujo: selecciona una solicitud por REQUEST_CREATE_DT y cambia LENDER_REQUEST_TRAN_TB.PROCESS_STATUS_CD a 'X'. No toca TASK_TB.LOCKED_IN. No encontré un procedimiento equivalente para los bloqueos de estas listas. Tampoco pude verificar los jobs de SQL Agent: faltaban permisos de lectura en msdb.
-4. Antigüedad, protección y qué reutilizar
-No encontré un dato persistido que permita medir con certeza cuánto lleva activo el bloqueo. Algunas rutas escriben UPDATE_DT al adquirirlo, pero dbo.TASK_TB_USP también actualiza esa fecha al cambiar otros campos, aunque conserve LOCKED_IN. USER_NM identifica al usuario registrado en la actualización, no necesariamente al dueño actual del bloqueo. TASK_HISTORY_TB registra pasos de trabajo, no adquisiciones y liberaciones del bloqueo. No encontré un timestamp dedicado ni una señal periódica de actividad en las rutas revisadas.
+1. Qué cambios concretos serían necesarios para incorporar la limpieza de stale locks cuando se ejecutan las dos operaciones mencionadas por Charles.
+2. Cómo podemos identificar de manera confiable que una subtarea está obsoleta, considerando que no encontramos un timestamp exclusivo del bloqueo.
+3. Si podemos reutilizar mecanismos existentes de la aplicación sin agregar columnas o modificar el esquema de la base de datos.
+4. Si no existe una manera segura de identificar stale locks con la información actual, explica qué alternativas técnicas tenemos y qué cambios requeriría cada una.
+5. Si el mecanismo de desbloqueo del legacy puede aprovecharse para evitar que las subtareas permanezcan bloqueadas al abandonar una pantalla.
+6. Qué archivos, métodos y stored procedures tendríamos que modificar para cada alternativa.
+7. Cómo podríamos probar cada alternativa en QA sin desbloquear tareas de usuarios que siguen trabajando.
 
-La protección confirmada es contra escrituras concurrentes, no contra liberar trabajo activo. TaskController.UpdateTaskLock lee la tarea y usa la versión enviada o, si no se envía, la que acaba de leer. TaskRepo.UpdateAsync llama a dbo.TASK_TB_USP, que exige coincidencia de TASK_ID y VERSION_CT e incrementa la versión. Eso detecta cambios de versión entre lectura y escritura; no distingue una pantalla abandonada de un operador que sigue trabajando sin guardar. También confirmé dónde se libera normalmente: UpdateTaskStatusAsync pone 'N' en la subtarea al guardar una resolución, y UpdateCall pone 'N' en la principal.
+**No quiero que inventes una regla de expiración ni que asumas que UPDATE_DT es la fecha de bloqueo.**
 
-Para la tarea de Charles, se pueden reutilizar los filtros de elegibilidad de las dos consultas para acotar qué subtareas pertenecen a cada lista, y el patrón de actualización condicional por versión para no sobrescribir un cambio concurrente. No reutilizaría el script manual como criterio automático ni llamaría a UpdateTaskStatusAsync para limpiar bloqueos: también cambia el estado y escribe historial. Antes de implementar falta confirmar qué evidencia permite declarar obsoleto un bloqueo sin liberar una tarea aún en uso; el código y los objetos revisados no establecen esa regla ni un plazo.
+Todavía no modifiques archivos, procedimientos ni datos.
 
-No modifiqué archivos ni procedimientos. En SQL Server solo consulté metadatos y definiciones; no ejecuté endpoints, procedimientos de negocio, UPDATE ni DELETE.
+Quiero una propuesta técnica concreta, con las alternativas, sus riesgos y los cambios necesarios, para poder decidir cómo implementar la solución solicitada por Charles.
+
+Explica todo en español sencillo y distingue qué está confirmado por el código de lo que requiere una decisión técnica o de negocio.
