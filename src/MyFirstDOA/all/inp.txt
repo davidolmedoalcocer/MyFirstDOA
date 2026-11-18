@@ -1,11 +1,48 @@
-Hey Charles, I understand we need to keep the locking changes simple and compatible with legacy.
+Hey Charles, based on your feedback, I think we can keep the stale locking solution simple by reusing the existing `LOCKED_IN` and `UPDATE_DT` fields in `TASK_TB`, without adding new columns.
 
-I was thinking we could potentially reuse TASK_TB.UPDATE_DT along with LOCKED_IN to identify stale tasks, without adding new columns.
+Here is my proposed implementation:
 
-For example, we could check for tasks where LOCKED_IN = 'Y' and UPDATE_DT is older than a configurable timeout, using database time.
+**1. API changes**
 
-One limitation I found is that UPDATE_DT also changes during other task updates, so this would measure time since the last update, not necessarily when the lock was originally acquired.
+In `TranTaskDetailController.cs`, update only these two endpoints:
 
-We would also need to consider what happens if a user is still in CallUpdate when the lock is released.
+- `GetTaskListDetails`
+- `GetTeamMgrTaskListDetails`
 
-Would this approach fit what you had in mind for GetTeamMgrTaskListDetails and GetTaskListDetails?
+Each endpoint would call a shared stale-lock cleanup method before executing its existing task list retrieval logic.
+
+The cleanup would not run for any other endpoints in the controller.
+
+**2. SQL changes**
+
+Create a shared stored procedure to release stale locks using the existing `TASK_TB` fields:
+
+- `LOCKED_IN = 'Y'`
+- `UPDATE_DT` older than the configured timeout
+
+The procedure would:
+- Use SQL Server time for the comparison.
+- Only target eligible transaction tasks for the requested queue and view, respecting the existing Audit and Team Manager filtering rules.
+- Recheck the lock conditions during the update before setting `LOCKED_IN = 'N'`.
+
+The existing task list stored procedures would remain unchanged:
+
+- `TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP`
+- `TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP`
+
+**3. Configuration**
+
+Add `TaskLocking:LockTimeoutMinutes` to the API's `appsettings`, so the timeout can be configured without hardcoding it.
+
+**4. Execution flow**
+
+1. Blazor calls `GetTaskListDetails` or `GetTeamMgrTaskListDetails`.
+2. The corresponding API endpoint executes the shared stale-lock cleanup.
+3. SQL releases eligible expired locks.
+4. The endpoint executes its existing task list retrieval logic and returns the results.
+
+This approach would require no initial changes to Blazor or the `TASK_TB` schema.
+
+As discussed, `UPDATE_DT` represents the last update to the task rather than a dedicated lock acquisition timestamp, so the timeout would be based on the last recorded update.
+
+I haven't made any changes yet. Does this match what you had in mind? If so, would you like me to implement it?
