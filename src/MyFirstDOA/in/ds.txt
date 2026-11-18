@@ -1,8 +1,8 @@
-What’s Up?
-Monday was a holiday, so my last working day was Friday. On Friday, I reviewed the Dev Portal test documentation to understand the current testing workflow and compare it with the proposed approach.
+What’s up?
+Yesterday, I wrote and ran a Playwright E2E test for the product details criterion in PBI 494905 (Manage Products). I traced the initial failure to the assertion reading the field label and value together. I tried three approaches locally, including one that changes the Vue template, and all three passed.
 
-Top Priority
-Today, I’ll focus on the test Eli recommended for PBI 513634.
+Top priority
+Today, I’ll start reviewing the first acceptance criterion for PBI 494905 and check what test data is available to verify which products appear in the dropdown.
 
 Blockers
-None.
+No blockers.
