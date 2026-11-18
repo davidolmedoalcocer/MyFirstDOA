@@ -1,78 +1,53 @@
-Voy a quedar temporalmente a cargo de la aplicación CSAR porque Charles, quien ha liderado su desarrollo, soporte técnico y demostraciones al negocio, saldrá de vacaciones.
+Estoy trabajando en la migración de usuarios y permisos de la aplicación CSAR desde el sistema anterior de seguridad ARO/Traxor hacia SSO.
 
-Necesito entender la aplicación para poder investigar incidentes, responder preguntas de Jayati y dirigir demostraciones funcionales si es necesario.
+Charles, el desarrollador principal del proyecto, me pidió preparar un Excel con los usuarios actuales y los roles que tienen, para que Jayati y el equipo de negocio validen quién debe conservar acceso a la nueva aplicación.
 
-**Contexto importante de la arquitectura:**
+Me compartió estas consultas que se ejecutan contra TRKDB01:
 
-CSAR está compuesto por dos soluciones independientes:
+```sql
+SELECT ARO_NM, LOGIN_ID, *
+FROM aro_xref_tb x
+JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
+WHERE PARENT_ARO_ID = 7836;
 
-1. **Frontend:** una aplicación que contiene la interfaz de usuario.
-2. **API:** otra aplicación independiente que proporciona los endpoints y la lógica del backend.
+SELECT ARO_NM, LOGIN_ID, *
+FROM aro_xref_tb x
+JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
+WHERE PARENT_ARO_ID = 7837;
 
-Ambas forman parte del sistema CSAR.
+SELECT ARO_NM, LOGIN_ID, *
+FROM aro_xref_tb x
+JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
+WHERE PARENT_ARO_ID = 7838;
 
-Quiero que actúes como un desarrollador senior que me está realizando una transferencia de conocimiento técnico y funcional.
+SELECT ARO_NM, LOGIN_ID, *
+FROM aro_xref_tb x
+JOIN aro_tb r ON x.CHILD_ARO_ID = r.ARO_ID
+WHERE PARENT_ARO_ID = 7839;
+```
 
-### Primera etapa: comprender la arquitectura
+Los grupos son:
 
-Antes de comenzar, identifica qué soluciones y repositorios tienes disponibles en el workspace.
+- 7836 = CSARMortCSUser
+- 7837 = CSARMortLSUser
+- 7838 = CSARMortManager
+- 7839 = CSARMortAdmin, que se mapeará a CSARMortManager
 
-No asumas que tienes acceso a ambos proyectos.
+**Necesito que me ayudes a entender y completar esta tarea.**
 
-Si únicamente tienes acceso al frontend o a la API, indícamelo claramente y analiza únicamente lo que puedas verificar.
+1. Investiga en el código disponible cómo se utilizan actualmente estos roles.
+2. Explica qué representan las tablas aro_xref_tb y aro_tb y qué información devolverían las consultas.
+3. Ayúdame a preparar una consulta SQL de solo lectura que obtenga los usuarios y roles necesarios para generar el Excel.
+4. Explica cómo comprobar si estos usuarios ya existen en SSO y cómo se relacionan con User y UserEntitlement.
+5. Investiga si existe código o algún script anterior de migración de usuarios desde ARO hacia SSO.
+6. Indica qué columnas debería incluir el Excel para que negocio pueda validar los accesos.
+7. Explica cómo detectar usuarios duplicados o con varios roles sin perder información.
+8. Indica qué validaciones debo realizar antes de entregar el archivo a Charles.
 
-Si tienes acceso a ambos, explícame:
+No modifiques código, no ejecutes scripts y no realices INSERT, UPDATE o DELETE.
 
-1. ¿Para qué sirve CSAR desde la perspectiva del negocio?
-2. ¿Qué responsabilidad tiene el frontend y qué responsabilidad tiene la API?
-3. ¿Cómo se comunican ambas aplicaciones?
-4. ¿Cuáles son las pantallas y funcionalidades principales del frontend?
-5. ¿Cuáles son los controllers, endpoints y servicios principales de la API?
-6. ¿Cómo se conecta la API con la base de datos?
-7. ¿Qué tablas y stored procedures son importantes para el funcionamiento de CSAR?
-8. ¿Cómo se relacionan los identificadores CSAR, CSAR Task ID y Task Transaction ID?
+Si las tablas o el repositorio de SSO no están disponibles, indícalo claramente.
 
-### Segunda etapa: comprender los flujos funcionales
+Responde en español, conserva los nombres técnicos originales y explica los pasos de manera práctica.
 
-Identifica los procesos más importantes que necesitaré conocer para operar y demostrar CSAR, incluyendo:
-
-- Consulta y administración de tareas.
-- Resolución de solicitudes.
-- Aprobación, rechazo y cancelación.
-- Notificaciones por correo electrónico.
-- Bloqueo y desbloqueo de tareas.
-- Auditoría y seguimiento de las acciones de los usuarios.
-
-Para cada proceso, necesito entender:
-
-- Qué hace el usuario en la pantalla.
-- Qué componente o método del frontend ejecuta la acción.
-- Qué endpoint de la API recibe la solicitud.
-- Qué lógica se ejecuta en el backend.
-- Qué stored procedure o tabla se utiliza, cuando corresponda.
-- Qué resultado debería observar el usuario.
-
-### Tercera etapa: prepararme para asumir el proyecto
-
-Identifica:
-
-1. Las funcionalidades que debería aprender primero para poder realizar una demo.
-2. Los posibles puntos de falla y cómo investigarlos.
-3. Las pruebas que puedo ejecutar de forma segura en QA.
-4. Las preguntas que debería hacerle a Charles antes de sus vacaciones.
-5. La información que no puede determinarse únicamente a partir del código.
-
-### Reglas importantes
-
-- No modifiques ningún archivo.
-- No inventes información que no puedas verificar.
-- Utiliza el código real como fuente principal.
-- Menciona rutas de archivos, clases, métodos y endpoints.
-- Conserva los nombres técnicos en inglés.
-- Explica los conceptos en español claro.
-- Diferencia hechos verificados de hipótesis.
-- No me entregues toda la información de golpe.
-
-**Comienza solamente con la primera etapa: identificar las soluciones disponibles y explicar la arquitectura general.**
-
-Después te haré preguntas para estudiar cada funcionalidad paso a paso.
+Comienza explicándome cómo funciona el mapeo de roles y qué consulta SQL debería revisar primero.
