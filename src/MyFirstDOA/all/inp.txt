@@ -1,5 +1,78 @@
-Hi Charles, Jayati called me today and asked several questions about CSAR user tracking, particularly how we can identify whether a CSAR was created through Legacy or K8. I wasn't able to answer all her questions during the call.
+Voy a quedar temporalmente a cargo de la aplicación CSAR porque Charles, quien ha liderado su desarrollo, soporte técnico y demostraciones al negocio, saldrá de vacaciones.
 
-She would like to schedule a meeting with you and me tomorrow to review this.
+Necesito entender la aplicación para poder investigar incidentes, responder preguntas de Jayati y dirigir demostraciones funcionales si es necesario.
 
-What time works best for you? Would sometime after stand-up work? I can schedule it, or you can create it if you prefer.
+**Contexto importante de la arquitectura:**
+
+CSAR está compuesto por dos soluciones independientes:
+
+1. **Frontend:** una aplicación que contiene la interfaz de usuario.
+2. **API:** otra aplicación independiente que proporciona los endpoints y la lógica del backend.
+
+Ambas forman parte del sistema CSAR.
+
+Quiero que actúes como un desarrollador senior que me está realizando una transferencia de conocimiento técnico y funcional.
+
+### Primera etapa: comprender la arquitectura
+
+Antes de comenzar, identifica qué soluciones y repositorios tienes disponibles en el workspace.
+
+No asumas que tienes acceso a ambos proyectos.
+
+Si únicamente tienes acceso al frontend o a la API, indícamelo claramente y analiza únicamente lo que puedas verificar.
+
+Si tienes acceso a ambos, explícame:
+
+1. ¿Para qué sirve CSAR desde la perspectiva del negocio?
+2. ¿Qué responsabilidad tiene el frontend y qué responsabilidad tiene la API?
+3. ¿Cómo se comunican ambas aplicaciones?
+4. ¿Cuáles son las pantallas y funcionalidades principales del frontend?
+5. ¿Cuáles son los controllers, endpoints y servicios principales de la API?
+6. ¿Cómo se conecta la API con la base de datos?
+7. ¿Qué tablas y stored procedures son importantes para el funcionamiento de CSAR?
+8. ¿Cómo se relacionan los identificadores CSAR, CSAR Task ID y Task Transaction ID?
+
+### Segunda etapa: comprender los flujos funcionales
+
+Identifica los procesos más importantes que necesitaré conocer para operar y demostrar CSAR, incluyendo:
+
+- Consulta y administración de tareas.
+- Resolución de solicitudes.
+- Aprobación, rechazo y cancelación.
+- Notificaciones por correo electrónico.
+- Bloqueo y desbloqueo de tareas.
+- Auditoría y seguimiento de las acciones de los usuarios.
+
+Para cada proceso, necesito entender:
+
+- Qué hace el usuario en la pantalla.
+- Qué componente o método del frontend ejecuta la acción.
+- Qué endpoint de la API recibe la solicitud.
+- Qué lógica se ejecuta en el backend.
+- Qué stored procedure o tabla se utiliza, cuando corresponda.
+- Qué resultado debería observar el usuario.
+
+### Tercera etapa: prepararme para asumir el proyecto
+
+Identifica:
+
+1. Las funcionalidades que debería aprender primero para poder realizar una demo.
+2. Los posibles puntos de falla y cómo investigarlos.
+3. Las pruebas que puedo ejecutar de forma segura en QA.
+4. Las preguntas que debería hacerle a Charles antes de sus vacaciones.
+5. La información que no puede determinarse únicamente a partir del código.
+
+### Reglas importantes
+
+- No modifiques ningún archivo.
+- No inventes información que no puedas verificar.
+- Utiliza el código real como fuente principal.
+- Menciona rutas de archivos, clases, métodos y endpoints.
+- Conserva los nombres técnicos en inglés.
+- Explica los conceptos en español claro.
+- Diferencia hechos verificados de hipótesis.
+- No me entregues toda la información de golpe.
+
+**Comienza solamente con la primera etapa: identificar las soluciones disponibles y explicar la arquitectura general.**
+
+Después te haré preguntas para estudiar cada funcionalidad paso a paso.
