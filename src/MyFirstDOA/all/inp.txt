@@ -1,27 +1,81 @@
-Ya implementé y comprobé con el debugger que CSAR UI envía correctamente mi LoginName en el header `UserName`.
+Search Tools
 
-No puedo ejecutar una prueba integrada contra mi CSAR API local porque la URL de la API se obtiene de una base de datos cuya configuración no puedo modificar.
+Read 
+Completed with input: {
+  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Controllers\\BaseController.cs"
+}
 
-Ahora quiero continuar con CSAR API.
+Search for `ExtractUserLoginIdFromHeader|ExtractCorrelationIdFromHeader|AcquireHeaderPara...`
 
-Revisa el archivo `BaseController.cs` de la copia de Charles en:
+Read , lines 1 to 145
+Completed with input: {
+  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Middleware\\ExceptionHandlingMiddleware.cs",
+  "view_range": [
+    1,
+    145
+  ]
+}
 
-`C:\doa\charles\CSAR Correlation and Username\DS.CSAR.Api\Controllers\BaseController.cs`
+Read , lines 34 to 98
+Completed with input: {
+  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Controllers\\TaskController.cs",
+  "view_range": [
+    34,
+    98
+  ]
+}
 
-Compáralo con mi CSAR API actual:
+Search for `WithCorrelationIdHeader|const string HeaderName|CreateCSARRequestAsync\(|Oper...`
 
-`C:\doa\test-repos\csar-api\DS.CSAR.Api`
+**Para leer `UserName` en una sola acción, no necesitas copiar el `BaseController` de Charles.** Tu API ya puede leer el encabezado desde `Request.Headers`. No modifiqué archivos.
 
-Por ahora, **no modifiques archivos**.
+### 1. Qué hace el `BaseController` de Charles
 
-Explícame brevemente:
+En su `BaseController.cs`:
 
-1. Qué hace cada método del `BaseController` de Charles.
-2. Qué dependencias necesita para funcionar.
-3. Qué controladores de mi API actual podrían necesitar utilizarlo.
-4. Cuál sería el cambio mínimo para que una acción pueda obtener el valor del header `UserName`.
-5. Si ese cambio afectaría el comportamiento existente de los controladores.
+| Método | Qué hace |
+|---|---|
+| `BaseController()` | Inicializa `_loginId` y `_correlationId` como cadenas vacías. |
+| `AcquireHeaderParams` | Lee `Authorization`, separa su contenido por `\|` y lanza `BadHttpRequestException` si falta o está vacío. No valida el token ni interviene en la lectura de `UserName`. |
+| `ExtractUserLoginIdFromHeader` | Lee `UserName` y lo guarda en `_loginId`. Si falta o está vacío, lanza `ArgumentException`. |
+| `ExtractCorrelationIdFromHeader` | Lee `CorrelationID` y genera un GUID si falta o está vacío. Es independiente de `UserName`; tu API actual usa `X-Correlation-ID`. |
+| `AcquireHeaderValue` | Helper privado que busca el encabezado en `Request.Headers` y devuelve su valor como texto, o una cadena vacía si no existe. |
 
-Muéstrame los fragmentos reales de código relevantes y sus rutas.
+Este es el fragmento real que recibe `UserName`:
 
-No implementes todavía Correlation ID ni cambios en `TRAN_TASK_TB`. Quiero entender primero cómo se recibe `UserName` en la API.
+```csharp
+protected void ExtractUserLoginIdFromHeader()
+{
+    _loginId = string.Empty;
+    AcquireHeaderValue("UserName", out _loginId);
+
+    if (string.IsNullOrEmpty(_loginId))
+    {
+        throw new ArgumentException("No UserName header provided");
+    }
+}
+```
+
+**Dependencias:** usa `ControllerBase` de ASP.NET Core MVC, `HttpRequest` y `StringValues` de `Microsoft.Extensions.Primitives`. Necesita el contexto HTTP que ASP.NET Core proporciona al ejecutar la acción. No requiere servicios adicionales en DI, acceso a base de datos ni llamar primero a `AcquireHeaderParams`. Leer el encabezado tampoco autentica al usuario.
+
+### 2. Qué acciones podrían usarlo
+
+En la copia de Charles, `TaskController.cs` hereda de `BaseController`, pero no encontré acciones que invoquen los métodos de extracción. Tu `TaskController.cs` hereda directamente de `ControllerBase`.
+
+- **Primera candidata: `TaskController.UpdateCall`.** Ya usa el nombre del usuario que llega en el *body* para la nota y el historial. Esta línea existe hoy:
+  ```csharp
+  await InsertTaskNote(request.TaskId, request.UserName, request.Comment, cancellationToken);
+  ```
+- **Después:** `TaskController.UpdateTaskStatus` pasa el *body* al servicio, que también usa `request.UserName`. `TaskNoteController.InsertTaskNote` y `TaskHistoryController.UpdateTaskHistory` serían candidatos si luego se quiere usar el encabezado para atribuir esas operaciones. No cambiaría todos los controladores solo para que puedan leerlo.
+
+### 3. Cambio mínimo y efecto
+
+Para comprobar la recepción, añadiría **solo esta lectura** al inicio de `TaskController.UpdateCall` y revisaría `loginName` en el debugger. Este fragmento es **propuesto**, no aplicado:
+
+```csharp
+string? loginName = Request.Headers.TryGetValue("UserName", out var value)
+    ? value.ToString()
+    : null;
+```
+
+Si solo lees el valor y dejas intacto el uso de `request.UserName`, **no cambian la ruta, la respuesta ni el comportamiento de los clientes que no mandan el encabezado**. En cambio, invocar el método de Charles tal cual sí introduciría un cambio: si falta `UserName`, su `ArgumentException` caería en el manejo genérico de `ExceptionHandlingMiddleware.cs` y la API devolvería **500**. Por eso empezaría con la lectura opcional, sin tocar correlación ni `TRAN_TASK_TB`.
