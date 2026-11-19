@@ -1,316 +1,49 @@
-Voy a contrastar las tres fuentes por separado: la API actual, la copia de Charles y el proyecto de referencia; en paralelo revisaré el recorrido de autenticación y las llamadas salientes de la UI. Solo inspección: no editaré archivos.
+Vamos a comenzar la implementación de las tareas #3 y #4 de CSAR que Charles me asignó.
 
-Delegated task
+Quiero trabajar paso a paso, empezando únicamente por CSAR UI.
 
-"Search" failed
-Tool execution failed: rg: C:\doa\charles\CSAR Correleation and username: The system cannot find the file specified. (os error 2)
+Según tu investigación:
 
-Search for `BaseController|Correlation|UserId|User ID|Request\.Headers|Headers|GetUser|Ge...`
+- `AuthStateProvider.cs` ya obtiene el `LoginName`.
+- `CsarApiProvider.cs` centraliza las solicitudes HTTP hacia CSAR API.
+- Actualmente `CsarApiProvider` crea su propio `HttpClient`.
+- La API actual utiliza el header `X-Correlation-ID`.
+- El código de Charles utiliza `UserName` y `CorrelationID`.
 
-Ran terminal command: Get-ChildItem 'C:\doa\dpt-repositories\ClientSourceGateway\DS.Web.ClientSourceGatewayAPI' -Force | Select-Object Mode,Name
+### Primera implementación: CSAR UI
 
-Search for `BaseController|Request.Headers|Headers\[|TryGetValue|Correlation|UserId|USER_...`
+Necesito que modifiques el código local para preparar el envío de User Login Name y Correlation ID mediante HTTP request headers.
 
-Search for `LoginName|NameIdentifier|UserId|USER_ID|HttpClient|AddHttpClient|CsarApiProvi...`
+1. Reutiliza el `LoginName` disponible en `AuthStateProvider`.
+2. Agrega el header `UserName` a las solicitudes HTTP realizadas mediante `CsarApiProvider`.
+3. Revisa el mecanismo existente de `HttpClient` y utiliza una implementación centralizada para agregar los headers, evitando modificar manualmente cada método GET, POST o PUT.
+4. Para `X-Correlation-ID`, revisa si la UI ya tiene un valor disponible que podamos propagar. No inventes todavía el formato compuesto de la tarea #4.
+5. Si no existe todavía un origen para el Correlation ID, deja ese punto identificado y completa la parte independiente de `UserName`.
+6. Mantén el funcionamiento actual de las solicitudes HTTP.
 
-Search for `TRAN_TASK_TB|USER_ID`
+### Restricciones
 
-Ran terminal command: Get-ChildItem -LiteralPath 'C:\doa\charles' -Force | Select-Object FullName,Name
+- Modifica únicamente CSAR UI.
+- No modifiques CSAR API ni la base de datos.
+- No crees un nuevo sistema de autenticación.
+- No utilices valores ficticios para el usuario.
+- No inventes nombres adicionales de headers.
+- No modifiques funcionalidades ajenas a estas tareas.
+- No hagas commit, push ni deployment.
 
-Search for `class\s+BaseController|BaseController`
+### Validación
 
-Search for `CorrelationId|UserId|X-.*(User|Correlation)|Request\.Headers`
+Después de realizar los cambios:
 
-Find files matching `**/*.csproj`
+1. Compila la solución.
+2. Verifica mediante pruebas locales que las solicitudes incluyen el header `UserName` con el valor esperado.
+3. Comprueba que las llamadas existentes sigan funcionando.
+4. Indícame qué quedó implementado y qué falta para enviar `X-Correlation-ID`.
 
-Search for `BaseController|CorrelationId|UserId|Request\.Headers|Headers`
+### Resultado
 
-Read 
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Controllers\\BaseController.cs"
-}
+Muéstrame los archivos modificados y explícame brevemente qué hace cada cambio.
 
-Read 
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Common\\Headers\\RequestHeaderAccessor.cs"
-}
+**Necesito cambios de código reales en CSAR UI, no otra investigación general.**
 
-Read 
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Common\\Headers\\IRequestHeaderAccessor.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Common\\Middleware\\RequiredHeaderValidatorMiddleware.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Program.cs"
-}
-
-Read , lines 1 to 220
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR\\CSAR.Web\\Components\\Controls\\CallUpdate.razor.cs",
-  "view_range": [
-    1,
-    220
-  ]
-}
-
-Search for `TRAN_TASK_TB|TranTaskDetailRepo|UpdateTaskLock|InsertTaskNote|UpdateTaskHisto...`
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Controllers\\BaseController.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Program.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Program.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Middleware\\CorrelationIdMiddleware.cs"
-}
-
-Search for `\[Http|Task<|IActionResult|UserId|userId|Correlation`
-
-Search for `\[Http|Task<|IActionResult|UserId|userId|Correlation`
-
-Search for `ExtractUser|ExtractCorrelation|AcquireHeader|: BaseController`
-
-Search for `ExtractUser|ExtractCorrelation|AcquireHeader|: BaseController`
-
-Read , lines 1 to 95
-Completed with input: {
-  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Controllers\\ActionRequestController.cs",
-  "view_range": [
-    1,
-    95
-  ]
-}
-
-Read , lines 1 to 95
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Controllers\\ActionRequestController.cs",
-  "view_range": [
-    1,
-    95
-  ]
-}
-
-Read , lines 1 to 220
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Services\\Implementations\\CsarRequestService.cs",
-  "view_range": [
-    1,
-    220
-  ]
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Controllers\\TaskController.cs"
-}
-
-"Read" failed
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Models\\TaskStatusUpdateRequest.cs"
-}
-Tool execution failed: Path does not exist
-
-Search for `AcquireHeaderParams|AcquireHeaderValue|_correlationId|_loginId|RequestHeaderA...`
-
-"Search" failed
-Tool execution failed: Search paths do not exist: C:\doa\charles\CSAR Correleation and username
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\DS.CSAR.Api.csproj"
-}
-
-Ran terminal command: Get-ChildItem 'C:\doa\charles' -Force | Select-Object Mode,Name
-
-Search for `TRAN_TASK_TB|USER_ID`
-
-Find files matching `**/*TaskStatusUpdateRequest*.cs`
-
-Search for `TaskStatusUpdateRequest|UserName\s*=|UpdateTaskStatusAsync|UpdateCall\(`
-
-Search for `GetOperatorLoginName|UpdateTaskStatus|UpdateCall|UpdateTaskLock|UpdateTaskHis...`
-
-Background agent `Compare CSAR API copies` is complete
-
-Read agent `Compare CSAR API copies`
-Completed with input: {
-  "agent_id": "32104dce-9d38-43d1-95ac-70696c6939c5",
-  "since_turn": 0
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Controllers\\BaseController.cs"
-}
-
-Search for `ExtractUserLoginIdFromHeader|ExtractCorrelationIdFromHeader|AcquireHeaderPara...`
-
-Search for `TRAN_TASK_TB|TranTaskRepo|UserName|OperatorLoginName|USER_ID`
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Contracts\\Requests\\TaskStatusUpdateRequest.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR\\CSAR.Web\\Services\\AuthStateProvider.cs"
-}
-
-Read , lines 1 to 90
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR\\CSAR.Web\\Program.cs",
-  "view_range": [
-    1,
-    90
-  ]
-}
-
-Search for `_tranTaskRepo`
-
-Search for `TRAN_TASK_TB row|Insert.*TranTask|_tranTaskRepo\.|TranTask\s*\{|UpdateTaskSta...`
-
-Search for `InsertTaskNote|UpdateTaskLock|UpdateTaskStatus|UpdateCall|UpdateTaskHistory|U...`
-
-Read , lines 165 to 255
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR\\CSAR.Web\\Services\\CsarApiProvider.cs",
-  "view_range": [
-    165,
-    255
-  ]
-}
-
-Read , lines 465 to 590
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR\\CSAR.Web\\Components\\Controls\\CallUpdate.razor.cs",
-  "view_range": [
-    465,
-    590
-  ]
-}
-
-Ran terminal command: Get-ChildItem 'C:\Users\dolme\.nuget\packages\csar.core' -Force -ErrorAction SilentlyContinue | Select-Object Name,FullName; Get-ChildItem 'C:\Users\dolme\.nuget\packages\csar.core.models' -Force -ErrorAction SilentlyContinue | Select-Object Name,FullName
-
-Read , lines 295 to 365
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Services\\Implementations\\CsarRequestService.cs",
-  "view_range": [
-    295,
-    365
-  ]
-}
-
-Read , lines 515 to 565
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Services\\Implementations\\CsarRequestService.cs",
-  "view_range": [
-    515,
-    565
-  ]
-}
-
-Ran terminal command: Get-ChildItem 'C:\Users\dolme\.nuget\packages\csar.core\1.0.4' -Recurse -File | Select-Object FullName
-
-Search for `TRAN_TASK_TB|USER_ID|TranTask`
-
-Read , lines 335 to 365
-Completed with input: {
-  "path": "C:\\doa\\charles\\CSAR Correlation and Username\\DS.CSAR.Api\\Services\\Implementations\\CsarRequestService.cs",
-  "view_range": [
-    335,
-    365
-  ]
-}
-
-Ran terminal command: $model = 'C:\Users\dolme\.nuget\packages\csar.core.models\1.0.4\lib\net10.0\CSAR.Core.Models.dll'; Get-ChildItem (Split-Path $model) -Force | Select-Object Name; Add-Type -Path $model; [CSAR.Core.Models.TranTask].GetProperties() | Select-Object Name,PropertyType
-Tool execution failed with exit code 1
-
-Ran terminal command: $model = 'C:\Users\dolme\.nuget\packages\csar.core.models\1.0.4\lib\net10.0\CSAR.Core.Models.dll'; try { [Reflection.Assembly]::LoadFrom($model).GetType('CSAR.Core.Models.TranTask').GetProperties() | Select-Object Name,PropertyType } catch { $_.Exception.ToString(); if ($_.Exception.LoaderExceptions) { $_.Exception.LoaderExceptions | ForEach-Object { $_.Message } } } ; Get-Content 'C:\Users\dolme\.nuget\packages\csar.core\1.0.4\csar.core.nuspec'
-
-Ran terminal command: $model = 'C:\Users\dolme\.nuget\packages\csar.core.models\1.0.4\lib\net10.0\CSAR.Core.Models.dll'; $a=[Reflection.Assembly]::LoadFrom($model); try { $a.GetTypes() | Where-Object { $_.Name -eq 'TranTask' } | ForEach-Object { $_.GetProperties() | Select-Object Name,PropertyType } } catch [Reflection.ReflectionTypeLoadException] { $_.Exception.LoaderExceptions | ForEach-Object { $_.Message } }
-
-Search for `CreateCSARRequest|RequestedBy|CSARRequest`
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Controllers\\CsarTaskController.cs"
-}
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Middleware\\CorrelationIdMiddleware.cs"
-}
-
-Search for `AddTransient<ICsarProvider|new CsarApiProvider|AddTransient<LoggingHandler>|H...`
-
-Read , lines 1 to 120
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Common\\Middleware\\RequestResponseLogging.cs",
-  "view_range": [
-    1,
-    120
-  ]
-}
-
-Search for `CreateCSARRequestAsync|CreateCSARRequest|CreateRequest`
-
-Read 
-Completed with input: {
-  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Controllers\\ActionRequestController.cs"
-}
-
-Search for `_loginId|_correlationId|ExtractUserLoginIdFromHeader|ExtractCorrelationIdFrom...`
-
-Search for `CorrelationID|X-Correlation-ID|UserName|ClientApplication`
-
-Search for `CreateCSARRequestAsync|CreateTranTaskAsync|InsertAsync\(new TranTask|Requeste...`
-
-Search for `GetAuthenticationStateAsync|LoginName|NameIdentifier|AddTransient<ICsarProvid...`
-
-Read , lines 1 to 150
-Completed with input: {
-  "path": "C:\\doa\\dpt-repositories\\ClientSourceGateway\\DS.Web.ClientSourceGatewayAPI\\DS.Web.ClientSourceGatewayAPI\\Controllers\\MortgageController.cs",
-  "view_range": [
-    1,
-    150
-  ]
-}
-
-Search for `ExtractUserLoginIdFromHeader|ExtractCorrelationIdFromHeader|AcquireHeaderValu...`
-
-Revisé los tres proyectos disponibles y **no modifiqué archivos**. La carpeta de Charles existe como `C:\doa\charles\CSAR Correlation and Username` —no “Correleation”—.
-
-| CSAR UI: cambios necesarios | CSAR API: cambios necesarios | Código existente que podemos reutilizar |
-|---|---|---|
-| En `AuthStateProvider.cs`, `GetAuthenticationStateAsync` lee `LoginName` del token y lo expone como `ClaimTypes.NameIdentifier`. La UI podría enviarlo como nombre del usuario; la copia de Charles usa el header **`UserName`**. | En la copia actual no hay `BaseController`; los controladores heredan de `ControllerBase`. La copia de Charles añade `BaseController.cs` con `ExtractUserLoginIdFromHeader` y `ExtractCorrelationIdFromHeader`, pero **ninguna acción los invoca**. Hay que conectarlos con las acciones que necesiten los valores. | La UI ya tiene `LoginName`. En la copia de Charles ya existe la lectura del header **`UserName`**. |
-| En `Program.cs`, el registro construye `CsarApiProvider` directamente; aunque registra `LoggingHandler`, no lo conecta a las solicitudes. `CsarApiProvider.cs` crea su propio `HttpClient` y concentra los `GetAsync`, `PutAsync` y `PostAsync`. Propondría configurarlo con `IHttpClientFactory` y un `DelegatingHandler` común que agregue los headers a las llamadas. | La API actual ya procesa **`X-Correlation-ID`** en `CorrelationIdMiddleware.cs`: lo acepta, genera un GUID si falta, lo registra en el contexto y lo devuelve. En cambio, la copia de Charles busca **`CorrelationID`**. Hace falta alinear ambos nombres; recomendaría conservar `X-Correlation-ID`, que ya usa el middleware de la API actual. | La API actual ya ofrece el middleware de correlación. La UI tiene `LoggingHandler`, pero hoy solo genera un `X-Trace-ID` y registra fallos; no agrega `UserName` ni un `CorrelationID` descriptivo. |
-| `TaskSelection.cs` y `CallUpdate.razor.cs` tienen `CsarTaskId` y `TranTaskId`. Un handler común puede añadir headers a todas las llamadas, pero no conoce automáticamente el contexto de tarea de cada operación; para formar un ID con esos valores, el proveedor debe recibir ese contexto cuando aplique. | La escritura relevante está en `ActionRequestController.Post` → `CsarRequestService.CreateCSARRequestAsync` → `CreateTranTaskAsync`. Esta última inserta un `TranTask`, pero no recibe ni asigna el usuario. En la copia de Charles el flujo sigue igual. También habría que comprobar que el modelo y el repositorio de `TranTask` permiten mapear el dato a `USER_ID`: el repositorio está en el paquete NuGet `CSAR.Core`, no en el código fuente disponible. | En `CsarRequestService.CreateCSARRequestAsync`, la API ya obtiene `userId` de `request.RequestedBy`; actualmente lo usa para otras operaciones, pero no lo pasa a `CreateTranTaskAsync`. El campo `RequestedBy` es un valor del body; no es evidencia de que llegue el header. |
-
-### Qué falta para completar #3 y #4
-
-- **Tarea #3:** enviar el username de forma común desde la UI y leerlo en la API. Para el registro en `TRAN_TASK_TB`, modificar el flujo de `CreateCSARRequestAsync`/`CreateTranTaskAsync` para pasar el valor al insertar cada fila. **No pude confirmar** el nombre de la propiedad de `TranTask` ni su mapeo a `USER_ID` porque esa implementación está dentro del paquete NuGet.
-- **Tarea #4:** enviar correlación en todas las llamadas. La API actual ya acepta `X-Correlation-ID`, pero no se genera en la UI. `LoginName`, `CsarTaskId` y `TranTaskId` están disponibles para construir un valor descriptivo donde haya contexto; **el código no define todavía un formato compuesto ni cómo obtener esos IDs para todas las solicitudes**. Por tanto, un handler común puede propagar los headers, pero no basta por sí solo para construir un ID con datos de tarea que no recibe.
-
-### Referencia y alcance
-
-`DS.Web.ClientSourceGatewayAPI` está disponible. `RequestHeaderAccessor.cs` lee `CorrelationID` y `ClientApplication`; `MortgageController.cs` obtiene `UserName` y correlación para algunas operaciones y los pasa a servicios. Sirve como referencia de consumo, pero usa convenciones distintas a `X-Correlation-ID` de la API actual.
-
-Por último, no encontré en la UI actual una llamada a `ActionRequestController.Post`; por eso, **no asumiría que esta UI es quien crea las filas de `TRAN_TASK_TB`**. Para esa parte hay que seguir el consumidor real de ese endpoint.
+Si encuentras un impedimento técnico, explica exactamente cuál es y conserva los cambios seguros que hayas podido completar.
