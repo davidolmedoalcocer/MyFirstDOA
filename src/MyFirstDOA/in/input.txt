@@ -1,27 +1,159 @@
-• Agregué la segunda prueba en e2e/ui/tests/adminUi/ProductManagement.test.ts. No la ejecuté, como pediste, y no hice commit, push ni PR.
-  
-  Qué cambié
-  
-  - Conservé la prueba existente [494905] ... Selecting a Product shows its Display Name, Name, and Namespace sin tocarla.
-  - Añadí una prueba nueva al final del describe: [494905] Admin UI - Products - Product selector loads the mock products. El título la describe como
-  comprobación de que el selector carga los productos simulados.
-  - La prueba abre Products desde el menú lateral, despliega el selector con productSelect.click() y verifica que cada opción sea visible: Empty Product, New
-  Product y Warehouse Service. Como revisa cada una por separado, no depende del orden.
-  - No elige ningún producto, así que no cambia el estado del selector.
-  - Reutilicé el page object ProductManagementPage (e2e/ui/src/pages/ProductManagementPage.wrapper.ts), que ya tenía openFromNav(), productSelect y
-  getProductOption(). No modifiqué el page object.
-  
-  Qué revisar al ejecutarla desde VS Code
-  
-  - Usé productSelect.click() directamente. El método selectProduct del page object espera a que el selector esté cerrado antes de abrirlo, por un problema de
-  animación de cierre. Si la nueva prueba falla al abrir el selector, copia esa espera.
-  - Los nombres de las opciones salen de productManagementMockData.ts. Si cambian los datos mock, la prueba fallará por diseño.
-  
-  Para ejecutarla, usa la tarea E2E: Run Tests con el filtro -g 494905 o ui/tests/adminUi/ProductManagement.test.ts.
+Hi David, 
  
-▸ Credits: turn 0.15 • session 0.32 | Time: 30s
+I apologize for the delay! I have attached our Advanced Vacation Policy for Mexico. You can review and let me know if you have any questions. 
+ 
+For the time off, you’ll just need to make sure you enter those dates into Workday.
+ 
+Thanks,
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-haiku-5.5 · thinking · medium · ◔ 10%                                            /workspaces/dev-portal · (practice/494905-product-selection-e2e)
 
-›  ask a question or describe a task ↵
+
+Advance Vacation Policy – México 
+Code: NA-017 Advance Vacation Policy 
+Version: 01 
+Effective Date: October 1st, 2026 
+Responsible Department: People & Culture 
+Country of Application: Exclusive for México 
+Classification: P&C Internal 
+1. Policy Statement 
+The Company recognizes the importance of promoting employee well-being and fostering a healthy balance 
+between work responsibilities and personal life. 
+In accordance with applicable labor legislation in México, employees become entitled to vacation benefits 
+upon completing the required period of service. To provide flexibility and support to employees during their 
+first year of employment, the Company has established this Advance Vacation Policy. 
+This policy allows eligible employees to request, on an exceptional basis and subject to prior approval, up 
+to five (5) working days of vacation before formally becoming entitled to such benefit. 
+Any days approved under this policy will be deducted from the employee’s vacation balance once the 
+employee becomes entitled to vacation in accordance with applicable legislation and Company policies. 
+Approval of this benefit is subject to manager approval, business operational requirements, and the 
+employee’s satisfactory fulfillment of job responsibilities. 
+Advance Vacation constitutes solely an advance of a future vacation entitlement and does not provide 
+additional paid time off, increase the employee’s vacation entitlement, or create any vested rights of any 
+kind. 
+2. Purpose 
+To establish a mechanism that allows eligible employees to request up to five (5) working days of vacation 
+in advance during their first year of service, prior to formally becoming entitled to such benefit. 
+Days used under this policy will be deducted from the vacation balance to which the employee becomes 
+entitled once the applicable vacation benefit is earned. 
+3. General Guidelines 
+Advance Vacation is intended to accommodate occasional personal needs during an employee’s first year 
+of service and constitutes solely an advance of a future vacation entitlement. 
+Employees utilizing this benefit must: 
+▪ Plan their absences with a minimum of two (2) weeks’ notice, except in extraordinary 
+circumstances or properly justified emergencies. 
+▪ Obtain prior manager approval. 
+▪ Continue to meet performance expectations and job responsibilities. 
+▪ Properly record Advance Vacation days in the applicable corporate systems. 
+▪ Acknowledge and accept that all days used under this policy will later be deducted from their 
+vacation balance. 
+Use of this benefit must be reasonable, responsible, and aligned with business needs. 
+4. Eligibility Requirements 
+Regular full-time employees in Mexico may be eligible to request Advance Vacation provided that they: 
+▪ Are within their first year (12 months) of continuous service. 
+▪ Maintain active employment status at the time of the request. 
+▪ Have not yet become entitled to vacation benefits. 
+▪ Obtain prior approval from their manager. 
+▪ Are not subject to restrictions resulting from disciplinary measures related to attendance or 
+performance, as determined by People & Culture. 
+▪ Meet all requirements established under this policy. 
+Whenever possible, employees are expected to coordinate their requests in advance to ensure adequate 
+operational coverage and business continuity. 
+Eligibility for this benefit will automatically end once the employee becomes entitled to vacation benefits in 
+accordance with applicable law. 
+5. Relationship to Vacation Benefits 
+Days granted under this policy constitute an advance of the vacation entitlement that the employee will 
+receive upon meeting the required service period. 
+Once the employee becomes entitled to vacation benefits, the Company will automatically deduct the 
+number of days used under this policy from the employee’s vacation balance. 
+The granting of Advance Vacation does not increase the number of vacation days to which an employee is 
+entitled. 
+6. Benefit Limitations 
+Days granted under this policy: 
+▪ May only be used during the employee’s first year of employment. 
+▪ Are limited to a cumulative maximum of five (5) working days. 
+▪ Must be requested and taken in full workdays only. 
+▪ May not be requested by the hour or in partial-day increments. 
+▪ Require a minimum request of one (1) full working day. 
+▪ May not exceed a total approved cumulative balance of five (5) working days. 
+▪ Will be deducted from the employee’s future vacation balance. 
+▪ Are non-transferable. 
+▪ Do not constitute a vested right. 
+7. Request and Approval Process 
+All Advance Vacation requests must receive prior approval from the employee’s manager. 
+Requests must be submitted at least two (2) weeks in advance, except in extraordinary circumstances or 
+properly justified emergencies. 
+Requests must be made for a minimum of one (1) working day and a maximum of five (5) working days. 
+Approval will be subject to: 
+▪ Business needs. 
+▪ Adequate team coverage. 
+▪ Existing workload. 
+Document1 
+2/4 
+October 23, 2026 
+▪ Employee performance and achievement of objectives. 
+▪ Operational impact of the requested absence. 
+8. Operational Restrictions 
+The Company may temporarily limit or restrict the use of Advance Vacation during critical business periods, 
+including but not limited to: 
+▪ Financial close periods. 
+▪ Audits. 
+▪ System implementations. 
+▪ Strategic launches. 
+▪ Periods of high operational demand. 
+▪ Significant corporate events. 
+9. Grounds for Denial of Requests 
+A manager may deny a request when: 
+▪ Other approved absences would compromise team coverage. 
+▪ The requested period coincides with critical dates or important deliverables. 
+▪ The absence would significantly impact departmental operations. 
+▪ The employee is subject to a performance improvement plan or corrective measures related to 
+attendance or performance. 
+▪ The employee has already become entitled to vacation benefits. 
+▪ The employee has reached the maximum limit of five (5) Advance Vacation days. 
+▪ The request is submitted for hours or partial days. 
+▪ The employee does not meet the eligibility requirements established in this policy. 
+10. Responsible Use and Monitoring 
+The Company will maintain records of all days used under this policy and will be responsible for ensuring 
+that such days are deducted from the employee’s applicable vacation balance once the employee becomes 
+entitled to vacation benefits. 
+11. Other Leaves and Absences 
+This policy is independent of and does not replace any leave of absence or entitlement established under 
+applicable law or other corporate policies. 
+Advance Vacation does not replace or modify benefits related to: 
+▪ Medical leave. 
+▪ Maternity or paternity leave. 
+▪ Adoption leave. 
+▪ Bereavement leave. 
+▪ Statutory leave requirements. 
+▪ Any other benefit regulated by law or Company policy. 
+12. No Accrual or Cash Compensation 
+Days granted under this policy: 
+▪ Will not be converted into cash. 
+▪ Will not be compensated at the end of the calendar year. 
+Document1 
+3/4 
+October 23, 2026 
+▪ Will not be paid upon termination of employment. 
+13. No Vested Rights 
+Approval of an Advance Vacation request does not guarantee approval of future requests and does not 
+create any vested right for the employee. 
+Days granted under this policy do not represent additional time off and do not increase the employee’s 
+vacation entitlement. 
+The Company reserves the right to interpret, modify, suspend, or terminate this policy at any time based on 
+business needs and applicable legislation. 
+14. Policy Administration 
+The Company shall be responsible for the administration, interpretation, and application of this policy, 
+including determining employee eligibility, maintaining records of days used, coordinating the appropriate 
+adjustments to the vacation balances of employees who utilize this benefit, and resolving any situation not 
+specifically addressed in this document. 
+The Company further reserves the right to issue any guidelines, criteria, or interpretations necessary to 
+ensure the consistent, equitable, and appropriate application of this policy. 
+In all cases, decisions will be made taking into consideration business needs, organizational fairness, 
+employee experience, and the Company’s operational continuity. 
+Controlled Corporate Document 
+People & Culture Mexico 
+INFIOS 
+Internal and Confidential Use 
+Document1 
+4/4 
+October 23, 2026 
