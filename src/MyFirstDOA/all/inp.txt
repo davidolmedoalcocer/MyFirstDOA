@@ -1,31 +1,6 @@
-Vamos a implementar el primer cambio de las tareas #3 y #4 en CSAR API.
+Agregué el `BaseController` en la rama `features/csar-request-headers`, sin conectarlo todavía a ningún controlador existente.
 
-Ya creé la rama `features/csar-request-headers`.
+- `BaseController.cs`: reutilicé de Charles los métodos protegidos y el helper de lectura de encabezados. `UserName` es opcional: si falta, está vacío o solo contiene espacios, `_loginId` queda vacío sin lanzar una excepción. El ID de correlación se lee únicamente de `HttpContext.Items`, donde lo deja el middleware; si no está, el valor queda vacío y no se genera otro GUID. No incorporé la lógica de `Authorization`.
+- `BaseControllerTests.cs`: cubre `UserName` presente, ausente, vacío y con solo espacios, y verifica que el ID de correlación proviene del middleware aunque los encabezados tengan otros valores.
 
-Quiero reutilizar el `BaseController` que Charles comenzó en:
-
-`C:\doa\charles\CSAR Correlation and Username\DS.CSAR.Api\Controllers\BaseController.cs`
-
-Implementa los cambios únicamente en mi proyecto:
-
-`C:\doa\test-repos\csar-api\DS.CSAR.Api`
-
-**Cambios solicitados:**
-
-1. Agrega `BaseController.cs` a mi API tomando como base el código de Charles.
-2. Conserva su método para leer el header `UserName`, pero hazlo opcional: si no existe o está vacío, no debe lanzar una excepción.
-3. Conserva la funcionalidad para obtener el Correlation ID, pero utiliza el valor que ya proporciona `CorrelationIdMiddleware` mediante `HttpContext.Items`. No generes otro GUID.
-4. Mantén los helpers reutilizables que sean necesarios, sin incorporar la lógica de `Authorization` que no utilizaremos.
-5. Agrega pruebas unitarias para comprobar la lectura de `UserName` y Correlation ID, incluyendo los casos en los que faltan.
-
-**Restricciones:**
-
-- No modifiques ningún controlador existente todavía.
-- No modifiques servicios ni repositorios.
-- No modifiques CSAR UI ni la copia de Charles.
-- No cambies la base de datos ni stored procedures.
-- No hagas commit ni push.
-
-Al terminar, compila CSAR API y ejecuta las pruebas correspondientes.
-
-Explícame brevemente qué código reutilizaste de Charles, qué adaptaste y qué archivos modificaste.
+**Validación:** CSAR API compiló con 0 errores y las **6 pruebas nuevas pasaron**. Solo se agregaron esos dos archivos; no hubo commit ni push.
