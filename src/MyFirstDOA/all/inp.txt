@@ -1,23 +1,24 @@
-Ya agregamos y probamos `BaseController.cs` en mi CSAR API, reutilizando el código de Charles.
+Vamos a continuar con la tarea #4 de CSAR: enviar Correlation ID en las solicitudes HTTP hacia CSAR API.
 
-Ahora quiero avanzar con la tarea #3, específicamente con el requisito:
+Ya implementamos y comprobamos el envío de `UserName` mediante `UserNameHeaderHandler`, y la API actual ya reconoce `X-Correlation-ID` en su middleware.
 
-"TRAN_TASK_TB should take USER_ID from management user."
+La tarea #4 indica que el Correlation ID debe identificar el contexto de la solicitud, con un formato posible como `USERID_CSARTASKID_TRANTASKID_etc`. No necesita un timestamp para ser único.
 
-Ya identificaste anteriormente este flujo:
+**Quiero continuar únicamente en CSAR UI.**
 
-`ActionRequestController.Post` → `CsarRequestService.CreateCSARRequestAsync` → `CreateTranTaskAsync`.
+1. Revisa el `UserNameHeaderHandler` que acabamos de implementar y determina si es apropiado extenderlo para enviar también `X-Correlation-ID`, o si conviene un handler separado.
+2. Identifica qué información está disponible en ese punto para construir un identificador descriptivo: usuario, operación, ruta y, cuando estén disponibles, CSAR Task ID y Tran Task ID.
+3. Implementa el envío centralizado de `X-Correlation-ID` para las solicitudes de `CsarApiProvider`, sin modificar cada método individualmente.
+4. No inventes valores para identificadores de tareas que no estén disponibles. Si no se puede incluir todo el contexto solicitado, explícame claramente qué parte queda pendiente.
+5. No reemplaces ni interfieras con el header `UserName` que ya funciona.
+6. Agrega pruebas para comprobar que `X-Correlation-ID` se envía en GET, POST y PUT, y verifica que el código compile.
 
-Revisa solamente ese flujo y responde brevemente:
+**Restricciones:**
 
-1. ¿De dónde sale actualmente `request.RequestedBy` y cómo llega a `ActionRequestController.Post`?
-2. ¿Qué valor se utiliza actualmente como `userId` y qué operaciones lo utilizan?
-3. ¿Qué propiedades se asignan al objeto `TranTask` antes de insertarlo?
-4. ¿Podemos confirmar con el código disponible cómo se asigna `TRAN_TASK_TB.USER_ID`?
-5. ¿Existe evidencia suficiente para concluir que el header `UserName` debe reemplazar a `request.RequestedBy`, o todavía hay algo que Charles debe confirmar?
+- Modifica únicamente CSAR UI.
+- No modifiques CSAR API ni la base de datos.
+- No cambies la lógica de negocio.
+- No utilices automáticamente el `CorrelationID` de Serilog ni `X-Trace-ID` sin verificar que representan el identificador requerido.
+- No hagas commit ni push.
 
-No modifiques ningún archivo todavía.
-
-No investigues otros controladores ni otras funcionalidades. Necesito identificar el cambio mínimo y seguro para completar esta parte de la tarea #3, aprovechando el `BaseController` que ya agregamos.
-
-Muéstrame las líneas de código relevantes y explícame el resultado en español, de forma sencilla.
+Al terminar, explícame en español qué modificaste, cómo se construye el Correlation ID, un ejemplo del valor generado y qué parte de la tarea #4 continúa pendiente, si corresponde.
