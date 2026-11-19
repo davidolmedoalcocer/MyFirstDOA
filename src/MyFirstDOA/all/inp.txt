@@ -1,6 +1,23 @@
-Agregué el `BaseController` en la rama `features/csar-request-headers`, sin conectarlo todavía a ningún controlador existente.
+Ya agregamos y probamos `BaseController.cs` en mi CSAR API, reutilizando el código de Charles.
 
-- `BaseController.cs`: reutilicé de Charles los métodos protegidos y el helper de lectura de encabezados. `UserName` es opcional: si falta, está vacío o solo contiene espacios, `_loginId` queda vacío sin lanzar una excepción. El ID de correlación se lee únicamente de `HttpContext.Items`, donde lo deja el middleware; si no está, el valor queda vacío y no se genera otro GUID. No incorporé la lógica de `Authorization`.
-- `BaseControllerTests.cs`: cubre `UserName` presente, ausente, vacío y con solo espacios, y verifica que el ID de correlación proviene del middleware aunque los encabezados tengan otros valores.
+Ahora quiero avanzar con la tarea #3, específicamente con el requisito:
 
-**Validación:** CSAR API compiló con 0 errores y las **6 pruebas nuevas pasaron**. Solo se agregaron esos dos archivos; no hubo commit ni push.
+"TRAN_TASK_TB should take USER_ID from management user."
+
+Ya identificaste anteriormente este flujo:
+
+`ActionRequestController.Post` → `CsarRequestService.CreateCSARRequestAsync` → `CreateTranTaskAsync`.
+
+Revisa solamente ese flujo y responde brevemente:
+
+1. ¿De dónde sale actualmente `request.RequestedBy` y cómo llega a `ActionRequestController.Post`?
+2. ¿Qué valor se utiliza actualmente como `userId` y qué operaciones lo utilizan?
+3. ¿Qué propiedades se asignan al objeto `TranTask` antes de insertarlo?
+4. ¿Podemos confirmar con el código disponible cómo se asigna `TRAN_TASK_TB.USER_ID`?
+5. ¿Existe evidencia suficiente para concluir que el header `UserName` debe reemplazar a `request.RequestedBy`, o todavía hay algo que Charles debe confirmar?
+
+No modifiques ningún archivo todavía.
+
+No investigues otros controladores ni otras funcionalidades. Necesito identificar el cambio mínimo y seguro para completar esta parte de la tarea #3, aprovechando el `BaseController` que ya agregamos.
+
+Muéstrame las líneas de código relevantes y explícame el resultado en español, de forma sencilla.
