@@ -1,39 +1,35 @@
-Ahora que ya tienes acceso a las definiciones SQL de:
+Necesito revisar y simplificar el stored procedure `dbo.TASK_TB_STALE_LOCK_CLEANUP_USP` que implementamos.
 
-- `TASK_TB_AUDIT_WORK_QUEUE_REQUEST_SSP`
-- `TASK_TB_TEAMMGR_WORK_QUEUE_REQUEST_SSP`
+Acabo de reunirme con Charles y me hizo las siguientes observaciones:
 
-Necesito que continúes y completes los cambios locales en la rama `features/csar-stale-lock-cleanup`.
+1. El SP tiene muchos más JOINs de los que esperaba.
+2. Quiere entender por qué necesitamos tantos JOINs para desbloquear tareas.
+3. Como la limpieza se ejecutará cada vez que se consulten las listas, quiere que sea lo más rápida y sencilla posible.
+4. Charles también está investigando el comportamiento original del locking porque cree que podría existir una solución más simple.
 
-Ya implementaste `TaskLockingOptions` y la configuración del timeout. No repitas ese trabajo.
+**Necesito que hagas lo siguiente:**
 
-**Implementa lo siguiente:**
+1. Revisa el SP actual y explícame brevemente para qué sirve cada JOIN.
+2. Identifica cuáles son realmente necesarios para encontrar las subtareas bloqueadas que deben desbloquearse.
+3. Determina si podemos simplificar el SP utilizando principalmente `TASK_TB`, `LOCKED_IN` y `UPDATE_DT`, conservando las restricciones necesarias para no afectar tareas fuera del alcance.
+4. Revisa si existen JOINs, filtros o llamadas a funciones que puedan eliminarse sin cambiar el comportamiento requerido.
+5. Comprueba si la simplificación podría liberar subtareas que no correspondan a la cola y lender group solicitados.
+6. Evalúa el impacto de rendimiento de ejecutar este SP cada vez que se llamen `GetTaskListDetails` o `GetTeamMgrTaskListDetails`.
 
-1. Crear un stored procedure compartido para liberar subtareas con `LOCKED_IN = 'Y'` y `UPDATE_DT` anterior al tiempo configurable.
-2. Utilizar los filtros reales de los procedimientos existentes para limitar el desbloqueo a las subtareas elegibles de Audit, Pending y Team Manager.
-3. Agregar la operación de acceso a datos necesaria para ejecutar ese stored procedure.
-4. Modificar únicamente los métodos `GetTaskListDetails` y `GetTeamMgrTaskListDetails` dentro de `TranTaskDetailController.cs`, para invocar la limpieza antes de obtener sus listas.
-5. Mantener sin cambios la lógica actual de consulta de tareas.
-6. Reutilizar `TaskLocking:LockTimeoutMinutes` y no ejecutar la limpieza si el valor no está configurado.
+**Importante:**
 
-**Restricciones:**
+- No modifiques todavía el SP ni otros archivos.
+- No elimines condiciones necesarias solamente para reducir código.
+- No inventes reglas de locking.
+- No ejecutes UPDATE ni procedimientos de desbloqueo en ninguna base de datos.
+- No cambies los endpoints ni la configuración.
+- No propongas una arquitectura nueva.
 
-- No agregar columnas a `TASK_TB`.
-- No modificar Blazor ni componentes legacy.
-- No ejecutar procedimientos de desbloqueo en QA o PROD.
-- No hacer commit, push ni deployment.
-- No modificar endpoints distintos de los dos indicados.
-- Utilizar la hora de SQL Server, verificando que sea consistente con `UPDATE_DT`.
-- No inventar filtros ni ampliar el alcance del desbloqueo.
+**Quiero una respuesta breve y concreta:**
 
-**Esta vez necesito cambios concretos en los archivos locales, no solamente un análisis o una propuesta.**
+- JOINs necesarios.
+- JOINs que podrían eliminarse.
+- Riesgos de simplificar.
+- Una versión SQL simplificada propuesta, sin aplicarla.
 
-Cuando termines, compila la solución, ejecuta las pruebas locales disponibles y muéstrame:
-
-- Archivos creados y modificados.
-- Stored procedure de limpieza.
-- Cambios en los dos endpoints.
-- Resultado de compilación y pruebas.
-- Cualquier impedimento técnico real que haya evitado completar alguna parte.
-
-Si encuentras un impedimento que pueda causar desbloqueos incorrectos, no improvises una solución: identifica el punto exacto y conserva los cambios seguros que sí puedas completar.
+El objetivo es revisar una solución más sencilla con Charles, manteniendo el comportamiento correcto y un buen rendimiento.
