@@ -1,13 +1,19 @@
-Implementé el envío centralizado de **`X-Correlation-ID`** en CSAR UI. El nuevo `CorrelationIdHeaderHandler.cs` se ejecuta después de `UserNameHeaderHandler.cs`, sin modificarlo. Lo conecté en `Program.cs`, de modo que no fue necesario editar cada método del proveedor.
+Revisa la implementación de `CorrelationIdHeaderHandler.cs` contra el requisito original de Charles:
 
-El valor combina **el usuario, si está disponible, el método HTTP y la ruta**. Añade un ID numérico solo cuando la ruta o un parámetro conocido permite identificarlo. Por ejemplo:
+"CorrelationID passed from ID for all requests. Can format like USERID_CSARTASKID_TRANTASKID_etc, does not need timestamp to be unique, just label the request path fully."
 
-```text
-X-Correlation-ID: jdoe_GET_/CsarTasks/GetCsarTaskByID_CsarTaskId=17
-```
+El formato actual es similar a:
 
-No incluye timestamps, el cuerpo de la solicitud ni la consulta completa. Tampoco reutiliza el `CorrelationID` de Serilog ni `X-Trace-ID`.
+`jdoe_GET_/CsarTasks/GetCsarTaskByID_CsarTaskId=17`
 
-**Pendiente:** para incluir `CsarTaskId` y `TranTaskId` juntos cuando solo se conocen en el componente, ese contexto tendrá que pasarse explícitamente a la solicitud. El handler no etiqueta un `TaskId` genérico como `TranTaskId` sin certeza.
+Necesito que:
 
-**Validación:** CSAR UI compiló y pasaron las **169 pruebas del proveedor**. Las pruebas verifican ambos encabezados en GET, POST y PUT, y que se envía la correlación aunque no haya usuario. No modifiqué la API ni la base de datos, y no hice commit ni push.
+1. Verifiques si el identificador actual representa suficientemente el contexto de cada solicitud.
+2. Revises cómo incluir `CsarTaskId` y `TranTaskId` cuando realmente estén disponibles, sin inventarlos ni confundir un `TaskId` genérico con `TranTaskId`.
+3. Compruebes si el `LoginName` utilizado corresponde al `USERID` indicado en la tarea. No asumas que son equivalentes.
+4. Conserves los cambios correctos y ajustes únicamente lo necesario para cumplir el requisito.
+5. No agregues timestamps ni información ficticia.
+
+Antes de hacer cambios adicionales, explícame brevemente qué casos ya cumplen, cuáles no y qué cambios concretos se requieren.
+
+No modifiques otros proyectos ni hagas commit.
