@@ -1,35 +1,46 @@
-Necesito revisar y simplificar el stored procedure `dbo.TASK_TB_STALE_LOCK_CLEANUP_USP` que implementamos.
+Estoy trabajando en las tareas #3 y #4 de CSAR que me asignó Charles.
 
-Acabo de reunirme con Charles y me hizo las siguientes observaciones:
+**Tarea #3:** Passing UserID and Correlation ID with all API requests. También se menciona que TRAN_TASK_TB debe utilizar el USER_ID del management user.
 
-1. El SP tiene muchos más JOINs de los que esperaba.
-2. Quiere entender por qué necesitamos tantos JOINs para desbloquear tareas.
-3. Como la limpieza se ejecutará cada vez que se consulten las listas, quiere que sea lo más rápida y sencilla posible.
-4. Charles también está investigando el comportamiento original del locking porque cree que podría existir una solución más simple.
+**Tarea #4:** Correlation ID passed with all requests, con un formato posible como USERID_CSARTASKID_TRANTASKID_etc, que permita identificar el contexto de la solicitud.
 
-**Necesito que hagas lo siguiente:**
+Charles ya comenzó parte de la implementación y me compartió una copia de CSAR API ubicada en:
 
-1. Revisa el SP actual y explícame brevemente para qué sirve cada JOIN.
-2. Identifica cuáles son realmente necesarios para encontrar las subtareas bloqueadas que deben desbloquearse.
-3. Determina si podemos simplificar el SP utilizando principalmente `TASK_TB`, `LOCKED_IN` y `UPDATE_DT`, conservando las restricciones necesarias para no afectar tareas fuera del alcance.
-4. Revisa si existen JOINs, filtros o llamadas a funciones que puedan eliminarse sin cambiar el comportamiento requerido.
-5. Comprueba si la simplificación podría liberar subtareas que no correspondan a la cola y lender group solicitados.
-6. Evalúa el impacto de rendimiento de ejecutar este SP cada vez que se llamen `GetTaskListDetails` o `GetTeamMgrTaskListDetails`.
+`C:\doa\charles\CSAR Correleation and username`
 
-**Importante:**
+También mencionó `DS.Web.ClientSourceGatewayAPI` como aplicación de referencia para el manejo de headers y BaseController.
 
-- No modifiques todavía el SP ni otros archivos.
-- No elimines condiciones necesarias solamente para reducir código.
-- No inventes reglas de locking.
-- No ejecutes UPDATE ni procedimientos de desbloqueo en ninguna base de datos.
-- No cambies los endpoints ni la configuración.
-- No propongas una arquitectura nueva.
+Anteriormente exploré CSAR UI con Copilot, pero no realicé modificaciones.
 
-**Quiero una respuesta breve y concreta:**
+**Necesito que revises los proyectos disponibles y me indiques exactamente qué falta implementar.**
 
-- JOINs necesarios.
-- JOINs que podrían eliminarse.
-- Riesgos de simplificar.
-- Una versión SQL simplificada propuesta, sin aplicarla.
+1. Compara mi CSAR API actual con la copia de Charles. Identifica los cambios relacionados con BaseController, User ID y Correlation ID.
+2. Revisa cómo `DS.Web.ClientSourceGatewayAPI` recibe y utiliza los HTTP request headers, si ese proyecto está disponible.
+3. En CSAR UI, identifica cómo se obtiene actualmente LoginName y desde dónde se realizan las solicitudes HTTP hacia CSAR API.
+4. Determina cómo podemos agregar User ID y Correlation ID a los headers de las solicitudes desde un punto común, sin modificar manualmente cada request si el código lo permite.
+5. Identifica qué cambios de Charles están incompletos en CSAR API y qué métodos deben utilizar los valores recibidos.
+6. Investiga específicamente qué operaciones escriben en TRAN_TASK_TB y cómo se relacionan con el USER_ID mencionado en la tarea #3.
+7. Revisa qué información está disponible para construir el Correlation ID de la tarea #4, sin inventar identificadores o formatos que no existan en el código.
 
-El objetivo es revisar una solución más sencilla con Charles, manteniendo el comportamiento correcto y un buen rendimiento.
+**Restricciones:**
+
+- No modifiques ningún archivo todavía.
+- No copies automáticamente el proyecto de Charles sobre mi API.
+- No hagas commits ni cambios de base de datos.
+- No supongas que todos los proyectos están disponibles.
+- No inventes nombres de headers ni comportamientos.
+- Distingue lo que está implementado, lo que Charles dejó iniciado y lo que todavía falta.
+
+**Resultado que necesito:**
+
+Una tabla sencilla con tres columnas:
+
+- CSAR UI: cambios necesarios.
+- CSAR API: cambios necesarios.
+- Código existente que podemos reutilizar.
+
+Incluye nombres reales de archivos y métodos.
+
+Explícame en español, de forma breve y concreta, qué debemos implementar para completar las tareas #3 y #4.
+
+No propongas funcionalidades adicionales. Quiero concentrarme únicamente en el trabajo que Charles me asignó.
