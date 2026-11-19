@@ -1,8 +1,8 @@
 What’s up?
-Yesterday, I wrote and ran a Playwright E2E test for the product details criterion in PBI 494905 (Manage Products). I traced the initial failure to the assertion reading the field label and value together. I tried three approaches locally, including one that changes the Vue template, and all three passed.
+Yesterday, I worked on the product dropdown test for PBI 494905, and both practice tests passed together. I used a lower-cost Kiro model to manage my remaining credits. My Kiro Pro Plus upgrade was approved and is awaiting activation.
 
 Top priority
-Today, I’ll start reviewing the first acceptance criterion for PBI 494905 and check what test data is available to verify which products appear in the dropdown.
+Work on a third practice test and summarize my understanding of the current testing workflow and how it aligns with the Automation First proposal.
 
 Blockers
-No blockers.
+No current blockers. Kiro credits are near the limit while the approved upgrade awaits activation.
