@@ -1,9 +1,31 @@
-**Sí, reutilizaría el `BaseController` de Charles, pero no lo copiaría tal cual.** Es compatible con ASP.NET Core MVC y no requiere registrar servicios nuevos. Los ajustes son de comportamiento, no de dependencias.
+Vamos a implementar el primer cambio de las tareas #3 y #4 en CSAR API.
 
-| Parte | Qué conservaría o ajustaría |
-|---|---|
-| **Lectura de `UserName`** | Conservaría el nombre del encabezado y el helper `AcquireHeaderValue`. En `ExtractUserLoginIdFromHeader`, quitaría el `throw`: si el encabezado falta, está vacío o solo contiene espacios, `_loginId` queda vacío y la acción mantiene su comportamiento actual. Tal como está, la excepción cae en el manejo genérico de `ExceptionHandlingMiddleware.cs` y devuelve **HTTP 500**. |
-| **Correlación** | Conservaría `ExtractCorrelationIdFromHeader` solo como método de lectura. En vez de buscar `CorrelationID` o generar otro GUID, tomaría el valor de `HttpContext.Items[CorrelationIdConstants.HttpContextItemKey]`. El `CorrelationIdMiddleware` seguiría siendo el único que resuelve `X-Correlation-ID` y lo devuelve en la respuesta. |
-| **Clase base y `Authorization`** | Mantendría la herencia de `ControllerBase` y declararía `BaseController` como `abstract`, porque solo sirve de base. No incorporaría `AcquireHeaderParams` para este trabajo: no hace falta para leer `UserName` y separar `Authorization` por `\|` no valida un token. |
+Ya creé la rama `features/csar-request-headers`.
 
-**No hay un impedimento técnico para reutilizarlo.** Empezaría con una sola acción: leer `UserName` de forma opcional, sin sustituir todavía el valor que la acción usa hoy. El encabezado es un dato enviado por el cliente, no una prueba de identidad. **No modifiqué archivos.**
+Quiero reutilizar el `BaseController` que Charles comenzó en:
+
+`C:\doa\charles\CSAR Correlation and Username\DS.CSAR.Api\Controllers\BaseController.cs`
+
+Implementa los cambios únicamente en mi proyecto:
+
+`C:\doa\test-repos\csar-api\DS.CSAR.Api`
+
+**Cambios solicitados:**
+
+1. Agrega `BaseController.cs` a mi API tomando como base el código de Charles.
+2. Conserva su método para leer el header `UserName`, pero hazlo opcional: si no existe o está vacío, no debe lanzar una excepción.
+3. Conserva la funcionalidad para obtener el Correlation ID, pero utiliza el valor que ya proporciona `CorrelationIdMiddleware` mediante `HttpContext.Items`. No generes otro GUID.
+4. Mantén los helpers reutilizables que sean necesarios, sin incorporar la lógica de `Authorization` que no utilizaremos.
+5. Agrega pruebas unitarias para comprobar la lectura de `UserName` y Correlation ID, incluyendo los casos en los que faltan.
+
+**Restricciones:**
+
+- No modifiques ningún controlador existente todavía.
+- No modifiques servicios ni repositorios.
+- No modifiques CSAR UI ni la copia de Charles.
+- No cambies la base de datos ni stored procedures.
+- No hagas commit ni push.
+
+Al terminar, compila CSAR API y ejecuta las pruebas correspondientes.
+
+Explícame brevemente qué código reutilizaste de Charles, qué adaptaste y qué archivos modificaste.
