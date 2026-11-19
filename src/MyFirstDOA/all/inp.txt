@@ -1,24 +1,13 @@
-Vamos a continuar con la tarea #4 de CSAR: enviar Correlation ID en las solicitudes HTTP hacia CSAR API.
+Implementé el envío centralizado de **`X-Correlation-ID`** en CSAR UI. El nuevo `CorrelationIdHeaderHandler.cs` se ejecuta después de `UserNameHeaderHandler.cs`, sin modificarlo. Lo conecté en `Program.cs`, de modo que no fue necesario editar cada método del proveedor.
 
-Ya implementamos y comprobamos el envío de `UserName` mediante `UserNameHeaderHandler`, y la API actual ya reconoce `X-Correlation-ID` en su middleware.
+El valor combina **el usuario, si está disponible, el método HTTP y la ruta**. Añade un ID numérico solo cuando la ruta o un parámetro conocido permite identificarlo. Por ejemplo:
 
-La tarea #4 indica que el Correlation ID debe identificar el contexto de la solicitud, con un formato posible como `USERID_CSARTASKID_TRANTASKID_etc`. No necesita un timestamp para ser único.
+```text
+X-Correlation-ID: jdoe_GET_/CsarTasks/GetCsarTaskByID_CsarTaskId=17
+```
 
-**Quiero continuar únicamente en CSAR UI.**
+No incluye timestamps, el cuerpo de la solicitud ni la consulta completa. Tampoco reutiliza el `CorrelationID` de Serilog ni `X-Trace-ID`.
 
-1. Revisa el `UserNameHeaderHandler` que acabamos de implementar y determina si es apropiado extenderlo para enviar también `X-Correlation-ID`, o si conviene un handler separado.
-2. Identifica qué información está disponible en ese punto para construir un identificador descriptivo: usuario, operación, ruta y, cuando estén disponibles, CSAR Task ID y Tran Task ID.
-3. Implementa el envío centralizado de `X-Correlation-ID` para las solicitudes de `CsarApiProvider`, sin modificar cada método individualmente.
-4. No inventes valores para identificadores de tareas que no estén disponibles. Si no se puede incluir todo el contexto solicitado, explícame claramente qué parte queda pendiente.
-5. No reemplaces ni interfieras con el header `UserName` que ya funciona.
-6. Agrega pruebas para comprobar que `X-Correlation-ID` se envía en GET, POST y PUT, y verifica que el código compile.
+**Pendiente:** para incluir `CsarTaskId` y `TranTaskId` juntos cuando solo se conocen en el componente, ese contexto tendrá que pasarse explícitamente a la solicitud. El handler no etiqueta un `TaskId` genérico como `TranTaskId` sin certeza.
 
-**Restricciones:**
-
-- Modifica únicamente CSAR UI.
-- No modifiques CSAR API ni la base de datos.
-- No cambies la lógica de negocio.
-- No utilices automáticamente el `CorrelationID` de Serilog ni `X-Trace-ID` sin verificar que representan el identificador requerido.
-- No hagas commit ni push.
-
-Al terminar, explícame en español qué modificaste, cómo se construye el Correlation ID, un ejemplo del valor generado y qué parte de la tarea #4 continúa pendiente, si corresponde.
+**Validación:** CSAR UI compiló y pasaron las **169 pruebas del proveedor**. Las pruebas verifican ambos encabezados en GET, POST y PUT, y que se envía la correlación aunque no haya usuario. No modifiqué la API ni la base de datos, y no hice commit ni push.
