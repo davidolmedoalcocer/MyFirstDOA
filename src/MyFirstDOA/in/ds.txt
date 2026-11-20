@@ -1,8 +1,8 @@
 What’s up?
-Yesterday, I used a lower-cost Kiro model to generate the product dropdown E2E test for PBI 494905, both to manage my remaining credits and evaluate the model. It generated the test successfully, and both practice tests passed together. My Kiro Pro Plus upgrade was approved and is awaiting activation.
+Yesterday, I completed the third practice test and started summarizing how Eli’s proposal aligns with what I’ve seen in the code. I also met with Mariana to clarify questions about what we’ve learned.
 
 Top priority
-Work on a third practice test and summarize my understanding of the current testing workflow and how it aligns with the Automation First proposal.
+Continue working on the summary.
 
 Blockers
-No current blockers. Kiro credits are near the limit while the approved upgrade awaits activation.
+No blockers.
