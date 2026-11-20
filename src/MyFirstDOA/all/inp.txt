@@ -1,19 +1,11 @@
-Revisa la implementación de `CorrelationIdHeaderHandler.cs` contra el requisito original de Charles:
+**La implementación actual cumple para identificar la ruta, pero todavía no incluye todo el contexto de tarea que la UI ya conoce.** Revisé el código sin modificar archivos.
 
-"CorrelationID passed from ID for all requests. Can format like USERID_CSARTASKID_TRANTASKID_etc, does not need timestamp to be unique, just label the request path fully."
+| Caso | Resultado |
+|---|---|
+| `GetCsarTaskByID` y `ActionRequest/detail/{id}` | **Cumplen para los datos disponibles en la URL.** El `handler` identifica el método y la ruta; el ID CSAR aparece como `CsarTaskId` en el primer caso y como parte de la ruta en el segundo. |
+| Listados, reportes y otras llamadas sin una tarea concreta | **Método y ruta identifican la operación.** Dos consultas a la misma ruta con filtros distintos pueden compartir etiqueta; no hace falta hacerlas únicas ni copiar toda la consulta. |
+| `UpdateTaskLock`, `UpdateCall`, notas y cambios de estado | **Falta contexto cuando la UI ya conoce la tarea.** En `CallUpdate.razor.cs`, `UpdateTaskLock` se usa tanto para una tarea hija como para la principal. Por eso es correcto que el handler lo etiquete como `TaskId` genérico si solo ve la URL. En notas y cambios de estado, el ID va en el cuerpo y el handler no lo lee. |
 
-El formato actual es similar a:
+**Sobre `USERID`:** `AuthStateProvider.cs` lee el claim `LoginName` y lo guarda como `NameIdentifier`. Eso confirma que `jdoe` es el **login del portal**, no que sea el `USERID` que Charles tenía en mente. No encontré un `USERID` distinto ni un mapeo en la UI. Conservaría el login como etiqueta descriptiva, sin presentarlo como `USERID` hasta confirmar el significado con Charles.
 
-`jdoe_GET_/CsarTasks/GetCsarTaskByID_CsarTaskId=17`
-
-Necesito que:
-
-1. Verifiques si el identificador actual representa suficientemente el contexto de cada solicitud.
-2. Revises cómo incluir `CsarTaskId` y `TranTaskId` cuando realmente estén disponibles, sin inventarlos ni confundir un `TaskId` genérico con `TranTaskId`.
-3. Compruebes si el `LoginName` utilizado corresponde al `USERID` indicado en la tarea. No asumas que son equivalentes.
-4. Conserves los cambios correctos y ajustes únicamente lo necesario para cumplir el requisito.
-5. No agregues timestamps ni información ficticia.
-
-Antes de hacer cambios adicionales, explícame brevemente qué casos ya cumplen, cuáles no y qué cambios concretos se requieren.
-
-No modifiques otros proyectos ni hagas commit.
+**Ajuste mínimo propuesto:** conservar el envío centralizado y pasar contexto tipado **por solicitud** desde los puntos que conocen los IDs, como `CallUpdate.razor.cs` y su `TaskSelection`. El `proveedor` lo adjuntaría en `HttpRequestMessage.Options`, y el `handler` incluiría solo los IDs confirmados para esa operación. Una nota de la tarea hija puede llevar ambos; una actualización de la tarea principal no debe heredar el ID de la hija seleccionada. No hace falta cambiar el cuerpo, inventar IDs ni agregar timestamps.
