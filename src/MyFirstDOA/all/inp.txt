@@ -1,24 +1,109 @@
-Necesito revisar un punto importante de la tarea #3 de Charles: identificar qué usuario bloqueó una tarea en CSAR.
+Search Tools
 
-Ya implementamos el header `UserName` y lo integramos en varias operaciones de auditoría, pero no sé si el flujo de bloqueo quedó cubierto.
+Search for `TASK_TB_UPDATE_USP|TASK_TB_UPD|class TaskRepo|UpdateTaskLock\(|LOCKED_IN\s*=|...`
 
-**No modifiques ningún archivo todavía.**
+Ran terminal command: Get-ChildItem 'C:\doa\dpt-repositories','C:\doa\test-repos','C:\doa\charles' -Directory | Where-Object Name -Match 'csar|core|database' | Select-Object -ExpandProperty FullName; Get-Command ilspycmd,ildasm -ErrorAction SilentlyContinue | Select-Object Name,Source; Get-ChildItem "$env:USERPROFILE\.dotnet\tools" -Name -ErrorAction SilentlyContinue
 
-Revisa específicamente:
+Search for `UpdateTaskLock\(|new TaskRepo\(|CorrelationIdMiddleware|GetAuditUserName|TASK...`
 
-1. El endpoint `UpdateTaskLock` y los métodos de servicio, repositorio o stored procedures que ejecuta.
-2. Dónde se establece `TASK_TB.LOCKED_IN = 'Y'` para bloquear una tarea.
-3. Qué información de usuario recibe actualmente esa operación y si realmente se guarda quién adquirió el bloqueo.
-4. En qué tabla y columna se registra ese usuario, si existe.
-5. Si el `UserName` que ahora enviamos en el header podría utilizarse en ese flujo sin modificar el esquema de la base de datos.
-6. Si hay diferencias entre el bloqueo de una tarea principal y una tarea hija.
+Ran terminal command: ilspycmd -t CSAR.Core.Repositories.TaskRepo "$env:USERPROFILE\.nuget\packages\csar.core\1.0.4\lib\net10.0\CSAR.Core.dll"; ilspycmd -t CSAR.Core.Models.WorkTask "$env:USERPROFILE\.nuget\packages\csar.core.models\1.0.4\lib\net10.0\CSAR.Core.Models.dll"; ilspycmd -t CSAR.Core.Models.TranTask "$env:USERPROFILE\.nuget\packages\csar.core.models\1.0.4\lib\net10.0\CSAR.Core.Models.dll"
 
-**Quiero una conclusión concreta:**
+Read 
+Completed with input: {
+  "path": "C:\\doa\\dpt-repositories\\csar\\database\\locking-users.sql"
+}
 
-- ¿Actualmente podemos saber quién bloqueó una tarea?
-- ¿Los cambios que ya hicimos cubren ese caso?
-- Si no, ¿qué cambio mínimo sería necesario?
+Search for `TASK_TB_.*(USP|SP)|USER_NM|USER_ID|PackageReference Include="CSAR.Core"`
 
-Indica los archivos, métodos y columnas reales. No inventes campos ni supongas que `USER_NM` o `USER_ID` representan al usuario que bloqueó la tarea sin comprobarlo.
+Read , lines 113 to 145
+Completed with input: {
+  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR\\CSAR.Web\\Components\\Controls\\CallUpdate.razor.cs",
+  "view_range": [
+    113,
+    145
+  ]
+}
 
-No implementes nada, no hagas commits y responde brevemente en español.
+Read , lines 878 to 915
+Completed with input: {
+  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR2\\Web\\Controls\\MortUpdateCall.ascx.cs",
+  "view_range": [
+    878,
+    915
+  ]
+}
+
+Search for `TASK_TB_LOCK_CSAR_USP|\bTASK_TB_USP\b|CREATE TABLE .*TASK_TB|TRAN_TASK_TB.*US...`
+
+Search for `TASK_TB_LOCK_CSAR_USP|TASK_TB_USP|private void UpdateTaskLock|@INPUT_USER_ID|...`
+
+Search for `UpdateTaskLock\(|LockedIndicator\s*=`
+
+Ran terminal command: ilspycmd -t CSAR.Core.Repositories.TranTaskRepo "$env:USERPROFILE\.nuget\packages\csar.core\1.0.4\lib\net10.0\CSAR.Core.dll" | Select-String 'p.Add|CommandDefinition'
+
+Search for `TASK_TB_LOCK_CSAR_USP|UpdateTaskLock\(|LockCSAR|LockCsar`
+
+Search for `LastUpdatedBy|TRAN_TASK_ID|CSAR_TASK_ID|LOCKED_IN`
+
+Search for `LockedIndicator =|SystemName`
+
+Read , lines 165 to 203
+Completed with input: {
+  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR2\\Web\\Controls\\MortUpdateCall.ascx.cs",
+  "view_range": [
+    165,
+    203
+  ]
+}
+
+Search for `TASK_TB_LOCK_CSAR_USP|LockTaskBy|LockCsarTask|LockCSARTask`
+
+Read , lines 48 to 66
+Completed with input: {
+  "path": "C:\\doa\\test-repos\\csar-api\\DS.CSAR.Api\\Controllers\\TaskController.cs",
+  "view_range": [
+    48,
+    66
+  ]
+}
+
+Read , lines 15 to 64
+Completed with input: {
+  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR2\\Core\\Data\\UserAccountInfoFactory.cs",
+  "view_range": [
+    15,
+    64
+  ]
+}
+
+Search for `LockMain|LockCall|GetTaskLock\(|TryLock|LockTask\(|LockFor|GetCallAccountInfo...`
+
+Ran terminal command: ilspycmd -t CSAR.Core.Repositories.UserAccountInfoRepo "$env:USERPROFILE\.nuget\packages\csar.core\1.0.4\lib\net10.0\CSAR.Core.dll" | Select-String 'public|p.Add|CommandDefinition|LOCKED_IN'
+
+Search for `GetUserAccountInfoByID`
+
+Search for `(?:PROCEDURE|PROC)\s+.*TASK_TB_(?:LOCK_CSAR_USP|USP)\b`
+
+Search for `Lock.*TaskAsync|Task.*LockAsync|TaskCommon.*Lock|Lock.*Csar|Csar.*Lock`
+
+Read , lines 118 to 162
+Completed with input: {
+  "path": "C:\\doa\\dpt-repositories\\csar\\DS.UI.Web.CSAR2\\Core\\Data\\TaskFactory.cs",
+  "view_range": [
+    118,
+    162
+  ]
+}
+
+**Los cambios de auditoría no cubren el bloqueo.** En el flujo actual de `UpdateTaskLock` se guarda el estado del bloqueo, pero la API no lee ni pasa al repositorio el `UserName` de quien lo adquirió. Con el código disponible, no podemos identificar de forma fiable quién bloqueó la tarea.
+
+| Flujo | Qué comprobé |
+|---|---|
+| **Tarea hija** | `CallUpdate.razor.cs — ShowHideTasks` envía `UpdateTaskLock(task.TaskId, "Y", task.Version)`. `TaskController.cs — UpdateTaskLock` llama directamente a `TaskRepo`, sin pasar por un servicio. En `CSAR.Core` 1.0.4, `GetTaskByIDAsync` usa `TASK_TB_SPK` y `UpdateAsync` envía `@LOCKED_IN = 'Y'` a `TASK_TB_USP` para actualizar `TASK_TB.LOCKED_IN`. No envía ningún parámetro de usuario. |
+| **Tarea principal** | En la UI actual encontré el `desbloqueo explícito con &quot;N&quot;`, pero no una llamada equivalente con `"Y"` para la principal. El código legacy sí contiene un método, `UserAccountInfoFactory.cs — GetUserAccountInfoByID`, que llama a `TASK_TB_LOCK_CSAR_USP` con `@INPUT_USER_ID`. Eso confirma que ese método **pasa** un usuario, no dónde se guarda ni que la UI actual use ese flujo. |
+
+**Sobre las columnas:** `scripts general.sql` identifica `TASK_TB.USER_NM` como el último usuario que actualizó la hija, no como dueño del bloqueo. `UpdateTaskLock` tampoco escribe en `TRAN_TASK_TB`, así que no hay evidencia de que `TRAN_TASK_TB.USER_ID` registre quién bloqueó. No encontré las definiciones SQL de los procedimientos de adquisición para confirmar qué guardan internamente.
+
+**Cambio mínimo:** leer el `UserName` opcional con `BaseController.cs` al adquirir el bloqueo y pasarlo al repositorio. Hay un precedente: `TaskFactory.cs legacy` ya enviaba `@INPUT_USER_ID` al mismo `TASK_TB_USP`. Antes de reutilizarlo, hay que confirmar que el procedimiento desplegado acepta el `LoginName` y lo guarda de forma que identifique **al dueño del bloqueo**, no solo al último usuario que modificó la fila. Sin esa confirmación, no se puede afirmar que baste un cambio de API sin cambiar el esquema.
+
+No modifiqué archivos ni la base de datos, ni hice commits.
