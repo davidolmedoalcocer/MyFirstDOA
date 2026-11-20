@@ -1,25 +1,17 @@
-Vamos a continuar con la tarea #3 en mi CSAR API, en la rama `features/csar-request-headers`.
+Integré el encabezado `UserName` en CSAR API, en la rama `features/csar-request-headers`. **Cuando el encabezado trae un valor, se usa para registrar quién realizó la acción. Si falta, está vacío o solo contiene espacios, se conserva el valor que la API usaba antes.**
 
-Acabo de hablar con Charles y confirmó que debemos utilizar el `UserName` recibido en el header cuando la API registra qué usuario realizó una acción, por ejemplo en campos `CreatedBy`, `UpdatedBy` u otros campos de auditoría equivalentes.
+| Archivo y método | Antes | Ahora |
+|---|---|---|
+| `BaseController.cs` — `GetAuditUserName` | Solo extraía el encabezado. | Reutiliza el lector existente y devuelve el valor anterior si no hay un `UserName` utilizable. |
+| `TaskController.cs` — `UpdateCall` | Usaba `request.UserName` para la nota y el operador del historial. | Usa el encabezado para ambos registros, con `request.UserName` como respaldo. |
+| `TaskController.cs` y `CsarRequestService.cs` — `UpdateTaskStatus` / `UpdateTaskStatusAsync` | Guardaban `request.UserName` como operador del historial. | El controlador pasa al servicio el usuario de auditoría por separado, sin modificar el cuerpo de la solicitud. |
+| `TaskNoteController.cs` — `InsertTaskNote` | Guardaba el `UserName` de la nota recibida. | Da prioridad al encabezado para registrar al autor de la nota. |
+| `ActionRequestController.cs` y `CsarRequestService.cs` — `Post` / `CreateCSARRequestAsync` | Usaban `RequestedBy` para registrar al operador que creó el CSAR y al autor de las notas locales. | Usan el encabezado para esos campos de auditoría. `RequestedBy` no se sobrescribe y sigue siendo el respaldo. |
 
-Ya tenemos implementado y probado `BaseController.cs`, basado en el código de Charles, que permite obtener `UserName` de forma opcional.
+También actualicé el contrato `ICsarRequestService.cs`, el `README.md` y las pruebas de creación, notas e historial.
 
-Quiero comenzar la integración con cambios mínimos y sin refactorizar.
+**Qué quedó pendiente:** no cambié el uso de `RequestedBy` en las notas enviadas a sistemas externos; falta confirmar si allí debe figurar el solicitante o el operador. Tampoco cambié `UpdateTaskHistory`, porque no está confirmado que el operador del registro histórico sea quien hace la petición actual. Los datos del llamante, el flujo de correo y `TRAN_TASK_TB.USER_ID` quedaron intactos.
 
-1. Identifica las acciones y servicios de CSAR API que actualmente guardan el usuario que creó o modificó un registro. Revisa especialmente los usos de `request.UserName`, `request.RequestedBy` y campos de auditoría.
-2. Distingue los valores que representan al usuario que ejecutó la acción de aquellos que tienen otro propósito de negocio.
-3. Implementa el uso del `UserName` del header únicamente donde el código confirme que representa al usuario que realizó la operación, reutilizando nuestro `BaseController`.
-4. Conserva el comportamiento anterior para solicitudes que no envíen el header, sin introducir errores nuevos.
-5. No reemplaces todos los `UserName` o `RequestedBy` automáticamente.
-6. Si algún campo es ambiguo, no lo modifiques y explícame qué falta confirmar.
+**Validación:** la API compiló sin errores. Pasaron **37 de 38 pruebas seleccionadas**, incluidas todas las pruebas nuevas. La única falla fue una prueba existente que espera un objeto `{ Id: 42 }` de `POST /api/ActionRequest`, aunque el endpoint ya devolvía el entero `42` antes de este cambio. No alteré ese contrato.
 
-No modifiques CSAR UI, Correlation ID, la base de datos ni stored procedures. No hagas commit ni push.
-
-Después de los cambios, compila, ejecuta las pruebas correspondientes y muéstrame:
-
-- Qué archivos y métodos modificaste.
-- Qué valor utilizaban antes.
-- Cómo obtienen ahora el `UserName`.
-- Qué operaciones quedaron pendientes y por qué.
-
-Explícame los cambios en español, de forma sencilla, porque necesito entenderlos y poder explicárselos a Charles.
+No modifiqué CSAR UI, Correlation ID, la base de datos ni los procedimientos almacenados. No hice commit ni push.
