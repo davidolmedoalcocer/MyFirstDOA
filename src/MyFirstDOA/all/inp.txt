@@ -1,21 +1,11 @@
-Vamos a completar los cambios sencillos de auditoría en CSAR API, siguiendo la indicación de Charles: usar el `UserName` del header cuando registramos quién realizó una acción.
+Implementé los tres cambios de auditoría en CSAR API. Ninguno requirió modificar `CSAR.Core`, otros paquetes ni la base de datos.
 
-Por ahora, modifica únicamente estos casos identificados en tu revisión:
+| Archivo | Cambio |
+|---|---|
+| `TaskHistoryController.cs` | `UpdateTaskHistory` usa `GetAuditUserName` para dar prioridad al header `UserName` al guardar `TaskHistory.UserId`. Si el header falta o está en blanco, conserva el `UserId` del body. **No modifica `OperatorLoginName`.** |
+| `LenderRequestTranController.cs` | `InsertLenderRequestTran` aplica la misma prioridad a `LenderRequestTran.UserId`, con el valor del body como respaldo. |
+| `CsarRequestService.cs` | `UpdateTaskStatusAsync` usa el actor de auditoría que ya recibe para llenar `TaskHistory.UserId` y, cuando el flujo CIT/LPS crea una solicitud al prestamista, `LenderRequestTran.UserId`. Sin header, el flujo usa `request.UserName`, igual que ya hacía para el operador del historial. |
 
-1. `TaskHistoryController.UpdateTaskHistory`: utilizar el usuario de auditoría del header para `TaskHistory.UserId`, conservando el valor anterior como respaldo. No cambiar `OperatorLoginName`.
-2. `LenderRequestTranController.InsertLenderRequestTran`: utilizar el usuario del header para `LenderRequestTran.UserId`, con el respaldo actual.
-3. `CsarRequestService.UpdateTaskStatusAsync`: completar los campos de auditoría que identificaste como vacíos, específicamente `TaskHistory.UserId` y `LenderRequestTran.UserId` en la rama correspondiente, utilizando el usuario de auditoría que ya recibe el servicio.
+Actualicé el `README.md` y amplié las pruebas en `TaskAuditUserTests.cs` y `CsarRequestServiceTests.cs`.
 
-Reutiliza `BaseController.GetAuditUserName` donde corresponda y conserva la compatibilidad con solicitudes sin el header.
-
-**Restricciones:**
-- No modificar `CSAR.Core` ni otros paquetes NuGet.
-- No modificar stored procedures ni tablas.
-- No modificar el flujo de bloqueo, fax ni integraciones externas.
-- No hacer una refactorización general.
-- No cambiar campos que representen usuarios de negocio distintos del actor de auditoría.
-- No hacer commit ni push.
-
-Si alguno de estos cambios requiere modificar el paquete o existe ambigüedad en el significado del campo, déjalo pendiente y explícame por qué.
-
-Compila, ejecuta las pruebas correspondientes y explícame qué cambiaste en cada archivo y por qué.
+**Validación:** la API compiló con 0 errores y 10 advertencias. Pasaron las **47 pruebas seleccionadas**. No toqué el flujo de bloqueo, fax ni integraciones externas, y no hice commit ni push.
