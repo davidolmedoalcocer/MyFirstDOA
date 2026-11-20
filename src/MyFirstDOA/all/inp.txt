@@ -1,13 +1,8 @@
-Ya identificamos que `TaskController.UpdateTaskLock` no pasa el `UserName` al repositorio.
+Sí, se puede registrar quién hizo la actualización que adquiere el bloqueo sin cambiar la base de datos. Pero eso no basta para identificar de forma fiable quién lo adquirió más adelante.
 
-Quiero determinar si podemos completar este cambio de forma sencilla, sin modificar la base de datos.
+TASK_TB_USP: revisé la definición desplegada en CSAR_QA, no la de producción. Acepta @INPUT_USER_ID varchar(32) como parámetro opcional. Si se envía, lo guarda en TASK_TB.USER_NM; si no, obtiene el valor mediante CORP_GETLOGIN_SP.
+TaskRepo.UpdateAsync (CSAR.Core 1.0.4): no permite proporcionar ese valor. Recibe WorkTask y el token de cancelación, y no envía @INPUT_USER_ID al procedimiento. Leer el header en el controlador no sería suficiente: también hay que adaptar la llamada al repositorio.
+Identificación posterior: el procedimiento guarda USER_NM en la misma actualización que pone LOCKED_IN = 'Y', pero también lo sobrescribe en actualizaciones posteriores aunque la tarea siga bloqueada. Por eso identifica al último usuario que actualizó la fila, no necesariamente a quien adquirió el bloqueo.
+Con Charles queda por confirmar qué necesita: si basta atribuir la actualización que bloquea, el cambio es pequeño y no requiere tocar SQL, siempre que el entorno destino tenga el mismo contrato que QA. Si necesita identificar al dueño del bloqueo para desbloqueos masivos, hay que confirmar qué campo o mecanismo conserva esa identidad; TASK_TB.USER_NM no la garantiza.
 
-Revisa únicamente:
-
-1. La definición disponible de `TASK_TB_USP` y qué hace con `@INPUT_USER_ID`.
-2. Si el `TaskRepo.UpdateAsync` de `CSAR.Core` 1.0.4 permite proporcionar ese valor.
-3. Si el usuario se guarda al adquirir el bloqueo (`LOCKED_IN = 'Y'`) y si posteriormente puede identificarse como el usuario que lo adquirió.
-
-Si no tienes acceso a la definición SQL actual, indícalo claramente.
-
-**No modifiques archivos.** Dame una conclusión breve: ¿podemos resolverlo con un cambio pequeño en CSAR API o existe una dependencia que debemos consultar con Charles?
+No modifiqué archivos ni datos.
