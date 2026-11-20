@@ -1,8 +1,25 @@
-Sí, se puede registrar quién hizo la actualización que adquiere el bloqueo sin cambiar la base de datos. Pero eso no basta para identificar de forma fiable quién lo adquirió más adelante.
+Antes de dar por terminada la tarea #3, necesito una revisión final de cobertura en mi CSAR API.
 
-TASK_TB_USP: revisé la definición desplegada en CSAR_QA, no la de producción. Acepta @INPUT_USER_ID varchar(32) como parámetro opcional. Si se envía, lo guarda en TASK_TB.USER_NM; si no, obtiene el valor mediante CORP_GETLOGIN_SP.
-TaskRepo.UpdateAsync (CSAR.Core 1.0.4): no permite proporcionar ese valor. Recibe WorkTask y el token de cancelación, y no envía @INPUT_USER_ID al procedimiento. Leer el header en el controlador no sería suficiente: también hay que adaptar la llamada al repositorio.
-Identificación posterior: el procedimiento guarda USER_NM en la misma actualización que pone LOCKED_IN = 'Y', pero también lo sobrescribe en actualizaciones posteriores aunque la tarea siga bloqueada. Por eso identifica al último usuario que actualizó la fila, no necesariamente a quien adquirió el bloqueo.
-Con Charles queda por confirmar qué necesita: si basta atribuir la actualización que bloquea, el cambio es pequeño y no requiere tocar SQL, siempre que el entorno destino tenga el mismo contrato que QA. Si necesita identificar al dueño del bloqueo para desbloqueos masivos, hay que confirmar qué campo o mecanismo conserva esa identidad; TASK_TB.USER_NM no la garantiza.
+Charles confirmó que el `UserName` del header debe utilizarse cuando registramos quién realizó una acción, como CreatedBy, UpdatedBy u otros campos equivalentes de auditoría.
 
-No modifiqué archivos ni datos.
+Ya implementamos los cambios en TaskController, TaskNoteController, ActionRequestController y CsarRequestService.
+
+**No modifiques ningún archivo.**
+
+Revisa toda la CSAR API actual y verifica:
+
+1. ¿Existe alguna otra operación que registre quién creó, modificó o ejecutó una acción y que todavía utilice un usuario del body, un valor fijo o un usuario de base de datos en lugar del header?
+2. ¿Los cambios que implementamos cubren correctamente los casos identificados?
+3. ¿Hay algún lugar donde hayamos reemplazado un usuario que realmente tiene un significado de negocio distinto?
+4. Separa los pendientes conocidos de `UpdateTaskLock`, `TRAN_TASK_TB.USER_ID`, notas externas y `UpdateTaskHistory`, indicando si existe evidencia de que deban cambiarse.
+5. Identifica únicamente los cambios adicionales realmente necesarios según la indicación de Charles, sin proponer refactorizaciones.
+
+Quiero una conclusión concreta:
+
+- **Cubierto:** archivos y métodos.
+- **Omitido:** archivos y métodos que realmente debamos modificar.
+- **Pendiente de Charles:** decisiones que no podemos tomar basándonos solamente en el código.
+
+Indica las rutas y métodos reales. Si no encuentras más cambios necesarios, dilo expresamente.
+
+No implementes nada ni hagas commit.
