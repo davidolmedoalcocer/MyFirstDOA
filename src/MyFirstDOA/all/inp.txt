@@ -1,17 +1,24 @@
-Integré el encabezado `UserName` en CSAR API, en la rama `features/csar-request-headers`. **Cuando el encabezado trae un valor, se usa para registrar quién realizó la acción. Si falta, está vacío o solo contiene espacios, se conserva el valor que la API usaba antes.**
+Necesito revisar un punto importante de la tarea #3 de Charles: identificar qué usuario bloqueó una tarea en CSAR.
 
-| Archivo y método | Antes | Ahora |
-|---|---|---|
-| `BaseController.cs` — `GetAuditUserName` | Solo extraía el encabezado. | Reutiliza el lector existente y devuelve el valor anterior si no hay un `UserName` utilizable. |
-| `TaskController.cs` — `UpdateCall` | Usaba `request.UserName` para la nota y el operador del historial. | Usa el encabezado para ambos registros, con `request.UserName` como respaldo. |
-| `TaskController.cs` y `CsarRequestService.cs` — `UpdateTaskStatus` / `UpdateTaskStatusAsync` | Guardaban `request.UserName` como operador del historial. | El controlador pasa al servicio el usuario de auditoría por separado, sin modificar el cuerpo de la solicitud. |
-| `TaskNoteController.cs` — `InsertTaskNote` | Guardaba el `UserName` de la nota recibida. | Da prioridad al encabezado para registrar al autor de la nota. |
-| `ActionRequestController.cs` y `CsarRequestService.cs` — `Post` / `CreateCSARRequestAsync` | Usaban `RequestedBy` para registrar al operador que creó el CSAR y al autor de las notas locales. | Usan el encabezado para esos campos de auditoría. `RequestedBy` no se sobrescribe y sigue siendo el respaldo. |
+Ya implementamos el header `UserName` y lo integramos en varias operaciones de auditoría, pero no sé si el flujo de bloqueo quedó cubierto.
 
-También actualicé el contrato `ICsarRequestService.cs`, el `README.md` y las pruebas de creación, notas e historial.
+**No modifiques ningún archivo todavía.**
 
-**Qué quedó pendiente:** no cambié el uso de `RequestedBy` en las notas enviadas a sistemas externos; falta confirmar si allí debe figurar el solicitante o el operador. Tampoco cambié `UpdateTaskHistory`, porque no está confirmado que el operador del registro histórico sea quien hace la petición actual. Los datos del llamante, el flujo de correo y `TRAN_TASK_TB.USER_ID` quedaron intactos.
+Revisa específicamente:
 
-**Validación:** la API compiló sin errores. Pasaron **37 de 38 pruebas seleccionadas**, incluidas todas las pruebas nuevas. La única falla fue una prueba existente que espera un objeto `{ Id: 42 }` de `POST /api/ActionRequest`, aunque el endpoint ya devolvía el entero `42` antes de este cambio. No alteré ese contrato.
+1. El endpoint `UpdateTaskLock` y los métodos de servicio, repositorio o stored procedures que ejecuta.
+2. Dónde se establece `TASK_TB.LOCKED_IN = 'Y'` para bloquear una tarea.
+3. Qué información de usuario recibe actualmente esa operación y si realmente se guarda quién adquirió el bloqueo.
+4. En qué tabla y columna se registra ese usuario, si existe.
+5. Si el `UserName` que ahora enviamos en el header podría utilizarse en ese flujo sin modificar el esquema de la base de datos.
+6. Si hay diferencias entre el bloqueo de una tarea principal y una tarea hija.
 
-No modifiqué CSAR UI, Correlation ID, la base de datos ni los procedimientos almacenados. No hice commit ni push.
+**Quiero una conclusión concreta:**
+
+- ¿Actualmente podemos saber quién bloqueó una tarea?
+- ¿Los cambios que ya hicimos cubren ese caso?
+- Si no, ¿qué cambio mínimo sería necesario?
+
+Indica los archivos, métodos y columnas reales. No inventes campos ni supongas que `USER_NM` o `USER_ID` representan al usuario que bloqueó la tarea sin comprobarlo.
+
+No implementes nada, no hagas commits y responde brevemente en español.
