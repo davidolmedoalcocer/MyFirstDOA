@@ -1,11 +1,25 @@
-**La implementación actual cumple para identificar la ruta, pero todavía no incluye todo el contexto de tarea que la UI ya conoce.** Revisé el código sin modificar archivos.
+Vamos a continuar con la tarea #3 en mi CSAR API, en la rama `features/csar-request-headers`.
 
-| Caso | Resultado |
-|---|---|
-| `GetCsarTaskByID` y `ActionRequest/detail/{id}` | **Cumplen para los datos disponibles en la URL.** El `handler` identifica el método y la ruta; el ID CSAR aparece como `CsarTaskId` en el primer caso y como parte de la ruta en el segundo. |
-| Listados, reportes y otras llamadas sin una tarea concreta | **Método y ruta identifican la operación.** Dos consultas a la misma ruta con filtros distintos pueden compartir etiqueta; no hace falta hacerlas únicas ni copiar toda la consulta. |
-| `UpdateTaskLock`, `UpdateCall`, notas y cambios de estado | **Falta contexto cuando la UI ya conoce la tarea.** En `CallUpdate.razor.cs`, `UpdateTaskLock` se usa tanto para una tarea hija como para la principal. Por eso es correcto que el handler lo etiquete como `TaskId` genérico si solo ve la URL. En notas y cambios de estado, el ID va en el cuerpo y el handler no lo lee. |
+Acabo de hablar con Charles y confirmó que debemos utilizar el `UserName` recibido en el header cuando la API registra qué usuario realizó una acción, por ejemplo en campos `CreatedBy`, `UpdatedBy` u otros campos de auditoría equivalentes.
 
-**Sobre `USERID`:** `AuthStateProvider.cs` lee el claim `LoginName` y lo guarda como `NameIdentifier`. Eso confirma que `jdoe` es el **login del portal**, no que sea el `USERID` que Charles tenía en mente. No encontré un `USERID` distinto ni un mapeo en la UI. Conservaría el login como etiqueta descriptiva, sin presentarlo como `USERID` hasta confirmar el significado con Charles.
+Ya tenemos implementado y probado `BaseController.cs`, basado en el código de Charles, que permite obtener `UserName` de forma opcional.
 
-**Ajuste mínimo propuesto:** conservar el envío centralizado y pasar contexto tipado **por solicitud** desde los puntos que conocen los IDs, como `CallUpdate.razor.cs` y su `TaskSelection`. El `proveedor` lo adjuntaría en `HttpRequestMessage.Options`, y el `handler` incluiría solo los IDs confirmados para esa operación. Una nota de la tarea hija puede llevar ambos; una actualización de la tarea principal no debe heredar el ID de la hija seleccionada. No hace falta cambiar el cuerpo, inventar IDs ni agregar timestamps.
+Quiero comenzar la integración con cambios mínimos y sin refactorizar.
+
+1. Identifica las acciones y servicios de CSAR API que actualmente guardan el usuario que creó o modificó un registro. Revisa especialmente los usos de `request.UserName`, `request.RequestedBy` y campos de auditoría.
+2. Distingue los valores que representan al usuario que ejecutó la acción de aquellos que tienen otro propósito de negocio.
+3. Implementa el uso del `UserName` del header únicamente donde el código confirme que representa al usuario que realizó la operación, reutilizando nuestro `BaseController`.
+4. Conserva el comportamiento anterior para solicitudes que no envíen el header, sin introducir errores nuevos.
+5. No reemplaces todos los `UserName` o `RequestedBy` automáticamente.
+6. Si algún campo es ambiguo, no lo modifiques y explícame qué falta confirmar.
+
+No modifiques CSAR UI, Correlation ID, la base de datos ni stored procedures. No hagas commit ni push.
+
+Después de los cambios, compila, ejecuta las pruebas correspondientes y muéstrame:
+
+- Qué archivos y métodos modificaste.
+- Qué valor utilizaban antes.
+- Cómo obtienen ahora el `UserName`.
+- Qué operaciones quedaron pendientes y por qué.
+
+Explícame los cambios en español, de forma sencilla, porque necesito entenderlos y poder explicárselos a Charles.
