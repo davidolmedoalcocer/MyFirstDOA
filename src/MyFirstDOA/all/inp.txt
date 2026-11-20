@@ -1,31 +1,21 @@
-**No daría por cerrada la tarea #3.** Los cambios actuales cubren el autor de las notas locales y el operador de varios flujos, pero no todos los campos que registran quién hizo la escritura. Revisé la API, `CSAR.Core` 1.0.4 y las definiciones SQL de QA en modo de solo lectura; no verifiqué producción.
+Vamos a completar los cambios sencillos de auditoría en CSAR API, siguiendo la indicación de Charles: usar el `UserName` del header cuando registramos quién realizó una acción.
 
-### Cubierto
+Por ahora, modifica únicamente estos casos identificados en tu revisión:
 
-| Archivo y método | Qué toma del header `UserName` |
-|---|---|
-| `TaskNoteController.cs — InsertTaskNote` | El autor de la nota local. Si falta el header, se conserva el comportamiento anterior. |
-| `TaskController.cs — UpdateCall` y `UpdateTaskStatus` → `UpdateTaskStatusAsync` | El autor de la nota de `UpdateCall` y el `OperatorLoginName` del historial que generan ambos flujos. Si falta el header, usan el `UserName` del body. Esto **no** cubre el `USER_NM` de la escritura. |
-| `ActionRequestController.cs — Post` → `CsarRequestService.cs — CreateCSARRequestAsync` | El operador que dio de alta el CSAR y el autor de las notas locales principal y de detalle. Si falta el header, usa `RequestedBy`. |
+1. `TaskHistoryController.UpdateTaskHistory`: utilizar el usuario de auditoría del header para `TaskHistory.UserId`, conservando el valor anterior como respaldo. No cambiar `OperatorLoginName`.
+2. `LenderRequestTranController.InsertLenderRequestTran`: utilizar el usuario del header para `LenderRequestTran.UserId`, con el respaldo actual.
+3. `CsarRequestService.UpdateTaskStatusAsync`: completar los campos de auditoría que identificaste como vacíos, específicamente `TaskHistory.UserId` y `LenderRequestTran.UserId` en la rama correspondiente, utilizando el usuario de auditoría que ya recibe el servicio.
 
-**No encontré un reemplazo indebido de datos de negocio.** `RequestedBy` y los datos del llamante siguen intactos. Sí hay un efecto indirecto: el `correo de rechazo` muestra al operador registrado al crear el CSAR, que ahora puede ser distinto de `RequestedBy`.
+Reutiliza `BaseController.GetAuditUserName` donde corresponda y conserva la compatibilidad con solicitudes sin el header.
 
-### Omitido: cambios respaldados por el código y SQL de QA
+**Restricciones:**
+- No modificar `CSAR.Core` ni otros paquetes NuGet.
+- No modificar stored procedures ni tablas.
+- No modificar el flujo de bloqueo, fax ni integraciones externas.
+- No hacer una refactorización general.
+- No cambiar campos que representen usuarios de negocio distintos del actor de auditoría.
+- No hacer commit ni push.
 
-| Archivo y método | Qué falta |
-|---|---|
-| `TaskController.cs — UpdateTask`, `UpdateCall` y `CsarRequestService.cs — UpdateTaskStatusAsync` | Las escrituras de `TASK_TB` siguen usando el usuario de base de datos porque el repositorio no envía `@INPUT_USER_ID`. Además, el historial generado en `UpdateCall` y `UpdateTaskStatusAsync` llena `OperatorLoginName`, pero deja `TaskHistory.UserId` vacío. SQL guarda ambos por separado: `OPERATOR_LOGIN_NM` es el operador; `USER_NM` es quien hizo la escritura. |
-| `LenderRequestTranController.cs — InsertLenderRequestTran` y `CsarRequestService.cs — UpdateTaskStatusAsync` | `LenderRequestTran.UserId` llega a `@INPUT_USER_ID` y se guarda en `USER_NM`. El endpoint lo toma del body y la rama CIT/LPS del servicio lo deja vacío. Ambos deben preferir el header y conservar el respaldo actual. |
-| `CsarRequestService.cs — CreateCSARRequestAsync` y sus métodos de persistencia | Falta propagar el actor a `USER_NM` al crear la tarea principal y las hijas, insertar la fila CSAR y la de búsqueda, actualizar el paso principal y guardar las transacciones de nombre, dirección, teléfono, hipoteca y preferencias de notificación. QA confirma `@INPUT_USER_ID` para esas escrituras. Algunos repositorios ya exponen el dato, como `CreateCsarMainTaskAsync` mediante `CsarTask.InputUserId`; otros no lo envían. |
-| `ActionRequestController.cs — SendFax` → `FaxRequestService.cs — CreateFaxRequestAsync` | Los tres procedimientos de fax y callout en Tracksource QA guardan `@INPUT_USER_ID` en `USER_NM`, pero los repositorios actuales no lo envían. Los datos del destinatario y del llamante no deben cambiar. |
+Si alguno de estos cambios requiere modificar el paquete o existe ambigüedad en el significado del campo, déjalo pendiente y explícame por qué.
 
-### Pendientes conocidos y decisiones de Charles
-
-| Pendiente | Qué ya está demostrado y qué falta decidir |
-|---|---|
-| `TaskController.cs — UpdateTaskLock` | **Sí debe cambiar para atribuir la escritura**: `TASK_TB_USP` puede guardar al actor en `USER_NM`. **No basta para identificar al dueño del bloqueo** después: otra actualización puede sobrescribirlo. Con Charles queda definir dónde conservar esa identidad si se necesita para desbloqueo masivo. |
-| `CsarRequestService.cs — CreateTranTaskAsync` | **Sí debe pasar el actor para la auditoría de creación**: en QA, `TRAN_TASK_TB_ISP` guarda `@INPUT_USER_ID` en `USER_NM` y el repositorio no lo envía. **Eso no resuelve `TRAN_TASK_TB.USER_ID`**: esa columna no aparece en la tabla de QA revisada. Falta confirmar con Charles el destino y el identificador de management que pide la tarea. |
-| `TaskHistoryController.cs — UpdateTaskHistory` | **Sí debe cambiar `TaskHistory.UserId`**: hoy viene del body y SQL lo usa para `USER_NM`. No hay base para sobrescribir también `OperatorLoginName` en este endpoint genérico: puede representar al operador histórico, no a quien está editando la fila. |
-| `TracksourceService.cs — CreateNoteMortgageAsync` | La API envía `RequestedBy` como `NoteRequest.UserName` a TaskCommon. Falta confirmar si el sistema externo lo guarda como autor y si espera el `LoginName` del portal u otro identificador. No lo sustituiría sin confirmar ese contrato. |
-
-No encontré motivo para cambiar los identificadores técnicos de TrackGuard ni atribuir al usuario la limpieza automática de bloqueos. **No modifiqué archivos ni datos, ni hice commits.**
+Compila, ejecuta las pruebas correspondientes y explícame qué cambiaste en cada archivo y por qué.
