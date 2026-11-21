@@ -1,3 +1,54 @@
-Ya identificaste que Product Management usa mocks para productos y versiones. Revisa solo esta dependencia del PBI 494908: ¿existe en el repositorio un flujo que cargue productos y versiones reales y permita obtener el productVersionId que necesita ProductVersionSettings?
+• Respuesta corta: el backend ya entrega productos y versiones con IDs reales, pero ningún flujo del front los carga en Product Management. Falta un servicio de front
+  para ProductVersions y conectar el store a ese servicio y a getProducts.
+  
+  Qué existe
+  
+  En el backend:
+  - devPortalService/src/Api/Controllers/OData/ProductVersionsController.cs expone el CRUD completo de ProductVersions (GetAll, GetById, Post, Patch, Put, Delete) y
+  además el GET por la ruta customer. Según ProductBuildDocs.cs, el GET de la colección no incluye las versiones en estado Removed.
+  - El Id de cada fila es el productVersionId que pide ProductVersionSettings. El e2e e2e/api/tests/ProductVersionSettings.test.ts, en las funciones assign y
+  requirementsOf, crea y filtra con productVersionId eq ….
+  - Product ya tiene DisplayName (PBI 510001, en Domain/Models/Product.cs y Dto/ProductDto.cs). Los enums se serializan como texto gracias a JsonStringEnumConverter en
+  Api/Extensions/Setup/ODataExtensions.cs.
+  
+  En el front (sharedUIComponents/src):
+  - services/productService.ts, función getProducts, ya consulta los productos reales en /products. La usan TemplateProductTabPanel.vue y ProductTabPanel.vue, pero
+  Product Management no.
+  - services/productBuildService.ts, función getProductBuilds, consulta /productBuilds. helpers/tenantProductFilters.ts, función activeBuildsOfProductsParams, llega a la
+  versión a través de productVersion/productId. Ese flujo resuelve builds activos para tenants y templates, no lista las versiones de un producto.
+  - models/productVersion.ts define ProductVersion con id, productId, majorVersion, minorVersion, patchVersion y status.
+  
+  Dónde se pierde el ID real
+  
+  En stores/productManagement.ts:
+  - fetchProducts lee mockProducts.
+  - fetchVersions(productId) filtra mockVersions.
+  - fetchVersionDetails(versionId) filtra los mocks de builds, configuraciones y secretos.
+  
+  Por eso, en ProductManagementDashboard.vue, selectVersion(version) recibe IDs falsos como 'ver-new-100'.
+  
+  Qué falta
+  
+  1. Un servicio para ProductVersions. No existe ningún getProductVersions en services/, y services/index.ts no exporta nada de ProductVersion. Haría falta, por ejemplo,
+  un services/productVersionService.ts que llame a /productVersions con $filter: productId eq …, siguiendo el patrón de getProductBuilds.
+  2. Conectar el store.
+    - fetchProducts debe llamar a getProducts.
+    - fetchVersions debe llamar al servicio nuevo. Puede seguir usando newestProductVersionFirst para el orden.
+    - Con eso, selectedVersion.id ya sería el productVersionId real que necesita fetchVersionDetails para consultar ProductVersionSettings.
+  
+  3. Alinear los modelos con la API. Son ajustes menores pero necesarios:
+    - ManagedProduct (en models/productManagement.ts) declara displayName y removable, pero el modelo Product del front aún no tiene displayName, y el backend no tiene
+  ninguna regla para removable.
+    - ProductVersionStatus usa etiquetas como 'In Development'. El comentario del modelo ya avisa que deben alinearse con lo que serializa el backend (el nombre del
+  enum) o mapearse a etiquetas.
+    - El campo version ("1.2.3") debe venir en la respuesta. El backend tiene la propiedad, porque ProductVersionsControllerTests comprueba .Version, pero no verifiqué
+  que salga en el JSON. Si no sale, se puede componer en el front a partir de Major, Minor y Patch.
+  
+  Sin el servicio y el cambio en el store, el PBI 494908 no puede consultar ProductVersionSettings con un ID válido, aunque el backend ya esté listo.
+ 
+▸ Credits: turn 3.21 • session 15.75 | Time: 37s
 
-Dime qué existe, dónde está y qué pieza faltaría para que la versión seleccionada en pantalla tenga un ID real. Cita el archivo y la función. Responde brevemente en español, en modo de solo lectura.
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 12%                                                       /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
