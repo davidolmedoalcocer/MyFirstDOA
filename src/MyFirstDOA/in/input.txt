@@ -1,3 +1,53 @@
-En mi portal local, con New Product → 1.1.0 → Configurations y estado In Development, hago clic en “Add Configuration +” y no veo ningún cambio. El PBI 494908 muestra que debería abrirse “Assign Configuration”.
+• Respuesta corta: el botón no tiene ningún manejador de clic. El evento no sale de ProductConfigurationsTabPanel.vue y el panel "Assign Configuration"
+  no existe en el repositorio. Que no veas ningún cambio es el comportamiento esperado del código actual.
+  
+  Qué hace hoy el botón
+  
+  En sharedUIComponents/src/components/ProductConfigurationsTabPanel.vue:
+  
+  <!-- No click handler yet: Configuration management is a later PBI (495005 builds layout only). -->
+  <infios-button size="standard" variant="ghost" :disabled="addDisabled">
+    Add Configuration
+    <infios-icon name="plus" slot="suffix" />
+  </infios-button>
+  
+  - No tiene @click. El comentario dice que se dejó así a propósito en el PBI 495005, que solo construía el layout.
+  - Solo está enlazado disabled. Por eso, con una versión seleccionada, el botón se ve activo pero no hace nada.
+  - El componente no declara defineEmits, ni estado del tipo showDrawer, ni ningún drawer en su plantilla. Su script solo tiene la búsqueda (useSearch),
+  la tabla (useClientTable) y los textos del estado vacío.
+  
+  Hasta dónde llega el evento
+  
+  El clic termina en el propio <infios-button>. Tampoco hay nadie escuchando en el componente padre. En
+  sharedUIComponents/src/components/ProductManagementDashboard.vue, el tab panel solo recibe props:
+  
+  <ProductConfigurationsTabPanel
+    :configurations="configurations"
+    :add-disabled="!selectedVersion"
+    :key="'configurations-' + versionKey" />
+  
+  Por eso el estado In Development no cambia nada aquí. addDisabled depende solo de que haya una versión seleccionada (!selectedVersion), y no del estado
+  de la versión.
+  
+  ¿Existe el panel?
+  
+  No. Buscando "Assign Configuration", AssignConfiguration y nombres como ProductConfigDrawer en todo el repositorio, sin node_modules, no aparece nada.
+  
+  Lo más parecido es sharedUIComponents/src/components/TemplateConfigDrawer.vue. Es un <infios-drawer> con un formulario vee-validate y un selector de
+  Settings (settingId, "Select a config"), y TemplateConfigTabPanel.vue lo abre con openDrawer('Add'), que pone showDrawer = true. Ese es el patrón a
+  seguir.
+  
+  TemplateConfigDrawer solo cubre asignar una configuración existente. La parte del PBI 494908 de crear una configuración nueva y añadirla al catálogo no
+  la cubre. El formulario de alta del catálogo está en SettingDrawer.vue, que usa SettingDashboard.
+  
+  Para que el clic abra el panel faltan tres piezas:
+  - un @click que abra el drawer en ProductConfigurationsTabPanel.vue;
+  - el componente del drawer, que no existe;
+  - la acción del store que haga el POST a ProductVersionSettings.
+ 
+▸ Credits: turn 2.32 • session 21.82 | Time: 18s
 
-Revisa solo ese clic, sin modificar archivos. Empieza en ProductConfigurationsTabPanel.vue y sigue el evento hasta el componente que debería abrir el panel. Dime qué hace hoy el botón, hasta dónde llega el evento y si el panel ya existe. Cita el archivo y el fragmento que respalda tu respuesta.
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-opus-5.5 · medium · ◔ 13%                                       /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
