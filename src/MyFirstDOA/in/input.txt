@@ -1,9 +1,70 @@
-PBI 494908 — Paso 2. Conecta la lectura de Products → Versions → Configurations a la API OData real.
+• La pantalla Product Management ahora carga productos, versiones y configuraciones desde la API real, y la prueba de pantalla pasó.
+  
+  Qué hace ahora la pantalla
+  
+  ┌────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Acción             │ Llamada                                                                                                                    │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Abrir la pantalla  │ getProducts() → GET /products (se reutiliza tal cual)                                                                      │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Elegir un producto │ GET /productVersions?$filter=productId eq {id}                                                                             │
+  ├────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Elegir una versión │ GET /productVersionSettings?$filter=productVersionId eq {id                                                                │
+  │                    │ real}&$expand=setting($select=id,key;$expand=settingVersions(...))                                                         │
+  └────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  
+  - Paginación: si la respuesta trae @odata.nextLink, getAllPages repite la llamada al mismo endpoint con la query del enlace. No usa el enlace tal cual
+  porque apunta al host interno del servicio.
+  - Filtro y orden: se muestran solo las de placement Config, ordenadas por Key con localeCompare en el store.
+  - Value: usa formatSettingResolution, igual que Templates.
+  - Cambio de versión o producto: las filas se vacían al iniciar la carga. Una respuesta tardía de una selección anterior se descarta con un contador de
+  petición. La pestaña muestra "Loading" o "Error" en lugar de "No configurations".
+  
+  Archivos modificados
+  
+  En sharedUIComponents/src:
+  - Nuevos: services/odataPaging.ts, services/productVersionService.ts, services/productVersionSettingService.ts y models/productVersionSetting.ts.
+  - Modificados: stores/productManagement.ts, components/ProductConfigurationsTabPanel.vue, components/ProductManagementDashboard.vue, services/index.ts,
+  models/index.ts, models/product.ts y models/productManagement.ts.
+  - Mocks: solo borré mockConfigurations. No agregué nada.
+  - Pruebas unitarias: 3 specs nuevos y 3 actualizados.
+  
+  En e2e/:
+  - Nuevos: ui/tests/adminUi/ProductManagement.test.ts y ui/src/pages/ProductManagementPage.wrapper.ts.
+  - Modificados: ui/src/utils/ApiHelpers.ts (se separó createProductVersion en createProduct y addProductVersion) y ui/src/pages/index.ts.
+  
+  Resultados reales
+  
+  - Prueba de pantalla (--project=admin-ui): 1 passed (4.2s). Prepara por API un producto con las versiones 1.0.0 y 2.0.0, y las configuraciones
+  e2e.zeta.* (Expression) y e2e.alpha.* (Generated Hex 32). 1.0.0 tiene las dos asignadas en orden inverso y 2.0.0 queda vacía.
+    - Selecciona producto y versión 1.0.0 en el navegador.
+    - Comprueba las filas alpha → "Generated: Type = Hex, Length = 32" y zeta → "Expression: e2e-zeta-value", en ese orden.
+    - Cambia a 2.0.0 y verifica que no quedan filas.
+    - La limpieza usa cleanup.
+  
+  - Proyecto admin-ui completo: 3 de 3 pasaron.
+  - Unitarias: sharedUIComponents 78 archivos y 1014 pruebas pasan, y adminUi 27 pasan.
+  - Orden y paginación (script desechable, no queda en el repo): la API devuelve las dos configuraciones como zeta,alpha, así que la prueba sí ejercita
+  el orden. Con 105 filas la API da 2 páginas, 105 filas y 105 distintas.
+  
+  El primer intento de la prueba falló porque click() del wrapper NavigationTreeItemComponent llama a el.click() en el host, y el manejador está en un
+  elemento interno. Lo cambié por un clic real del puntero y lo dejé comentado en el page object.
+  
+  Cosas que cambian o quedan pendientes
+  
+  - Builds y Secrets: siguen leyendo mocks por ID de versión. Con IDs reales esas pestañas aparecen vacías hasta que sus PBIs las conecten.
+  - Remove Product: removable ahora es siempre false, porque el backend no tiene regla. Antes los mocks mostraban el botón. Cambié esa prueba unitaria en
+  consecuencia.
+  - mockProducts y mockVersions: ya no los usa el store. Los dejé porque los specs los usan como datos de prueba y los mocks de builds y secrets dependen
+  de sus IDs.
+  - Más de 100 productos: getProducts solo lee la primera página, como pediste reutilizarla sin cambios. Con más de 100 productos, el selector no
+  mostraría los demás.
+  - Cobertura E2E: el E2E no cubre el filtro Config frente a Secret, solo las pruebas unitarias. Tampoco cubre búsqueda ni paginación de la tabla.
+  - tsc en e2e: ya fallaba antes de mis cambios con un error en ProductVersionReleaseLock.test.ts. Lo comprobé con git stash.
+ 
+▸ Credits: turn 43.86 • session 78.77 | Time: 11m 55s
 
-Reutiliza getProducts, los servicios y modelos existentes y la consulta de ProductVersionSettings validada en el paso 1. Al elegir un producto, carga sus versiones. Al seleccionar una versión, usa su ID real para cargar todas sus configuraciones, incluida la paginación OData si hay más resultados. Muestra solo las de tipo Config, ordenadas inicialmente por Key. Para Value, reutiliza el formato de Templates Management. Al cambiar de versión, muestra únicamente las filas de la selección actual.
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 31%                                 /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Limita el cambio al flujo de lectura. Conserva la búsqueda, la paginación de la tabla y el comportamiento de las otras pestañas. No agregues productos ni versiones a los archivos mock para hacer pasar la prueba.
-
-Agrega y ejecuta una prueba E2E básica de pantalla con Playwright. Prepara por API un producto de prueba con dos versiones. Asigna a una versión dos configuraciones en orden inverso al alfabético y deja la otra vacía. Desde el navegador, selecciona el producto y la versión con datos. Comprueba el orden inicial y el contenido de Key y Value. Cambia a la versión vacía y verifica que desaparezcan las filas anteriores. Usa el mecanismo de limpieza existente.
-
-Escribe en inglés todo lo que quede en el repositorio. Explícame en español qué cambiaste, qué llamadas hace ahora la pantalla, qué archivos modificaste y cuál fue el resultado real de la prueba.
+›  ask a question or describe a task ↵
