@@ -1,5 +1,33 @@
-Para el PBI 494908, conecta Select Key en ProductAssignConfigurationDrawer.vue, el panel que ya abre desde Add Configuration. Reutiliza el selector de Infios y la consulta OData del catálogo que usa el proyecto. Muestra configuraciones de tipo Config disponibles para la versión seleccionada.
+Archivo que consulta la API: ProductAssignConfigurationDrawer.vue. Al montarse llama a getSettings() de services/settingService.ts, la
+  misma consulta OData del catálogo (/settings con $expand de las revisiones) que usa TemplateConfigDrawer.vue. Después filtra en cliente:
+  - Quedan solo las claves cuya revisión actual tiene placement Config.
+  - Se descartan las que la versión ya tiene, que recibe del panel como existingSettingIds.
+  - Se ordenan por clave.
+  - Para Key sigue usando select-wrapper.
+  
+  Archivo que muestra la definición: ProductSettingDefinition.vue, nuevo. Con Expression muestra el texto guardado con sus {{campos}}. Con
+  Generated muestra Type (Base64/Hex) y Length (16/32). Los radios están en readonly. Antes de elegir una clave se ve Expression con el
+  área vacía. ProductConfigurationsTabPanel.vue ahora pasa los ids existentes al panel.
+  
+  Pruebas:
+  - Playwright (admin-ui, filtro 494908): 3 pasan. La prueba nueva selecciona una clave Expression y comprueba el texto
+  Value.{{ClusterName}}.Defined.{{CName}}. Después cambia a una Generated, comprueba que el texto desaparece y que se ven Base64 y 32.
+  - Vitest: 79 archivos pasan. Añadí ProductAssignConfigurationDrawer.spec.ts, que cubre el filtrado, el orden y las dos definiciones. En
+  ProductTabPanels.spec.ts mockeé getSettings.
+  
+  Pendiente de verificar: no comparé el resultado visualmente con las dos imágenes. No incluí el recuadro "Value" con borde que aparece en
+  ellas. Los radios solo reflejan la definición guardada.
+  
+  Cambios por la API y los selectores:
+  - En la prueba usé {{ClusterName}} en vez de {{TenantName}} de la imagen, porque la API rechaza TenantName como token no soportado.
+  - El método selectOptionByText del wrapper de Infios no seleccionó la opción. Por eso selectAssignConfigurationKey, en
+  ProductManagementPage.wrapper.ts, abre la lista y hace clic en la opción, como ya hace selectProduct.
+  
+  Quedan sin implementar el botón + y el guardado con Submit.
+ 
+▸ Credits: turn 7.81 • session 15.22 | Time: 5m 12s
 
-Al elegir una clave, muestra su definición en modo de lectura. Para Expression, presenta el texto guardado con sus {{campos}}. Para Generated, muestra el formato y la longitud guardados. Usa como referencias /tmp/pbi494908/pbi-494908-assign-expression.jpg y /tmp/pbi494908/pbi-494908-assign-generated.jpg. El alcance es consultar, seleccionar y mostrar. El botón + y el guardado con Submit quedan para después.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 14%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Ejecuta una prueba básica de pantalla con Playwright: selecciona una clave Expression, comprueba el texto visible, cambia a una Generated y comprueba que ahora se vean su formato y longitud. Escribe el código y la prueba en inglés. Respóndeme en español indicando qué archivo consulta la API, qué archivo muestra la definición y cuál fue el resultado de la prueba.
+›  ask a question or describe a task ↵
