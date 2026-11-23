@@ -1,38 +1,5 @@
-• Usé el componente select-wrapper (InfiosSelectWrapper.vue) para Key. Es el mismo control que usa el campo "Select a config" de
-  TemplateConfigDrawer.vue. Envuelve <infios-select>, y aquí lleva el placeholder "Select Key" y hoist.
-  
-  Resultado de la prueba: pasa en Playwright (proyecto admin-ui, filtro 494908: 2 passed). La prueba nueva cubre:
-  - que Add Configuration está deshabilitado sin versión seleccionada;
-  - que se habilita con una versión In Development;
-  - que el panel Assign Configuration se abre y muestra "Select Key";
-  - que se cierra con Cancel y con la X.
-  
-  No comprobé visualmente el panel contra la imagen. La prueba confirma que el placeholder "Select Key" está asignado a la propiedad, pero no que se vea
-  en pantalla. Las pruebas unitarias de sharedUIComponents también pasan (1017 de 1017).
-  
-  Qué cambié:
-  - Panel: el componente nuevo es ProductAssignConfigurationDrawer.vue. Tiene el título "Assign Configuration", el campo Key con su botón +, y el grupo
-  Value con Expression y Generated. Expression queda seleccionado, y los radios siguen el ejemplo de SettingDrawer.vue. Los botones Cancel y Submit van
-  en el pie.
-  - Add Configuration: ProductConfigurationsTabPanel.vue abre el panel con ese botón.
-  - Habilitado: en ProductManagementDashboard.vue, el botón solo se habilita si la versión seleccionada está In Development. Queda deshabilitado sin
-  versión, o si está Released o Deprecated.
-  - Pruebas: los casos Released y Deprecated los cubro en una prueba unitaria, no en Playwright. Dejar una versión en Released exige registrar un build.
-  - Page object: añadí los localizadores nuevos a ProductManagementPage.wrapper.ts.
-  
-  Decisiones mías:
-  - Radios: Expression/Generated quedan deshabilitados, porque la selección es otro paso.
-  - Submit: también queda deshabilitado, porque el guardado es otro paso.
-  - Fuera de este paso: no dibujé el recuadro de la expresión ni los radios Type y Length de Generated.
-  
-  Tampoco hay selección de Key, lógica del + ni guardado.
-  
-  Pruebas modificadas: ajusté la prueba existente de ProductManagementDashboard.spec.ts que esperaba el botón habilitado en una versión Released. Ahora
-  comprueba cada estado de versión.
- 
-▸ Credits: turn 7.41 • session 7.41 | Time: 7m 2s
+Para el PBI 494908, conecta Select Key en ProductAssignConfigurationDrawer.vue, el panel que ya abre desde Add Configuration. Reutiliza el selector de Infios y la consulta OData del catálogo que usa el proyecto. Muestra configuraciones de tipo Config disponibles para la versión seleccionada.
 
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-sonnet-5.5 · medium · ◔ 10%                                 /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+Al elegir una clave, muestra su definición en modo de lectura. Para Expression, presenta el texto guardado con sus {{campos}}. Para Generated, muestra el formato y la longitud guardados. Usa como referencias /tmp/pbi494908/pbi-494908-assign-expression.jpg y /tmp/pbi494908/pbi-494908-assign-generated.jpg. El alcance es consultar, seleccionar y mostrar. El botón + y el guardado con Submit quedan para después.
 
-›  ask a question or describe a task ↵
+Ejecuta una prueba básica de pantalla con Playwright: selecciona una clave Expression, comprueba el texto visible, cambia a una Generated y comprueba que ahora se vean su formato y longitud. Escribe el código y la prueba en inglés. Respóndeme en español indicando qué archivo consulta la API, qué archivo muestra la definición y cuál fue el resultado de la prueba.
