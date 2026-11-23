@@ -1,44 +1,9 @@
-• La prueba pasó. Faltaba cobertura, así que agregué una prueba nueva.
-  
-  Cobertura previa. Las pruebas de ProductVersionSettings.test.ts solo consultaban settingId con $select (en requirementsOf). Ninguna usaba $expand de
-  setting ni de settingVersions, que es lo que necesita la columna Value.
-  
-  Qué comprobé. La prueba nueva se llama API - Product Version Settings - Reading a version returns only its own settings with the Key and definition
-  expanded y lleva la etiqueta @[494908].
-  
-  1. Crea un producto con dos versiones, A (1.0.0) y B (2.0.0). Crea además dos configuraciones de tipo Config, una con valor e2e-value-a y otra con
-  e2e-value-b, y asigna cada una a su versión. Usa los builders existentes (createSetting, createProduct, createProductVersion, configVersion) y assign.
-  El cleanup borra los datos.
-  2. Consulta ProductVersionSettings con $filter=productVersionId eq <A> y
-  $expand=setting($select=id,key;$expand=settingVersions($select=revisionNumber,manifestPlacement,valueStrategy,valueExpression,generatedFormat,generated
-  Length)). Es el mismo patrón de getTemplateSettings.
-  3. Verifica que:
-    - la respuesta tiene exactamente una fila, con el productVersionId y el settingId de A;
-    - setting.key es la Key de A;
-    - settingVersions trae una revisión con revisionNumber: 1, manifestPlacement: 'Config', valueStrategy: 'Expression' y valueExpression: 'e2e-value-a';
-    - la configuración de B no aparece.
-  
-  Archivo cambiado. Solo e2e/api/tests/ProductVersionSettings.test.ts. git status no muestra ningún otro cambio.
-  
-  Comando ejecutado, desde la raíz del repositorio. Es el script de la tarea "E2E: Run Tests":
-  
-  bash .workspaceScripts/task_e2eRun.sh --project=api -g 494908
-  
-  Resultado:
-  
-  Running 1 test using 1 worker
-  ✓ 1 [api] › api/tests/ProductVersionSettings.test.ts:69:3 › … Reading a version returns only its own settings with the Key and definition expanded
-  @ProductVersionSettings @[494908] (1.2s)
-  1 passed (2.4s)
-  
-  Solo ejecuté esta prueba con el filtro -g 494908. No corrí el resto del archivo, aunque no toqué ninguna de sus pruebas.
-  
-  Límites de la prueba. Comprueba que la API devuelve la Key y los datos de definición para un ID real. No prueba el orden alfabético por Key, porque la
-  API no lo aplica y ese orden sería cosa del cliente. Tampoco cubre la pantalla, que sigue con mocks.
- 
-▸ Credits: turn 4.99 • session 32.61 | Time: 2m 20s
+PBI 494908 — Paso 2. Conecta la lectura de Products → Versions → Configurations a la API OData real.
 
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-qa · claude-sonnet-5.5 · medium · ◔ 17%                                  /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+Reutiliza getProducts, los servicios y modelos existentes y la consulta de ProductVersionSettings validada en el paso 1. Al elegir un producto, carga sus versiones. Al seleccionar una versión, usa su ID real para cargar todas sus configuraciones, incluida la paginación OData si hay más resultados. Muestra solo las de tipo Config, ordenadas inicialmente por Key. Para Value, reutiliza el formato de Templates Management. Al cambiar de versión, muestra únicamente las filas de la selección actual.
 
-›  ask a question or describe a task ↵
+Limita el cambio al flujo de lectura. Conserva la búsqueda, la paginación de la tabla y el comportamiento de las otras pestañas. No agregues productos ni versiones a los archivos mock para hacer pasar la prueba.
+
+Agrega y ejecuta una prueba E2E básica de pantalla con Playwright. Prepara por API un producto de prueba con dos versiones. Asigna a una versión dos configuraciones en orden inverso al alfabético y deja la otra vacía. Desde el navegador, selecciona el producto y la versión con datos. Comprueba el orden inicial y el contenido de Key y Value. Cambia a la versión vacía y verifica que desaparezcan las filas anteriores. Usa el mecanismo de limpieza existente.
+
+Escribe en inglés todo lo que quede en el repositorio. Explícame en español qué cambiaste, qué llamadas hace ahora la pantalla, qué archivos modificaste y cuál fue el resultado real de la prueba.
