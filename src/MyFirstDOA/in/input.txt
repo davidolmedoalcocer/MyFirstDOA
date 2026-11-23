@@ -1,9 +1,44 @@
-PBI 494908 — Paso 1. Prueba básica de lectura de configuraciones por versión.
+• La prueba pasó. Faltaba cobertura, así que agregué una prueba nueva.
+  
+  Cobertura previa. Las pruebas de ProductVersionSettings.test.ts solo consultaban settingId con $select (en requirementsOf). Ninguna usaba $expand de
+  setting ni de settingVersions, que es lo que necesita la columna Value.
+  
+  Qué comprobé. La prueba nueva se llama API - Product Version Settings - Reading a version returns only its own settings with the Key and definition
+  expanded y lleva la etiqueta @[494908].
+  
+  1. Crea un producto con dos versiones, A (1.0.0) y B (2.0.0). Crea además dos configuraciones de tipo Config, una con valor e2e-value-a y otra con
+  e2e-value-b, y asigna cada una a su versión. Usa los builders existentes (createSetting, createProduct, createProductVersion, configVersion) y assign.
+  El cleanup borra los datos.
+  2. Consulta ProductVersionSettings con $filter=productVersionId eq <A> y
+  $expand=setting($select=id,key;$expand=settingVersions($select=revisionNumber,manifestPlacement,valueStrategy,valueExpression,generatedFormat,generated
+  Length)). Es el mismo patrón de getTemplateSettings.
+  3. Verifica que:
+    - la respuesta tiene exactamente una fila, con el productVersionId y el settingId de A;
+    - setting.key es la Key de A;
+    - settingVersions trae una revisión con revisionNumber: 1, manifestPlacement: 'Config', valueStrategy: 'Expression' y valueExpression: 'e2e-value-a';
+    - la configuración de B no aparece.
+  
+  Archivo cambiado. Solo e2e/api/tests/ProductVersionSettings.test.ts. git status no muestra ningún otro cambio.
+  
+  Comando ejecutado, desde la raíz del repositorio. Es el script de la tarea "E2E: Run Tests":
+  
+  bash .workspaceScripts/task_e2eRun.sh --project=api -g 494908
+  
+  Resultado:
+  
+  Running 1 test using 1 worker
+  ✓ 1 [api] › api/tests/ProductVersionSettings.test.ts:69:3 › … Reading a version returns only its own settings with the Key and definition expanded
+  @ProductVersionSettings @[494908] (1.2s)
+  1 passed (2.4s)
+  
+  Solo ejecuté esta prueba con el filtro -g 494908. No corrí el resto del archivo, aunque no toqué ninguna de sus pruebas.
+  
+  Límites de la prueba. Comprueba que la API devuelve la Key y los datos de definición para un ID real. No prueba el orden alfabético por Key, porque la
+  API no lo aplica y ese orden sería cosa del cliente. Tampoco cubre la pantalla, que sigue con mocks.
+ 
+▸ Credits: turn 4.99 • session 32.61 | Time: 2m 20s
 
-Trabaja en e2e/api/tests/ProductVersionSettings.test.ts. Revisa si ya existe una prueba para este escenario. Si ya lo cubre, ejecútala. Si falta cobertura, completa o agrega una sola prueba siguiendo el estilo del archivo.
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◔ 17%                                  /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Usa los helpers existentes del ambiente E2E local para preparar dos versiones del mismo producto, A y B. Asigna una configuración diferente a cada una. Consulta ProductVersionSettings por OData filtrando por el productVersionId de A. Sigue el patrón del repositorio para incluir setting y settingVersions.
-
-Resultado esperado: la respuesta contiene únicamente la configuración de A, con su Key y los datos de la definición que necesita la columna Value. Comprueba que la configuración de B queda fuera.
-
-Ejecuta la prueba con el flujo del repositorio. Limita los cambios al archivo de pruebas. Escribe el código y el nombre de la prueba en inglés. Explícame el resultado en español: qué comprobaste, qué archivo cambió, qué comando ejecutaste y si pasó. Si falla, incluye el error exacto.
+›  ask a question or describe a task ↵
