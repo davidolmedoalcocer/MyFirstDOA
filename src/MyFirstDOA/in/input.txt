@@ -1,1 +1,46 @@
-En localhost:35001/devportal/adminui/products, al abrir New Product → 1.0.0 → Configurations, veo LOG_LEVEL antes de APP_URL. Revisa si ese portal está ejecutando el cambio del paso 2. Dime en español qué causa puedes confirmar y qué acción concreta necesito para ver APP_URL primero al abrir la pestaña. Solo revisa, sin modificar archivos.
+• Resumen: el portal de localhost:35001 no está ejecutando el cambio del paso 2. Lo que ves son los datos de prueba (mocks) antiguos, y aunque se corrija
+  eso, el backend de desarrollo tampoco permitiría cargar versiones.
+  
+  Qué puedo confirmar
+  
+  1. Vite sirve el módulo viejo, aunque el código nuevo está en disco. El contenedor dev-portal-admin-ui corre pnpm dev y usa el código fuente de
+  sharedUIComponents/src (alias en adminUi/vite.config.ts). Dentro del contenedor comparé el archivo con lo que sirve el servidor:
+  
+    ┌─────────────────────────────┬────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────┐
+    │                             │ Archivo en disco                                       │ Lo que sirve Vite                                      │
+    ├─────────────────────────────┼────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────┤
+    │ stores/productManagement.ts │ tiene getProductVersionSettings y no tiene             │ tiene mockConfigurations y no tiene                    │
+    │                             │ mockConfigurations                                     │ getProductVersionSettings                              │
+    └─────────────────────────────┴────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────┘
+  
+    Eso coincide con lo que ves. En los mocks, New Product → 1.0.0 tiene las configuraciones LOG_LEVEL y luego APP_URL. Además, la base de datos de
+  desarrollo no tiene ningún producto "New Product". Ese producto solo existe en los mocks.
+  
+  2. El backend de desarrollo falla con las versiones. GET /ProductVersions en dev-portal-service responde 500: column p.ReleaseProductBuildId does not
+  exist. El contenedor dev-portal-liquibase-init terminó con error hace 2 días: falló la validación de checksum de 2 changesets que cambiaron después de
+  aplicarse (create-product-version-setting-table y test-seed-product-version-settings). Por eso la base de desarrollo nunca recibió las migraciones del
+  PBI 509998.
+  
+  No pude confirmar por qué Vite no detectó los cambios. Lo más probable es que el observador de archivos no vea las escrituras hechas desde el otro
+  contenedor, pero es una inferencia.
+  
+  Qué hacer
+  
+  1. Reiniciar el UI de desarrollo y recargar el navegador. Ejecuta docker restart dev-portal-admin-ui y luego Ctrl+Shift+R en el portal. Sin esto
+  seguirás viendo los mocks.
+  2. Reparar la base de desarrollo. Sin esto, al elegir un producto no aparecerá ninguna versión (el 500 se registra en consola). Hay que recrear la base
+  de desarrollo: detén el stack de desarrollo, borra el volumen pg_data del proyecto compose dev-portal (confirma el nombre con docker volume ls) y
+  vuelve a levantarlo. Liquibase aplicará el esquema completo y la semilla. Esto borra los datos locales de desarrollo. No verifiqué si clear-checksums
+  de Liquibase serviría aquí.
+  3. Usar un producto de la semilla. Tras recrear la base, el selector mostrará productos reales (por ejemplo "Billing Portal" o "Warehouse Core"), no
+  "New Product". Elige uno con versiones y configuraciones asignadas. En la API de desarrollo hay requisitos asignados, como feature.flags.newUI.
+  
+  Si solo quieres comprobar ahora el orden alfabético, el stack de pruebas en localhost:8083 ya ejecuta el build del paso 2 (se reconstruyó hoy) y su
+  base está al día. La prueba de pantalla pasó ahí.
+ 
+▸ Credits: turn 12.05 • session 90.83 | Time: 1m 37s
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 32%                                 /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
