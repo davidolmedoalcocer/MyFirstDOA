@@ -1,47 +1,38 @@
-• Submit ya guarda la asignación: llama a la API, recarga la tabla Configurations de la versión y, si falla, muestra el error en el panel.
-  Pasan los 6 tests de Playwright con filtro 494908 (2 de API y 4 de pantalla) y las 79 suites de Vitest. No ejecuté el resto de la suite
-  de Playwright.
-  
-  Archivos modificados
-  
-  API (e2e/api/tests)
-  - ProductVersionSettings.test.ts: añadí la prueba de contrato del POST a ProductVersionSettings con { productVersionId, settingId }.
-  Comprueba tres casos:
-    - la asignación crea la fila y devuelve 201;
-    - una segunda asignación de la misma clave a la misma versión devuelve 409 y no guarda nada más;
-    - una clave desconocida devuelve 422 con "Setting does not exist."
-  
-  Código (sharedUIComponents/src)
-  - services/productVersionSettingService.ts: nueva función addProductVersionSetting, que hace el POST con odataClient, igual que los demás
-  servicios.
-  - stores/productManagement.ts: nueva acción assignConfiguration. Guarda la asignación y vuelve a leer las Configurations de la versión
-  desde la API. No recarga si el usuario ya cambió de versión. Si la API falla, relanza el error y deja las filas como estaban.
-  - components/ProductAssignConfigurationDrawer.vue: Submit se habilita al elegir una clave y emite submit con el settingId. Muestra el
-  error con infios-alert.
-  - components/ProductConfigurationsTabPanel.vue: recibe la función assign. El panel solo se cierra cuando la API confirma el guardado. Un
-  409 se muestra con el mensaje del servidor y un 422 con el mensaje OData.
-  - components/ProductManagementDashboard.vue: conecta assign con el store usando el id de la versión seleccionada.
-  
-  Pruebas (sharedUIComponents/src y e2e/ui)
-  - Unitarias: actualicé los specs del servicio, el store, el panel y el drawer.
-  - ProductManagementPage.wrapper.ts: añadí el localizador del botón Submit.
-  - ProductManagement.test.ts: añadí la prueba para QA.
-  
-  Regla de no duplicar
-  - El servidor la aplica con el 409 de la API.
-  - El selector de clave ya no ofrece las claves que la versión tiene.
-  - Submit queda deshabilitado mientras guarda, para evitar un doble clic.
-  
-  Prueba de pantalla para QA
-  
-  Crea sus propios datos: una versión 1.0.0 In Development y una configuración de catálogo sin asignar. Selecciona la clave y pulsa Submit.
-  - Tras el guardado: el panel se cierra y la tabla lista la clave con Expression: e2e-assign-value.
-  - Tras recargar: vuelve a seleccionar la versión 1.0.0. La clave aparece una sola vez.
-  - Extra mío: al reabrir el panel, el selector ya no ofrece esa clave.
-  
-  No cubrí con prueba de pantalla el mensaje de error de un 409 o 422. Lo cubren las pruebas unitarias del panel. El bloqueo de versiones
-  Released o Deprecated ya lo cubre ProductVersionReleaseLock.test.ts.
-  
-  Quedan fuera de este paso la edición de Expression/Generated, pendiente con Eli, y el botón +.
- 
-▸ Credits: turn 10.39 • session 25.61 | Time: 4m 26s
+SELECT p."Id", p."Name", p."DisplayName"
+FROM "Product" AS p
+ORDER BY p."DisplayName", p."Name";
+
+
+SELECT s."Id", s."Key"
+FROM "Setting" AS s
+ORDER BY s."Key";
+
+
+SELECT
+    s."Key",
+    sv."RevisionNumber",
+    sv."ManifestPlacement",
+    sv."ValueStrategy",
+    sv."ValueExpression",
+    sv."GeneratedFormat",
+    sv."GeneratedLength"
+FROM "Setting" AS s
+JOIN "SettingVersion" AS sv ON sv."SettingId" = s."Id"
+WHERE s."Key" = 'jwt.signing.key'
+ORDER BY sv."RevisionNumber" DESC
+LIMIT 1;
+
+
+SELECT
+    p."DisplayName" AS producto,
+    pv."Id" AS id_version,
+    pv."MajorVersion" AS mayor,
+    pv."MinorVersion" AS menor,
+    pv."PatchVersion" AS parche,
+    s."Key" AS llave
+FROM "ProductVersionSetting" AS pvs
+JOIN "ProductVersion" AS pv ON pv."Id" = pvs."ProductVersionId"
+JOIN "Product" AS p ON p."Id" = pv."ProductId"
+JOIN "Setting" AS s ON s."Id" = pvs."SettingId"
+WHERE s."Key" = 'jwt.signing.key'
+ORDER BY p."DisplayName", mayor, menor, parche;
