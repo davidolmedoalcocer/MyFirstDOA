@@ -1,5 +1,9 @@
-Corrige este error del PBI 494908 en mi portal de desarrollo (localhost:35001): Failed to resolve import "./ProductAddConfigurationDrawer.vue". Ocurre en sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue, el panel que contiene el botón +.
+PBI 494908. Implementa el guardado de una configuración nueva desde sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue. Ese formulario ya captura la Key y la definición, y emite submit. Sigue ese evento hasta el componente que debe llamar a la API.
 
-Tú reportaste haber creado ProductAddConfigurationDrawer.vue. Comprueba si el archivo existe con ese nombre exacto junto al componente que lo importa y si Vite puede leerlo en /app/dev-portal/sharedUIComponents/src/components/ dentro de dev-portal-admin-ui. Usa esa evidencia para identificar la causa y aplicar la corrección mínima. Si hace falta reiniciar un contenedor, dime cuál y por qué para que yo lo haga.
+Reutiliza la llamada OData que usa el catálogo para Settings/CreateWithInitialVersion. Guarda la Key con placement Config y la definición elegida. Para Expression, conserva el texto tal como lo escribió el usuario, incluidos los {{campos}}. Para Generated, guarda el formato y la longitud elegidos. El valor final se procesará durante el despliegue.
 
-Verifica que Vite pueda cargar el componente en el portal de desarrollo. Si puedes abrir el portal, pulsa + y confirma que aparece Add Configuration. Si solo puedes verificar la carga del archivo, indícame que el clic queda pendiente de comprobar. Respóndeme en español con la causa, qué corregiste y qué verificaste.
+Cuando la API confirme el alta, la nueva clave debe estar disponible en Select Key para asignarla mediante el flujo existente. Si la API rechaza la solicitud, muestra el error en Add Configuration y conserva lo escrito para que el usuario pueda corregirlo.
+
+Ejecuta una prueba básica de pantalla con Playwright: crea una clave desde +, pulsa Submit, recarga el portal, vuelve a abrir Assign Configuration y comprueba que puedes seleccionar esa clave y ver la misma definición. Usa datos propios de la prueba y límpialos al terminar.
+
+Respóndeme en español. Indica qué archivo llama a la API, qué petición envía y qué resultado observaste en el navegador. Mantén el código y las pruebas en inglés.
