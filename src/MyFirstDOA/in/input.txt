@@ -1,1 +1,62 @@
-Para el PBI 494908, agrega una prueba E2E de API en e2e/api/tests/ProductVersionSettings.test.ts. Crea una versión In Development y dos Settings de tipo Config con claves Region y region seguidas del mismo sufijo único de prueba. Comprueba que tengan IDs distintos. Asigna el primero y verifica que la API rechaza asignar el segundo a esa misma versión. Vuelve a consultar la versión y comprueba que conserva únicamente la primera asignación. Si el catálogo ya rechaza crear la segunda clave, reporta en qué operación ocurrió y qué respondió la API. Usa los helpers y la limpieza existentes. Ejecuta la prueba y responde en español con el resultado observado. En este paso modifica únicamente la prueba.
+• La prueba nueva falla, y el fallo confirma lo que el PBI exige y el código no hace: la API acepta dos claves que solo difieren en
+  mayúsculas.
+  
+  Qué observé, operación por operación
+  
+  ┌────────────────────────────────────────────┬─────────────────────────────────────────────────────────┐
+  │ Paso                                       │ Resultado                                               │
+  ├────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Crear Region.<sufijo>                      │ Aceptado, 201.                                          │
+  ├────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Crear region.<sufijo>                      │ Aceptado, 201. El catálogo no rechaza la segunda clave. │
+  ├────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Comparar los IDs                           │ Distintos, la aserción pasó.                            │
+  ├────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Crear versión 1.0.0 y consultarla          │ Estado InDevelopment, la aserción pasó.                 │
+  ├────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Asignar Region.<sufijo>                    │ Aceptado, 201.                                          │
+  ├────────────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Asignar region.<sufijo> a la misma versión │ Aceptado, 201 (la prueba esperaba 409 o 422).           │
+  └────────────────────────────────────────────┴─────────────────────────────────────────────────────────┘
+  
+  La prueba se detiene ahí, con este error:
+  
+  Expected status 409 or 422 but got 201
+  POST /admin/OData/ProductVersionSettings
+  { productVersionId: "b6752a3b-…", settingId: "67fbf33e-…" }  →  201 (se creó la fila)
+  
+  Por eso no llega a la última comprobación (volver a consultar la versión). La versión terminó con las dos asignaciones.
+  
+  Por qué ocurre
+  
+  La única validación de duplicados en la asignación es el par (versión, SettingId). Como Region y region son dos Settings con ID distinto,
+  la API las trata como claves distintas. Este es el requerimiento pendiente "Keys case-insensitive" del reporte. Es una regla del PBI, así
+  que el fallo es el comportamiento correcto de la prueba mientras eso no se implemente.
+  
+  Qué cambié
+  
+  Modifiqué únicamente /workspaces/dev-portal/e2e/api/tests/ProductVersionSettings.test.ts, al final del archivo:
+  - Añadí un import de randomSuffix, un helper existente.
+  - Añadí la prueba nueva, con la etiqueta @[494908].
+  - Reutilicé createProduct, createProductVersion, assign, requirementsOf y el fixture cleanup.
+  
+  Los dos Settings se crean con la acción de la API directamente, porque createSetting genera sus propias claves y no acepta una. Registro
+  su borrado con cleanup.delete('Settings', id) en cuanto se crean, como indica el README. Al terminar no quedó ningún Region ni region en
+  el catálogo, ni productos de prueba.
+  
+  Dos cosas que decidí y debe validar
+  
+  - Estados aceptados: acepté 409 o 422 como rechazo, porque el PBI no dice cuál debe responder la API. Si prefiere uno concreto, se
+  ajusta.
+  - La prueba queda en rojo: la dejé fallando a propósito y no la marqué como omitida. Si el CI corre esta suite, verá ese fallo hasta que
+  se implemente la regla de mayúsculas. Si prefiere, la marco como fallo esperado hasta entonces; es su decisión.
+  
+  Corrí la prueba con el proyecto api contra el stack de desarrollo (puertos 35000 y 35001, con los proxies del sandbox). No corrí el resto
+  de la suite en este paso.
+ 
+▸ Credits: turn 11.30 • session 176.62 | Time: 1m 20s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◑ 50%                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
