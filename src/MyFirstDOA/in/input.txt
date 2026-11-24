@@ -1,67 +1,37 @@
-• El guardado funciona y lo comprobé en un navegador real contra tu portal de desarrollo. Las 6 pruebas Playwright de Product Management
-  pasan (5 que ya existían más 2 nuevas, una de ellas el alta con recarga). Las pruebas unitarias de los dos componentes también pasan
-  (18). Corrí la suite completa de vitest antes de cambiar la propiedad hideResults, y después solo los dos archivos afectados.
-  
-  Flujo y archivo que llama a la API
-  
-  1. ProductAddConfigurationDrawer.vue emite submit con los datos capturados.
-  2. ProductAssignConfigurationDrawer.vue lo recibe en onCreate(). Ese archivo llama a la API, porque también es el dueño de la lista de
-  Select Key.
-  3. Llama a createSettingWithInitialVersion de services/settingService.ts, la misma función que usa el catálogo.
-  
-  Petición observada
-  
-  POST /admin/odata/settings/createWithInitialVersion  → 201
-  {"key":"e2e.dbg.…","version":{"manifestPlacement":"Config","valueStrategy":"Expression",
-   "valueExpression":"Value.{{ClusterFQDN}}","settingId":"0000…0001"}}
-  
-  - Expresión: el texto se envía tal como se escribió, con sus {{campos}}.
-  - settingId: es el marcador de posición que createSettingWithInitialVersion ya añadía; la API lo descarta.
-  - Generated: envía generatedFormat y generatedLength numérico. Se comprobó con Hex y 32.
-  
-  Comportamiento
-  
-  - Éxito: se recarga la lista, la clave nueva queda en Select Key y seleccionada, y se cierra el formulario. Si falla solo la recarga, no
-  se muestra como fallo del alta, para que el usuario no duplique la clave.
-  - Rechazo: el formulario queda abierto con lo escrito y muestra el error en add-configuration-error. Con una clave duplicada vi el error
-  en pantalla, con la Key y el texto intactos.
-  - Mientras guarda: Submit muestra el estado de carga y Cancel queda deshabilitado.
-  
-  Archivos modificados
-  
-  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue: recibe saving y error, muestra el error y bloquea Cancel mientras
-  guarda.
-  - sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue: crea la configuración, recarga la lista, selecciona la clave
-  nueva y gestiona el error.
-  - sharedUIComponents/src/components/__tests__/ProductAddConfigurationDrawer.spec.ts y ProductAssignConfigurationDrawer.spec.ts: pruebas
-  unitarias del alta, de Generated y del rechazo.
-  - e2e/ui/tests/adminUi/ProductManagement.test.ts: 2 pruebas nuevas.
-  - e2e/ui/src/pages/ProductManagementPage.wrapper.ts: localizadores del formulario nuevo.
-  - e2e/ui/src/utils/ApiHelpers.ts: método deleteSettingByKeyAfterTest.
-  
-  Prueba de pantalla
-  
-  La prueba abre +, escribe una clave, teclea Value.{{ y elige un campo de la lista. Guarda con Submit y repite con una clave Generated
-  (Hex, 32). Recarga el portal, abre Assign Configuration y selecciona cada clave. Comprueba que ve la misma expresión, y Hex y 32. Usa
-  claves e2e.added.* con un sufijo aleatorio. La limpieza va por el fixture cleanup, que borra por clave al terminar. Después consulté la
-  API y no quedó ningún Setting ni Product e2e.
-  
-  Error real que apareció en el navegador
-  
-  La lista de campos no se abría, aunque las pruebas unitarias pasaban. Vue ponía hide-results="false" como atributo, y en infios-search la
-  sola presencia del atributo activa la opción, así que la lista seguía oculta. Lo corregí asignándolo como propiedad: :hideResults.prop.
-  Las pruebas unitarias ahora comprueban la propiedad hideResults.
-  
-  Pendientes y notas del entorno
-  
-  - Navegador de pruebas: el sandbox no tenía el navegador de Playwright ni librerías del sistema, y no hay root. Descargué las librerías a
-  /tmp/chromelibs y usé LD_LIBRARY_PATH; no instalé nada en el repo.
-  - Puertos: como localhost:35000 y 35001 no son alcanzables desde el sandbox, abrí dos proxies temporales hacia los contenedores. Uno no
-  se pudo cerrar (pkill: operación no permitida). Es inofensivo y desaparece al terminar la sesión.
-  - Prueba no ejecutada en el stack de Docker: la ejecuté contra el stack de desarrollo con Vite, no con la tarea E2E del README. El stack
-  de testing (8083) usa una imagen compilada que aún no incluye estos cambios.
- 
-▸ Credits: turn 16.76 • session 25.55 | Time: 6m 34s
+What’s up
+I connected the Product Management screen to the API so it loads configurations for the selected product version. I also verified in the development portal that I could create key-doa, assign it to a version, and see it in the Configurations tab.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-sonnet-5.5 · medium · ◔ 17%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+Top Priority
+Verify that configurations remain visible and read-only for Released and Deprecated versions, and review the proposed E2E coverage with Mariana.
+
+Blockers
+Eli, could you clarify the following for PBI 494908?
+1. Add Configuration — creating a new key. If Region already exists in the Configurations catalog (the list of keys available in Assign Configuration), should the Add Configuration form allow me to create region, or should it treat the two names as duplicates?
+2. Assign Configuration — assigning keys that differ only by case. If both Region and region exist in the Configurations catalog and Region is already assigned to a product version, should I be able to assign region to that same version?
+3. Assign Configuration — changing the selected key’s definition. When I select an existing key in the Key dropdown, the panel shows its saved value definition. Should Expression and Generated be read-only, or can I switch between them before clicking Submit? If switching is allowed, should the change apply only to the selected product version or also update the definition in the Configurations catalog?
+4. Configurations tab — removing an assigned configuration. For a version that is In Development, where should the user click to remove a configuration, and how should the confirmation appear? Is there a design reference for this interaction?
+5. Add Version — displaying the menu. In PBI 494906, where and how should the New Version and From Version options appear when the user clicks Add Version?
+6. Add Version — displaying the form. After the user selects New Version or From Version, where should the corresponding form open? Is there a design reference for each form? The From Version flow is where I need to verify that all configurations are copied for PBI 494908.
+
+
+Por lo que has compartido, no hay otro bloqueo técnico confirmado.
+Comentario para Mariana
+Hi Mariana, here are the basic E2E scenarios I’m proposing for PBI 494908. Do these cover what you’d expect from QA, or would you change or add anything?
+1. API — Read configurations for one product version
+   Create two versions with different configurations. Request the configurations for the first version and verify that the response contains only its keys and their value definitions.
+2. API — Assign an existing configuration and reject a duplicate
+   Assign a catalog configuration to a version, then submit the same assignment again. Verify that the first request succeeds, the second returns a conflict, and the version has only one copy.
+3. UI — List configurations for the selected version
+   Open a version with two configurations. Verify that the rows appear alphabetically by Key without clicking the column header and that Value shows each definition. Switch to a version with no configurations and verify that the table clears.
+4. UI — Assign an existing catalog key
+   On an In Development version, open Add Configuration, select an existing key, and click Submit. Refresh the page, select the same version, and verify that the key appears once.
+5. UI — Create and assign an Expression configuration
+   Click +, enter a new key, type {{, and select a field from the suggestions. Save the new key, then submit the assignment. Refresh and verify that the version shows the expression with the selected field still inside {{ }}.
+6. UI — Create and assign a Generated configuration
+   Click +, enter a new key, select Generated, and choose Hex and 32. Save the new key, then submit the assignment. Refresh and verify that the row shows the selected format and length.
+7. UI — View configurations on Released and Deprecated versions
+   Open a version in each state. Verify that existing configurations remain visible and that the user cannot add, edit, or remove them.
+8. UI — Cancel or confirm removal
+   On an In Development version, start removing an assigned configuration. Cancel and verify that the row remains. Repeat and confirm, then refresh and verify that the row is gone from that version.
+9. UI — Copy configurations using From Version
+   Create a version using From Version and choose a source with two configurations. Open the new version and verify that both keys and their definitions match the source.
