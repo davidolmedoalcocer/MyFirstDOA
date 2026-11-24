@@ -1,37 +1,26 @@
-What’s up
-I connected the Product Management screen to the API so it loads configurations for the selected product version. I also verified in the development portal that I could create key-doa, assign it to a version, and see it in the Configurations tab.
+Hey @Leonardo Santos, Tapajos changed what a Configuration is under the hood, so this one needs a rework:
 
-Top Priority
-Verify that configurations remain visible and read-only for Released and Deprecated versions, and review the proposed E2E coverage with Mariana.
+499839
+Setting/SettingVersion catalog (additive)
+Done
+ : Configurations and Secrets are now Settings in one global catalog. Keys are unique across the catalog, and each definition lives in an append-only revision (editing creates a new revision).
+499847
+ProductVersionSetting linkage entity (supersedes halted 487070)
+Done
+ : a Product Version just declares which Settings it requires.
+499842
+Admin UI: Setting management + revision history (supersedes 487075/487076)
+Done
+ : the Add/Edit Setting drawer and the "new revision" warning already exist.
+Proposed changes:
 
-Blockers
-Eli, could you clarify the following for PBI 494908?
-1. Add Configuration — creating a new key. If Region already exists in the Configurations catalog (the list of keys available in Assign Configuration), should the Add Configuration form allow me to create region, or should it treat the two names as duplicates?
-2. Assign Configuration — assigning keys that differ only by case. If both Region and region exist in the Configurations catalog and Region is already assigned to a product version, should I be able to assign region to that same version?
-3. Assign Configuration — changing the selected key’s definition. When I select an existing key in the Key dropdown, the panel shows its saved value definition. Should Expression and Generated be read-only, or can I switch between them before clicking Submit? If switching is allowed, should the change apply only to the selected product version or also update the definition in the Configurations catalog?
-4. Configurations tab — removing an assigned configuration. For a version that is In Development, where should the user click to remove a configuration, and how should the confirmation appear? Is there a design reference for this interaction?
-5. Add Version — displaying the menu. In PBI 494906, where and how should the New Version and From Version options appear when the user clicks Add Version?
-6. Add Version — displaying the form. After the user selects New Version or From Version, where should the corresponding form open? Is there a design reference for each form? The From Version flow is where I need to verify that all configurations are copied for PBI 494908.
+Assign, don't define. The table shows the Configurations assigned to the Product Version. Remove means unassign; the Setting stays in the catalog.
+Assignment drawer. It has a searchable dropdown of Configurations not yet assigned to the version, with a + next to it. + opens the existing Add Setting drawer with Configuration preselected; on save, the user returns to the assignment drawer with the new Configuration selected. Edit opens the existing Edit Setting drawer. Only one drawer is ever open (no stacking), and users never have to leave Product Management.
+Edits are global. Editing a Configuration creates a new revision that every Product Version and Template using it picks up on its next deployment. The drawer already warns about this, but I think the AC should say it explicitly.
+Release lock applies to assignments. On Released/Deprecated versions, hide Assign, Unassign and Edit. The definition can still change from other versions or the Settings page.
+Value fields match the drawer. Value Strategy is Expression or Generated (Base64/Hex, 16/32), and the table's Value column follows the Settings page's "Resolution" preview.
+Case-insensitive Keys are a good callout. Today Keys are case-sensitive, so this would be a new backend requirement and not just UI validation.
+Mockups. The existing images already show the dropdown + + pattern, so I think the text here can carry the remaining drawer differences (the Setting fields follow the existing Add/Edit Setting drawer).
+For context, the plan is for Product Registration to eventually carry Setting requirements with each version, so long-term this screen becomes the review/correction path. I don't think that changes the scope here, though.
 
-
-Por lo que has compartido, no hay otro bloqueo técnico confirmado.
-Comentario para Mariana
-Hi Mariana, here are the basic E2E scenarios I’m proposing for PBI 494908. Do these cover what you’d expect from QA, or would you change or add anything?
-1. API — Read configurations for one product version
-   Create two versions with different configurations. Request the configurations for the first version and verify that the response contains only its keys and their value definitions.
-2. API — Assign an existing configuration and reject a duplicate
-   Assign a catalog configuration to a version, then submit the same assignment again. Verify that the first request succeeds, the second returns a conflict, and the version has only one copy.
-3. UI — List configurations for the selected version
-   Open a version with two configurations. Verify that the rows appear alphabetically by Key without clicking the column header and that Value shows each definition. Switch to a version with no configurations and verify that the table clears.
-4. UI — Assign an existing catalog key
-   On an In Development version, open Add Configuration, select an existing key, and click Submit. Refresh the page, select the same version, and verify that the key appears once.
-5. UI — Create and assign an Expression configuration
-   Click +, enter a new key, type {{, and select a field from the suggestions. Save the new key, then submit the assignment. Refresh and verify that the version shows the expression with the selected field still inside {{ }}.
-6. UI — Create and assign a Generated configuration
-   Click +, enter a new key, select Generated, and choose Hex and 32. Save the new key, then submit the assignment. Refresh and verify that the row shows the selected format and length.
-7. UI — View configurations on Released and Deprecated versions
-   Open a version in each state. Verify that existing configurations remain visible and that the user cannot add, edit, or remove them.
-8. UI — Cancel or confirm removal
-   On an In Development version, start removing an assigned configuration. Cancel and verify that the row remains. Repeat and confirm, then refresh and verify that the row is gone from that version.
-9. UI — Copy configurations using From Version
-   Create a version using From Version and choose a source with two configurations. Open the new version and verify that both keys and their definitions match the source.
+Thoughts?
