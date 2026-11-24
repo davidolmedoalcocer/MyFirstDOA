@@ -1,38 +1,12 @@
-SELECT p."Id", p."Name", p."DisplayName"
-FROM "Product" AS p
-ORDER BY p."DisplayName", p."Name";
+Implementa el formulario Add Configuration del PBI 494908. El punto de entrada es el botón + junto al selector Key en sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue. Ese archivo controla el panel donde hoy se elige una clave existente.
 
+Usa como referencias visuales /tmp/pbi494908/pbi-494908-add-expression.jpg y /tmp/pbi494908/pbi-494908-add-generated.jpg. Revisa SettingDrawer.vue, el formulario del catálogo, y reutiliza los controles Infios y la lógica de expresión que ya tenga el proyecto.
 
-SELECT s."Id", s."Key"
-FROM "Setting" AS s
-ORDER BY s."Key";
+Al pulsar +, abre Add Configuration. El usuario debe poder escribir una Key obligatoria y elegir cómo definir su valor:
+- Expression: permite escribir texto y, al escribir {{, muestra la lista de campos admitidos por la aplicación. Al elegir un campo, insértalo en la expresión.
+- Generated: muestra Type con Base64 y Hex, y Length con 16 y 32. Permite elegir una opción de cada grupo.
+Limita este cambio a la captura de datos. Cancel debe permitir salir sin guardar. Deja la conexión de Submit con el catálogo para el siguiente paso. Conserva el flujo de asignación existente que ya validamos.
 
+Prueba básica de pantalla para QA: abre el formulario con +, escribe una clave, selecciona un campo de la lista de Expression y comprueba que aparece en el texto. Cambia a Generated, elige Hex y 32, verifica ambas selecciones y pulsa Cancel. Esos valores son datos de la prueba.
 
-SELECT
-    s."Key",
-    sv."RevisionNumber",
-    sv."ManifestPlacement",
-    sv."ValueStrategy",
-    sv."ValueExpression",
-    sv."GeneratedFormat",
-    sv."GeneratedLength"
-FROM "Setting" AS s
-JOIN "SettingVersion" AS sv ON sv."SettingId" = s."Id"
-WHERE s."Key" = 'jwt.signing.key'
-ORDER BY sv."RevisionNumber" DESC
-LIMIT 1;
-
-
-SELECT
-    p."DisplayName" AS producto,
-    pv."Id" AS id_version,
-    pv."MajorVersion" AS mayor,
-    pv."MinorVersion" AS menor,
-    pv."PatchVersion" AS parche,
-    s."Key" AS llave
-FROM "ProductVersionSetting" AS pvs
-JOIN "ProductVersion" AS pv ON pv."Id" = pvs."ProductVersionId"
-JOIN "Product" AS p ON p."Id" = pv."ProductId"
-JOIN "Setting" AS s ON s."Id" = pvs."SettingId"
-WHERE s."Key" = 'jwt.signing.key'
-ORDER BY p."DisplayName", mayor, menor, parche;
+Escribe el código y las pruebas en inglés. Respóndeme en español con la ruta y función de cada archivo modificado, el resultado de la prueba y qué pudiste comparar visualmente contra las dos imágenes.
