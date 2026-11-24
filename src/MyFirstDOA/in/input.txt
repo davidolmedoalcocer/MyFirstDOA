@@ -1,7 +1,54 @@
-Corrige el modo de solo lectura en Assign Configuration del PBI 494908. El requisito dice: “The selected Configuration has the Value fields shown as read-only.”
+• Corregido: la definición en Assign Configuration ya no cambia al hacer clic en sus opciones. Solo cambia al elegir otra Key. Lo confirmé
+  en el navegador.
+  
+  Qué pasaba
+  
+  El readonly del código nunca llegaba a los controles. Lo medí en el navegador:
+  - Síntoma reproducido con una Key Generated (Base64, 32): el grupo de radios tenía readonly: false y sin atributo. Un clic en Expression
+  movía la selección y dejaba Base64 y 32 debajo.
+  - Mi primer intento falló: pasar readonly como booleano o como propiedad del elemento no sirvió. El infios-form-field que envuelve el
+  grupo gestiona el estado de sus controles y lo volvía a poner en false.
+  - Lo que sí funciona: poner readonly en el propio infios-form-field, como hacen TemplateConfigDrawer y ConfigurationDrawer.
+  
+  Archivo de la corrección
+  
+  sharedUIComponents/src/components/ProductSettingDefinition.vue: marqué como solo lectura los tres infios-form-field (Value, Type y
+  Length) y quité el readonly suelto de los grupos, con un comentario que explica el porqué. El formulario Add Configuration del botón +
+  usa sus propios radios y no cambió: la prueba también comprueba que sigue permitiendo elegir Generated, Hex y 32.
+  
+  Pruebas
+  
+  - Playwright (ProductManagement.test.ts): reproduce su clic con la Key Generated (Base64, 32) y mira qué opción queda marcada en
+  pantalla.
+    - Sin la corrección: falla porque Generated deja de estar marcado tras clicar Expression, justo su reporte.
+    - Con la corrección: pasa. Generated, Base64 y 32 siguen marcados tras clicar Expression, Hex, 16 y Generated.
+    - Cambio de Key: al elegir una Key Expression la definición cambia. Esa también es de solo lectura.
+    - Resultado: la corrida completa de Product Management pasó 4 de 4 veces, 11 pruebas cada una.
+  
+  - Unitaria (ProductAssignConfigurationDrawer.spec.ts): comprueba que los campos de la definición quedan de solo lectura.
+  - Frontend completo: 1071 pruebas pasan.
+  - Captura: la de después muestra los radios con el aspecto de solo lectura. El diseño sigue igual que antes.
+  
+  También corregí: la prueba intermitente
+  
+  La prueba que fallaba a veces ("Add Configuration… saves the key") tenía una causa que no había encontrado. Cuando una Key es larga, la
+  opción de la lista lleva un tooltip en su shadow DOM, y Playwright lo suma al texto del elemento. El localizador exacto de
+  selectAssignConfigurationKey dejaba de encontrarla. Lo cambié a coincidencia por subcadena (estricta, falla si hay dos coincidencias).
+  Las 4 corridas completas pasaron.
+  
+  Eso modifica e2e/ui/src/pages/ProductManagementPage.wrapper.ts, que no era parte de lo pedido. Lo hice porque mi propia prueba nueva
+  chocaba con ese fallo.
+  
+  Notas
+  
+  - Diferencia previa con el mockup: el drawer no dibuja los recuadros con borde alrededor de Value, Type y Length que muestra
+  pbi-494908-assign-generated.jpg. Es anterior a este cambio y no lo toqué.
+  - Archivos tocados: ProductSettingDefinition.vue, ProductAssignConfigurationDrawer.spec.ts, ProductManagement.test.ts y
+  ProductManagementPage.wrapper.ts. Sin commit ni push, y no quedaron datos de prueba.
+ 
+▸ Credits: turn 39.92 • session 240.73 | Time: 10m 29s
 
-Reproduje el error con jwt.signing.key. Al seleccionarla aparecen marcados Generated, Base64 y 32. Si hago clic en Expression, el punto se mueve a Expression, aunque abajo siguen apareciendo Base64 y 32.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 58%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Revisa sharedUIComponents/src/components/ProductSettingDefinition.vue, que muestra la definición de la llave seleccionada. En Assign Configuration, la definición debe cambiar únicamente cuando el usuario elija otra Key. Esto aplica a la expresión, al tipo y a la longitud. El formulario Add Configuration que abre el botón + debe seguir permitiendo capturar esos campos.
-
-Verifica la corrección en el navegador con una prueba básica de Playwright que reproduzca mi clic y compruebe qué opción queda marcada en pantalla. Escribe el código y la prueba en inglés. Respóndeme en español con el archivo modificado y el resultado observado.
+›  ask a question or describe a task ↵
