@@ -1,26 +1,5 @@
-Hey @Leonardo Santos, Tapajos changed what a Configuration is under the hood, so this one needs a rework:
-
-499839
-Setting/SettingVersion catalog (additive)
-Done
- : Configurations and Secrets are now Settings in one global catalog. Keys are unique across the catalog, and each definition lives in an append-only revision (editing creates a new revision).
-499847
-ProductVersionSetting linkage entity (supersedes halted 487070)
-Done
- : a Product Version just declares which Settings it requires.
-499842
-Admin UI: Setting management + revision history (supersedes 487075/487076)
-Done
- : the Add/Edit Setting drawer and the "new revision" warning already exist.
-Proposed changes:
-
-Assign, don't define. The table shows the Configurations assigned to the Product Version. Remove means unassign; the Setting stays in the catalog.
-Assignment drawer. It has a searchable dropdown of Configurations not yet assigned to the version, with a + next to it. + opens the existing Add Setting drawer with Configuration preselected; on save, the user returns to the assignment drawer with the new Configuration selected. Edit opens the existing Edit Setting drawer. Only one drawer is ever open (no stacking), and users never have to leave Product Management.
-Edits are global. Editing a Configuration creates a new revision that every Product Version and Template using it picks up on its next deployment. The drawer already warns about this, but I think the AC should say it explicitly.
-Release lock applies to assignments. On Released/Deprecated versions, hide Assign, Unassign and Edit. The definition can still change from other versions or the Settings page.
-Value fields match the drawer. Value Strategy is Expression or Generated (Base64/Hex, 16/32), and the table's Value column follows the Settings page's "Resolution" preview.
-Case-insensitive Keys are a good callout. Today Keys are case-sensitive, so this would be a new backend requirement and not just UI validation.
-Mockups. The existing images already show the dropdown + + pattern, so I think the text here can carry the remaining drawer differences (the Setting fields follow the existing Add/Edit Setting drawer).
-For context, the plan is for Product Registration to eventually carry Setting requirements with each version, so long-term this screen becomes the review/correction path. I don't think that changes the scope here, though.
-
-Thoughts?
+Assigning and editing. When I select an existing key in Assign Configuration, should its Expression or Generated definition be read-only there? My understanding of the proposal is that + opens the existing Add Setting drawer, and Edit opens the existing Edit Setting drawer. Only one drawer is open at a time, and edits create a global revision. Is that the intended flow?
+Duplicate keys. Today the global Settings catalog treats Region and region as different keys. Should this PBI keep that behavior, reject the second key across the entire catalog (Configurations and Secrets), or allow both in the catalog but prevent assigning both to the same product version?
+Removing an assignment. On an In Development version, where should the user click Unassign, and how should the confirmation appear? My understanding is that confirming removes the assignment from that version and keeps the Setting in the global catalog.
+Released and Deprecated versions. The acceptance criteria say users cannot change assignments, and the comment proposes hiding Assign, Unassign, and Edit. Should all three actions be hidden while the configurations remain visible?
+Copying configurations with From Version. Is there a design for PBI 494906 showing where the Add Version menu appears and how the New Version and From Version forms open? For PBI 494908, I need to verify that From Version copies all configuration assignments to the new version.
