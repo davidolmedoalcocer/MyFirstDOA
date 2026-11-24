@@ -1,9 +1,67 @@
-PBI 494908. Implementa el guardado de una configuración nueva desde sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue. Ese formulario ya captura la Key y la definición, y emite submit. Sigue ese evento hasta el componente que debe llamar a la API.
+• El guardado funciona y lo comprobé en un navegador real contra tu portal de desarrollo. Las 6 pruebas Playwright de Product Management
+  pasan (5 que ya existían más 2 nuevas, una de ellas el alta con recarga). Las pruebas unitarias de los dos componentes también pasan
+  (18). Corrí la suite completa de vitest antes de cambiar la propiedad hideResults, y después solo los dos archivos afectados.
+  
+  Flujo y archivo que llama a la API
+  
+  1. ProductAddConfigurationDrawer.vue emite submit con los datos capturados.
+  2. ProductAssignConfigurationDrawer.vue lo recibe en onCreate(). Ese archivo llama a la API, porque también es el dueño de la lista de
+  Select Key.
+  3. Llama a createSettingWithInitialVersion de services/settingService.ts, la misma función que usa el catálogo.
+  
+  Petición observada
+  
+  POST /admin/odata/settings/createWithInitialVersion  → 201
+  {"key":"e2e.dbg.…","version":{"manifestPlacement":"Config","valueStrategy":"Expression",
+   "valueExpression":"Value.{{ClusterFQDN}}","settingId":"0000…0001"}}
+  
+  - Expresión: el texto se envía tal como se escribió, con sus {{campos}}.
+  - settingId: es el marcador de posición que createSettingWithInitialVersion ya añadía; la API lo descarta.
+  - Generated: envía generatedFormat y generatedLength numérico. Se comprobó con Hex y 32.
+  
+  Comportamiento
+  
+  - Éxito: se recarga la lista, la clave nueva queda en Select Key y seleccionada, y se cierra el formulario. Si falla solo la recarga, no
+  se muestra como fallo del alta, para que el usuario no duplique la clave.
+  - Rechazo: el formulario queda abierto con lo escrito y muestra el error en add-configuration-error. Con una clave duplicada vi el error
+  en pantalla, con la Key y el texto intactos.
+  - Mientras guarda: Submit muestra el estado de carga y Cancel queda deshabilitado.
+  
+  Archivos modificados
+  
+  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue: recibe saving y error, muestra el error y bloquea Cancel mientras
+  guarda.
+  - sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue: crea la configuración, recarga la lista, selecciona la clave
+  nueva y gestiona el error.
+  - sharedUIComponents/src/components/__tests__/ProductAddConfigurationDrawer.spec.ts y ProductAssignConfigurationDrawer.spec.ts: pruebas
+  unitarias del alta, de Generated y del rechazo.
+  - e2e/ui/tests/adminUi/ProductManagement.test.ts: 2 pruebas nuevas.
+  - e2e/ui/src/pages/ProductManagementPage.wrapper.ts: localizadores del formulario nuevo.
+  - e2e/ui/src/utils/ApiHelpers.ts: método deleteSettingByKeyAfterTest.
+  
+  Prueba de pantalla
+  
+  La prueba abre +, escribe una clave, teclea Value.{{ y elige un campo de la lista. Guarda con Submit y repite con una clave Generated
+  (Hex, 32). Recarga el portal, abre Assign Configuration y selecciona cada clave. Comprueba que ve la misma expresión, y Hex y 32. Usa
+  claves e2e.added.* con un sufijo aleatorio. La limpieza va por el fixture cleanup, que borra por clave al terminar. Después consulté la
+  API y no quedó ningún Setting ni Product e2e.
+  
+  Error real que apareció en el navegador
+  
+  La lista de campos no se abría, aunque las pruebas unitarias pasaban. Vue ponía hide-results="false" como atributo, y en infios-search la
+  sola presencia del atributo activa la opción, así que la lista seguía oculta. Lo corregí asignándolo como propiedad: :hideResults.prop.
+  Las pruebas unitarias ahora comprueban la propiedad hideResults.
+  
+  Pendientes y notas del entorno
+  
+  - Navegador de pruebas: el sandbox no tenía el navegador de Playwright ni librerías del sistema, y no hay root. Descargué las librerías a
+  /tmp/chromelibs y usé LD_LIBRARY_PATH; no instalé nada en el repo.
+  - Puertos: como localhost:35000 y 35001 no son alcanzables desde el sandbox, abrí dos proxies temporales hacia los contenedores. Uno no
+  se pudo cerrar (pkill: operación no permitida). Es inofensivo y desaparece al terminar la sesión.
+  - Prueba no ejecutada en el stack de Docker: la ejecuté contra el stack de desarrollo con Vite, no con la tarea E2E del README. El stack
+  de testing (8083) usa una imagen compilada que aún no incluye estos cambios.
+ 
+▸ Credits: turn 16.76 • session 25.55 | Time: 6m 34s
 
-Reutiliza la llamada OData que usa el catálogo para Settings/CreateWithInitialVersion. Guarda la Key con placement Config y la definición elegida. Para Expression, conserva el texto tal como lo escribió el usuario, incluidos los {{campos}}. Para Generated, guarda el formato y la longitud elegidos. El valor final se procesará durante el despliegue.
-
-Cuando la API confirme el alta, la nueva clave debe estar disponible en Select Key para asignarla mediante el flujo existente. Si la API rechaza la solicitud, muestra el error en Add Configuration y conserva lo escrito para que el usuario pueda corregirlo.
-
-Ejecuta una prueba básica de pantalla con Playwright: crea una clave desde +, pulsa Submit, recarga el portal, vuelve a abrir Assign Configuration y comprueba que puedes seleccionar esa clave y ver la misma definición. Usa datos propios de la prueba y límpialos al terminar.
-
-Respóndeme en español. Indica qué archivo llama a la API, qué petición envía y qué resultado observaste en el navegador. Mantén el código y las pruebas en inglés.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 17%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
