@@ -1,60 +1,7 @@
-• Asignar a una versión un Setting region cuando ya tiene Region ahora devuelve 409, y la prueba de API pasa llegando a la consulta final.
-  No hice commit ni push.
-  
-  Estados HTTP observados
-  
-  Repetí la secuencia a mano contra POST /admin/OData/ProductVersionSettings:
-  
-  ┌─────────────────────────────────────────┬──────────────┬──────────────────────────────────────────────────────────────────────────┐
-  │ Paso                                    │ Estado       │ Detalle                                                                  │
-  ├─────────────────────────────────────────┼──────────────┼──────────────────────────────────────────────────────────────────────────┤
-  │ Crear Region.<sufijo> y region.<sufijo> │ 201 y 201    │ IDs distintos, el catálogo acepta ambas.                                 │
-  ├─────────────────────────────────────────┼──────────────┼──────────────────────────────────────────────────────────────────────────┤
-  │ Asignar Region a la versión 1.0.0       │ 201          │ Se crea la asignación.                                                   │
-  ├─────────────────────────────────────────┼──────────────┼──────────────────────────────────────────────────────────────────────────┤
-  │ Asignar region a la misma versión       │ 409          │ Cuerpo: {"error":{"code":"409","message":"This setting is already        │
-  │                                         │              │ associated with the product version."}}                                  │
-  ├─────────────────────────────────────────┼──────────────┼──────────────────────────────────────────────────────────────────────────┤
-  │ Consulta final de la versión            │ 1 asignación │ El settingId es el de Region, el original.                               │
-  └─────────────────────────────────────────┴──────────────┴──────────────────────────────────────────────────────────────────────────┘
-  
-  La prueba Playwright llegó a la consulta final: comprueba toHaveLength(1) y que sea el settingId original. Pasó. Dentro del mismo
-  archivo, ProductVersionSettings y ProductVersions dieron 39 pasadas y 1 omitida, sin regresiones. La omitida ya lo estaba. No quedaron
-  datos de prueba.
-  
-  El cambio
-  
-  En ValidateModel reutilicé el mismo manejo de conflicto, sin crear otro: misma excepción (EntityAlreadyExistsException, que el
-  controlador convierte en 409) y el mismo mensaje. Una sola consulta cubre los dos casos: el mismo Setting ya asignado, o otro Setting con
-  la misma Key ignorando mayúsculas (ToLower()), siempre dentro de la misma versión. Como la regla está en ValidateModel, también se aplica
-  al PUT/PATCH que cambia el Setting de una fila, y una fila no choca consigo misma.
-  
-  Archivos modificados
-  
-  - devPortalService/src/Domain.Services/ProductVersionSettingService.cs: la validación.
-  - devPortalService/test/Domain.Services.Test/ProductVersionSettingServiceTests.cs: el helper de los mocks ahora simula GetByIdAsync en
-  lugar de ExistsAsync, porque el servicio necesita la Key del Setting. Las pruebas existentes no cambiaron.
-  - devPortalService/test/Domain.Services.Test/ProductVersionSettingKeyConflictTests.cs (nuevo): 8 pruebas con repositorios reales en
-  memoria. Cubren Region/region/REGION, una Key distinta, la misma Key en otra versión, el mismo Setting repetido, y el Update con y sin
-  conflicto.
-  - e2e/api/tests/ProductVersionSettings.test.ts: la expectativa de la segunda asignación pasó de [409, 422] a 409, más la comprobación del
-  mensaje.
-  
-  Backend: 1795 pruebas pasan (8 nuevas) y 15 omitidas como antes.
-  
-  Lo que debe saber
-  
-  - También aplica a Secrets en la misma versión. La tabla ProductVersionSettings es compartida por Configurations y Secrets, y la
-  validación compara las Keys de todos los Settings de la versión. Un Secret region chocaría con una Configuration Region. Si solo debe ser
-  entre Configurations, hay que filtrar por placement, que es un cambio mayor. Dígame si lo quiere.
-  - Sin garantía en la base de datos. No hay un índice único por Key insensible a mayúsculas, así que dos peticiones simultáneas de Region
-  y region podrían pasar las dos. Se resolvería con una migración, que dejé fuera.
-  - Fuera de este paso, como pidió: el catálogo global sigue aceptando Region y region como Settings distintos, y la pantalla no cambió (el
-  selector aún no oculta region si Region ya está asignada).
- 
-▸ Credits: turn 24.19 • session 200.81 | Time: 4m 38s
+Corrige el modo de solo lectura en Assign Configuration del PBI 494908. El requisito dice: “The selected Configuration has the Value fields shown as read-only.”
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-sonnet-5.5 · medium · ◑ 54%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+Reproduje el error con jwt.signing.key. Al seleccionarla aparecen marcados Generated, Base64 y 32. Si hago clic en Expression, el punto se mueve a Expression, aunque abajo siguen apareciendo Base64 y 32.
 
-›  ask a question or describe a task ↵
+Revisa sharedUIComponents/src/components/ProductSettingDefinition.vue, que muestra la definición de la llave seleccionada. En Assign Configuration, la definición debe cambiar únicamente cuando el usuario elija otra Key. Esto aplica a la expresión, al tipo y a la longitud. El formulario Add Configuration que abre el botón + debe seguir permitiendo capturar esos campos.
+
+Verifica la corrección en el navegador con una prueba básica de Playwright que reproduzca mi clic y compruebe qué opción queda marcada en pantalla. Escribe el código y la prueba en inglés. Respóndeme en español con el archivo modificado y el resultado observado.
