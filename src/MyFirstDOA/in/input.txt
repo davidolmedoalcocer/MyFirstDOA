@@ -1,12 +1,52 @@
-Implementa el formulario Add Configuration del PBI 494908. El punto de entrada es el botón + junto al selector Key en sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue. Ese archivo controla el panel donde hoy se elige una clave existente.
+• El formulario Add Configuration ya abre desde el botón +, y las pruebas pasan. No pude renderizarlo en un navegador, así que la
+  comparación con las imágenes es solo de estructura, no de pixeles.
+  
+  Archivos
+  
+  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue (nuevo): panel "Add Configuration". Contiene:
+    - Key obligatoria.
+    - Value con radios Expression y Generated.
+    - Expression: un infios-search que, mientras hay un {{ sin cerrar, muestra los campos admitidos. Los obtiene de getDataSourceOptions,
+  la misma fuente que usa SettingDrawer. Los ordena y los filtra por lo que se escribe después de {{. Al elegir uno, lo inserta como
+  {{Campo}} y conserva el texto previo.
+    - Generated: Type (Base64, Hex) y Length (16, 32). Por defecto vienen Base64 y 16, como en la imagen.
+    - Cancel emite close sin guardar nada.
+    - Submit solo se habilita con Key y, si es Expression, con texto. Emite submit con los datos capturados y no hace nada más, porque la
+  conexión con el catálogo queda para el siguiente paso.
+  
+  - sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue (modificado): el botón + activa adding y se muestra el nuevo
+  panel. Cancel cierra solo ese panel. El flujo de asignación existente no cambió.
+  - sharedUIComponents/src/components/__tests__/ProductAddConfigurationDrawer.spec.ts (nuevo): 9 pruebas en inglés.
+  
+  Resultado de las pruebas
+  
+  - Pruebas nuevas: pasan las 9. Cubren apertura con +, lista de campos oculta hasta escribir {{, filtrado, inserción del campo en el
+  texto, cambio a Generated, Hex + 32, Submit y Cancel. La prueba de QA que describiste (+, clave, campo en Expression, Generated con Hex y
+  32, Cancel) está cubierta por esos casos, con datos de prueba.
+  - Suite completa: 80 archivos y 1039 pruebas pasan. vue-tsc no reporta errores en los archivos tocados.
+  - ESLint: no pude ejecutarlo, porque el repo no tiene configuración compatible con ESLint 9.
+  - Corrección durante la prueba: pendingField valía '' justo después de escribir {{, y la lista seguía oculta. Quedó corregido.
+  
+  Comparación visual
+  
+  Comparé las dos imágenes con la estructura del componente. La estructura coincide: título, * Key, grupo "Value" con los dos radios, campo
+  con botón de limpiar y lista debajo, subgrupos Type y Length, y Cancel (secundario) más Submit (primario).
+  
+  Lo que no verifiqué:
+  - Render real: no hay navegador de Playwright instalado y la pantalla completa necesita backend y autenticación.
+  - Detalles de píxeles: espaciados, tipografía, el borde del grupo Value y el tamaño de la lista.
+  - Panel sobre panel: el panel nuevo se abre encima del de asignación, y su comportamiento visual no está comprobado.
+  
+  Decisiones y pendientes
+  
+  - Inserción de campos: infios-search reemplaza todo el texto por el nombre del campo al elegir una opción. Por eso, mientras hay un {{
+  abierto, un valor igual a un campo sugerido se trata como selección y no como escritura. Está documentado en el código.
+  - Validación de campos: no valida que los {{Campo}} escritos a mano sean admitidos, como sí hace SettingDrawer. Lo dejé fuera por ser
+  solo captura.
+  - Comprobación recomendada: conviene revisar en el navegador que la lista aparece y que elegir un campo lo inserta de verdad. Las pruebas
+  simulan los eventos del componente y no pueden confirmarlo.
+ 
+▸ Credits: turn 5.77 • session 5.77 | Time: 3m 22s
 
-Usa como referencias visuales /tmp/pbi494908/pbi-494908-add-expression.jpg y /tmp/pbi494908/pbi-494908-add-generated.jpg. Revisa SettingDrawer.vue, el formulario del catálogo, y reutiliza los controles Infios y la lógica de expresión que ya tenga el proyecto.
-
-Al pulsar +, abre Add Configuration. El usuario debe poder escribir una Key obligatoria y elegir cómo definir su valor:
-- Expression: permite escribir texto y, al escribir {{, muestra la lista de campos admitidos por la aplicación. Al elegir un campo, insértalo en la expresión.
-- Generated: muestra Type con Base64 y Hex, y Length con 16 y 32. Permite elegir una opción de cada grupo.
-Limita este cambio a la captura de datos. Cancel debe permitir salir sin guardar. Deja la conexión de Submit con el catálogo para el siguiente paso. Conserva el flujo de asignación existente que ya validamos.
-
-Prueba básica de pantalla para QA: abre el formulario con +, escribe una clave, selecciona un campo de la lista de Expression y comprueba que aparece en el texto. Cambia a Generated, elige Hex y 32, verifica ambas selecciones y pulsa Cancel. Esos valores son datos de la prueba.
-
-Escribe el código y las pruebas en inglés. Respóndeme en español con la ruta y función de cada archivo modificado, el resultado de la prueba y qué pudiste comparar visualmente contra las dos imágenes.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 9%                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
