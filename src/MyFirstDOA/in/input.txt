@@ -1,7 +1,29 @@
-En sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue, corrige la condición que muestra Type y Length. Ambos campos deben aparecer únicamente cuando el usuario selecciona Generated. La alerta de carga de campos de Expression debe funcionar de forma independiente.
+• Corregí el defecto: Type y Length ahora aparecen solo cuando se elige Generated. Las 17 pruebas de admin-ui etiquetadas 494908 pasan en Docker.
+  
+  Archivos modificados
+  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue: un solo cambio. El bloque de Type y Length dependía del v-if de la alerta de
+  campos (<template v-else>). Ahora tiene su propia condición, v-if="strategy === SettingValueStrategy.Generated", y la alerta de "Unable to load the
+  available fields." queda independiente.
+  - e2e/ui/tests/adminUi/ProductManagement.test.ts: amplié la prueba "Add Configuration from + saves the key to the catalog…". Añadí la secuencia justo
+  después de elegir un campo de la lista, lo que confirma que la lista ya cargó. El resto de esa prueba no cambió.
+  
+  Lo observado en los tres pasos
+  1. Expression: el campo de la expresión está visible. Los grupos de Type y Length no existen en la pantalla.
+  2. Generated: el campo de la expresión desaparece. Type muestra Base64 y Hex, y Length muestra 16 y 32.
+  3. Expression otra vez: el campo reaparece con el texto que se había escrito, y Type y Length vuelven a ocultarse.
+  
+  Resultado de la corrida
+  - Con la corrección: bash .workspaceScripts/task_e2eRun.sh --project=admin-ui -g 494908 dio 17 passed en 22 a 24 s. La repetí tres veces y las tres
+  dieron 17 passed.
+  - Con la condición anterior: puse el v-else otra vez y ejecuté solo la prueba ampliada. Falló en expect(formatGroup).toHaveCount(0), con Expected 0 y
+  Received 1. Después restauré la corrección, y la confirmé en el archivo.
+  - Alcance: git status sigue en 46 entradas, las mismas de antes. No hice commit ni push.
+  
+  No ejecuté los tests de Vitest de este componente. Si quieres, los corro.
+ 
+▸ Credits: turn 4.86 • session 522.37 | Time: 4m 30s
 
-Amplía una prueba de pantalla existente del PBI 494908. Con la lista de campos cargada, comprueba en el navegador esta secuencia:
-1. Expression: el campo para escribir la expresión está visible. Type y Length están ocultos.
-2. Generated: el campo de expresión está oculto. Type muestra Base64/Hex y Length muestra 16/32.
-3. Expression otra vez: reaparece el campo de expresión y vuelven a ocultarse Type y Length.
-Ejecuta las pruebas de admin-ui etiquetadas 494908 en Docker. Limita el cambio al defecto y su prueba. Escribe el código y la prueba en inglés, y respóndeme en español con los archivos modificados, lo observado en los tres pasos y el resultado de la corrida. Sin commit ni push.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 19%                                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
