@@ -1,1 +1,55 @@
-En el PR #376, atiende la propuesta de kbowles-envista. Compara nuestra implementación de From Version con la integrada en origin/develop por el PR #372 y adapta el formulario para usar copyFromProductVersionId. Retira el código de copia que quede duplicado, conservando la funcionalidad de Configurations y el trabajo local de las llaves. Revisa cuáles de los cuatro casos de Eli ya cubren las pruebas de develop y conserva o adapta solo la cobertura que falte. Verifica en Docker los cuatro casos y el flujo From Version desde la pantalla. Explícame en español qué se reutilizó, qué se retiró y qué pruebas pasaron. Deja los cambios locales, sin commit ni push.
+• Ya usa el campo copyFromProductVersionId de develop, con el código de copia duplicado retirado. El merge de origin/develop (df4914af, que trae el PR
+  #372) quedó pendiente en tu rama, sin commit ni push. La copia es la de develop y la pantalla ya envía su campo.
+  
+  Comparación de las dos implementaciones. La de develop es un superconjunto de la nuestra:
+  - Copia las asignaciones y también los Arguments del origen, y hay una sola ruta para crear una versión.
+  - Valida al origen antes de insertar. La respuesta distingue "no es del mismo producto o no existe" de "está Removed".
+  - Los errores salen por el flujo normal de Post, como un error OData con mensaje. Con eso, la objeción de Eli sobre los ProblemDetails de nuestra ruta
+  propia ya no aplica.
+  
+  Qué se reutilizó
+  - Backend: tomé de develop, tal cual, el servicio, el controlador, el DTO con CopyFromProductVersionId, el mapper, las interfaces, la documentación y los
+  tests unitarios.
+  - Pantalla: ProductVersionDrawer, el store, productVersionService y sus specs ahora usan copyFromProductVersionId. Dos comentarios nuevos dicen que
+  también se copian los Arguments.
+  - Configurations: pestaña, drawers Assign, Add y Edit, Remove y el menú From Version quedan como estaban.
+  
+  Qué se retiró
+  - De nuestra copia propia: SourceProductVersionId, CreateFromVersion y CopyFromVersionAsync, con sus tests unitarios del servicio y del controlador.
+  - Las cuatro pruebas E2E que escribí en el turno anterior (ProductVersionSettings.test.ts), porque probaban sourceProductVersionId. Quité también sus
+  imports y helpers.
+  
+  Casos de Eli y cobertura. Los cuatro ya los cubre develop en ProductVersions.test.ts, así que no añadí pruebas de API nuevas:
+  - Copia desde una versión elegida: "creating 2.1.0 from 1.4.0 copies the assignments and Arguments of 1.4.0, not of its predecessor". Comprueba la lista
+  exacta de Settings y que el campo no se devuelve.
+  - ID inexistente y versión de otro producto: una sola prueba de 422 que recorre ambos, con el mensaje "must reference a version of the same Product" y
+  sin versión creada.
+  - Versión Removed: 422 con "is Removed" y sin versión creada.
+  
+  Lo que sí faltaba en develop era el flujo desde la pantalla, y lo cubre la prueba de admin-ui que ya teníamos.
+  
+  Pruebas ejecutadas
+  - Backend (.NET): 1821 pasan y 15 se omiten.
+  - Frontend (Vitest): 1157 pasan.
+  - API en Docker:
+    - Las pruebas de copia de origen pasan 12 de 12.
+    - Todo el proyecto pasa con 163.
+  
+  - Admin-ui en Docker: 29 pasan, incluida "Add Version > From Version copies the chosen version's Configurations, not the previous one's, and they stay
+  after a reload". Esa prueba solo pasa si el servidor recibió copyFromProductVersionId, porque comprueba que no se copió la versión anterior.
+  - pnpm check en e2e/: 0 errores y 144 advertencias que ya existían. Prettier y la comprobación de tags (249 pruebas) pasan.
+  
+  Trabajo de llaves. Intacto: el índice único sobre lower(key), SettingService sin distinguir mayúsculas, la migración con su parada ante duplicados y sus
+  pruebas. Lo guardé y lo recuperé tras el merge sin conflictos. Dejé como cambio sin añadir el borrado de ProductVersionSettingKeyConflictTests.cs.
+  
+  Estado de Git. El merge está en curso, sin commit ni push. Los archivos de develop quedan listos en el índice y el trabajo de llaves y de pantalla como
+  cambios sin añadir.
+  
+  Efecto visible nuevo. Al crear una versión con From Version, también se copian sus Arguments. Tu prueba de pantalla no lo comprueba.
+ 
+▸ Credits: turn 18.19 • session 654.96 | Time: 4m 33s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◑ 46%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
