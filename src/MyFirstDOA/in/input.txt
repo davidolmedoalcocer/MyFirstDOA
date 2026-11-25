@@ -1,1 +1,52 @@
-Compara las seis imágenes de referencia del PBI 494908 con las vistas correspondientes de la rama actual en el portal de pruebas. Revisa en particular los recuadros de Value, Type y Length en Assign Configuration. Respóndeme en español indicando qué vistas coinciden y qué diferencias concretas siguen presentes. Si alguna vista no se pudo comparar, identifícala. Solo revisión visual, sin modificar archivos ni crear documentos.
+• Comparé las seis imágenes de referencia con la rama actual. Ninguna vista quedó sin comparar. Ninguna coincide por completo: el contenido y el flujo
+  coinciden, pero el aspecto de los recuadros Value, Type y Length es distinto.
+  
+  Las capturas son del portal de pruebas, en un navegador de 1400×898, el mismo tamaño que las referencias. El comportamiento ya lo cubren las pruebas e2e,
+  así que aquí solo comparé lo visual. Usé datos propios y los borré; verifiqué que no quedan productos ni settings. No modifiqué archivos del repositorio.
+  
+  Coincide
+  - Assign Configuration, estructura: el campo Key, el botón "+", Cancel y Submit. Los radios Expression y Generated, y el texto de la expresión
+  (Value.{{ClusterName}}.Defined.{{CName}} en vez de TenantName, que no está en la lista permitida). Los radios de solo lectura en negro, y Base64 y 32
+  marcados para la clave generada.
+  - Add Configuration, contenido:
+    - Campo Key con el texto escrito.
+    - Radios Expression y Generated.
+    - Al elegir Generated aparecen Type (Base64 y Hex) y Length (16 y 32), con Base64 y 16 por defecto, igual que la referencia.
+    - Al escribir {{ aparece la lista de campos, empezando por ClusterFQDN, ClusterName y CName.
+  
+  - Tabla de Configurations, contenido: pestaña Configurations, columnas Key (con orden) y Value, botón "Add Configuration +" y paginación.
+  
+  Diferencias que siguen presentes
+  
+  Recuadros de Value, Type y Length (las tres vistas de Assign y la de Add Generated)
+  1. En la referencia, Value es un recuadro con borde que contiene los radios. Type y Length son recuadros anidados con su propio borde. En la rama no hay
+  ningún borde: son etiquetas y radios sueltos sobre fondo blanco.
+  2. En la referencia, las etiquetas "Value", "Type" y "Length" van en negrita. En la rama van en peso normal.
+  3. En la referencia, la expresión se ve dentro de una caja gris claro dentro del recuadro Value. En la rama es texto plano, sin caja ni fondo.
+  4. Con Expression y sin clave elegida (vista Assign vacía), la referencia muestra el recuadro Value con la caja gris vacía. La rama solo muestra los
+  radios.
+  
+  Add Configuration con Expression 5. En la referencia, el campo de la expresión está dentro del recuadro Value y la lista desplegable es estrecha (unos
+  200 px), con barra de desplazamiento. En la rama el campo no está en un recuadro, y la lista ocupa todo el ancho del panel y muestra seis opciones. 6.
+  Los radios seleccionados en Add Configuration son azules en la referencia y morados en la rama.
+  
+  Tabla de Configurations (posible fuera del alcance de este PBI) 7. La rama muestra "No configurations / No configurations have been added yet." en la
+  tabla vacía. La referencia deja la tabla en blanco. 8. La barra de la tabla en la rama tiene más iconos (imprimir, columnas, menú) y un campo de
+  búsqueda. La referencia tiene tres iconos y "Add Configuration +". 9. La rama muestra los botones Remove y Release. La referencia solo tiene Remove. 10.
+  El panel izquierdo difiere. La rama lista Display Name, Name y Namespace, sin lápiz de edición. La referencia tiene Name y Namespace, con lápices en el
+  nombre del producto y en "Version: 1.1.0". La rama ordena las versiones de más nueva a más antigua (1.1.0, 1.0.0), y la referencia al revés. 11. La rama
+  muestra el menú lateral expandido (Dashboard, Templates, Products…). En la referencia está plegado. El campo Arguments sale vacío en la rama porque mi
+  versión de prueba no lo tiene.
+  
+  Qué decidir tú
+  - Las diferencias 1 a 6 son del Assign y del Add Configuration, que sí son de este PBI. Corregirlas sería un cambio de estilo en
+  ProductSettingDefinition.vue y en el formulario de Add Configuration. No lo hice porque pediste solo revisión.
+  - Las diferencias 7 a 11 vienen del resto de la pantalla (Release, lápices, menú lateral, orden de versiones). Parecen de otros PBIs o del diseño base de
+  la pantalla, no de la 494908. No las toqué.
+ 
+▸ Credits: turn 5.84 • session 508.38 | Time: 4m 13s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◔ 12%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
