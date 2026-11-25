@@ -1,29 +1,13 @@
-• Corregí el defecto: Type y Length ahora aparecen solo cuando se elige Generated. Las 17 pruebas de admin-ui etiquetadas 494908 pasan en Docker.
-  
-  Archivos modificados
-  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue: un solo cambio. El bloque de Type y Length dependía del v-if de la alerta de
-  campos (<template v-else>). Ahora tiene su propia condición, v-if="strategy === SettingValueStrategy.Generated", y la alerta de "Unable to load the
-  available fields." queda independiente.
-  - e2e/ui/tests/adminUi/ProductManagement.test.ts: amplié la prueba "Add Configuration from + saves the key to the catalog…". Añadí la secuencia justo
-  después de elegir un campo de la lista, lo que confirma que la lista ya cargó. El resto de esa prueba no cambió.
-  
-  Lo observado en los tres pasos
-  1. Expression: el campo de la expresión está visible. Los grupos de Type y Length no existen en la pantalla.
-  2. Generated: el campo de la expresión desaparece. Type muestra Base64 y Hex, y Length muestra 16 y 32.
-  3. Expression otra vez: el campo reaparece con el texto que se había escrito, y Type y Length vuelven a ocultarse.
-  
-  Resultado de la corrida
-  - Con la corrección: bash .workspaceScripts/task_e2eRun.sh --project=admin-ui -g 494908 dio 17 passed en 22 a 24 s. La repetí tres veces y las tres
-  dieron 17 passed.
-  - Con la condición anterior: puse el v-else otra vez y ejecuté solo la prueba ampliada. Falló en expect(formatGroup).toHaveCount(0), con Expected 0 y
-  Received 1. Después restauré la corrección, y la confirmé en el archivo.
-  - Alcance: git status sigue en 46 entradas, las mismas de antes. No hice commit ni push.
-  
-  No ejecuté los tests de Vitest de este componente. Si quieres, los corro.
- 
-▸ Credits: turn 4.86 • session 522.37 | Time: 4m 30s
+Work item: AB#494908
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-sonnet-5.5 · medium · ◔ 19%                                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+## Summary
+- Show configurations for the selected product version, sorted by key.
+- Allow users to create, assign, edit, and unassign configurations for versions in development.
+- Show the selected configuration’s value as read-only during assignment.
+- Prevent two configuration keys that differ only by case from being assigned to the same version.
+- Keep configurations visible and read-only for released and deprecated versions.
+- Copy configuration assignments when creating a product version with From Version.
 
-›  ask a question or describe a task ↵
+## Validation
+- 4 API end-to-end tests passed in Docker, covering configuration retrieval, assignment, and duplicate-key handling.
+- 17 Admin UI end-to-end tests passed in Docker, covering configuration management, form validation, version restrictions, and From Version.
