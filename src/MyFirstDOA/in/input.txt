@@ -1,1 +1,109 @@
-Compara en el mismo portal y con el mismo tema estas dos parejas: Assign Configuration de Products con la asignación de una configuración en Templates, y Add Configuration de Products con el alta de un Setting de tipo Configuration en Settings. Para Key, Value, Expression, Generated, Type, Length y la lista de campos, dime qué ve el usuario en cada pantalla y qué componente de Infios utiliza. Si alguna pantalla no tiene un campo equivalente, indícalo. Señala únicamente dónde Products se aparta del patrón existente y qué componente o estilo del portal se puede reutilizar. Responde en español. Solo compara, sin modificar archivos.
+• Comparé las dos parejas en el portal de pruebas, con el mismo tema, el mismo ancho de 1400 px y los mismos componentes de Infios. Solo leí código y tomé
+  capturas. No toqué archivos del repositorio, y los datos de prueba que creé ya no existen.
+  
+  Al hacerlo encontré un error de la rama que antes no vi. Con Expression, Add Configuration muestra también Type y Length. Está en el punto 4 de abajo.
+  
+  Pareja 1: Assign Configuration (Products) frente a Add Configuration (Templates)
+  
+  Qué ve el usuario en Templates
+  - Un solo campo, con la etiqueta "Config" y un select con el texto "Select a config". El botón se llama "Add", que sigue desactivado hasta elegir una
+  opción.
+  - Al abrir el select se ven solo las claves.
+  - Value, Expression, Generated, Type, Length y la lista de campos no existen en Templates. La definición del valor se ve solo en la columna Resolution de
+  la tabla.
+  
+  Qué ve el usuario en Products
+  - Key, con un select "Select Key" y un botón "+" al lado.
+  - Debajo, Value con Expression/Generated, y el texto de la expresión o Type y Length, todo de solo lectura.
+  - El botón se llama "Submit".
+  
+  Componentes
+  - Templates (TemplateConfigDrawer.vue): infios-drawer, infios-form-field, select-wrapper (el envoltorio del infios-select de Infios, con hoist),
+  infios-select-option, infios-button. La validación va con vee-validate (Form y Field), y los campos llevan la clase infios-mb-2xs.
+  - Products (ProductAssignConfigurationDrawer.vue): los mismos infios-drawer, infios-form-field, select-wrapper e infios-select-option. Añade
+  infios-button con infios-icon para el "+".
+  - Definición de solo lectura (ProductSettingDefinition.vue): infios-form-field anidado con readonly, RadioGroupWrapper (el envoltorio de
+  infios-radio-group) con infios-radio, e infios-text-block para la expresión.
+  
+  Dónde Products se aparta del patrón
+  1. Sin vee-validate. Templates usa Form y Field; Products maneja el estado con refs y desactiva el botón con !selectedId. No hay mensajes de validación.
+  Es consistente con que solo hay un select.
+  2. Etiquetas y textos distintos. Products usa "Key", "Select Key" y "Submit". Templates usa "Config", "Select a config" y "Add". Las etiquetas de
+  Products siguen el mockup del PBI. Los demás textos son decisión de diseño.
+  3. Value sin asterisco y con otra estructura. En Products, Value es un infios-form-field con otros dos dentro (Type y Length). Es el patrón que causa la
+  diferencia visual de los recuadros que te señalé antes: los campos anidados no se dibujan como los de Settings.
+  4. El campo sin equivalente. El botón "+" y la definición de solo lectura no existen en Templates. Son propios de este PBI.
+  
+  Pareja 2: Add Configuration (Products) frente a Add Setting en Settings, con placement Configuration
+  
+  Qué ve el usuario en Settings
+  - Key, con la etiqueta "Key *" y un input con el texto "Enter key".
+  - Placement, con Configuration/Secret.
+  - Value Strategy, con Expression/Generated, sin ninguno elegido al inicio.
+  - Con Expression, aparece un campo "Expression *" (un input con el texto "{{Token}}"). Al escribir {{ no sale ninguna lista de campos.
+  - Con Generated, aparecen "Format *" (Base64/Hex) y "Length *" (16/32), también sin valor elegido.
+  - El botón se llama "Add", y queda desactivado hasta que el formulario es válido.
+  
+  Qué ve el usuario en Products
+  - Key, con "Enter key".
+  - Value, con Expression/Generated, y Expression elegido por defecto.
+  - Con Expression, un buscador con lupa y el texto "{{Field}}". Al escribir {{ se abre la lista de campos (ClusterFQDN, ClusterName, CName…). Sin una
+  clave elegida de esa lista, "Submit" sigue desactivado.
+  - Con Generated, aparecen Type y Length con Base64 y 16 ya elegidos.
+  
+  Componentes
+  - Settings (SettingDrawer.vue): infios-drawer, infios-form-field (con required y :errors), infios-input y RadioGroupWrapper. Todo va con vee-validate
+  (Form, Field, yup).
+  - Products (ProductAddConfigurationDrawer.vue): infios-drawer, infios-form-field, infios-input, RadioGroupWrapper, infios-search con infios-search-option
+   para la lista, e infios-alert para los errores.
+  
+  Lo que no tiene equivalente en Settings
+  - La lista de campos. Settings solo valida la expresión: si falta un {{Token}} de la lista, muestra "References unsupported token 'X'." bajo el campo.
+  Products añade la lista como ayuda, pero sin ese mensaje de error.
+  - Valores por defecto. Settings no preselecciona nada. Products preselecciona Expression, Base64 y 16.
+  
+  Dónde Products se aparta del patrón
+  1. Etiquetas del grupo. Settings usa "Value Strategy", "Expression", "Format" y "Length", todos con asterisco de obligatorio. Products usa "Value", sin
+  etiqueta propia para la expresión, "Type" y "Length", sin asterisco. "Type" viene del mockup; Settings dice "Format" para lo mismo.
+  2. Cómo se muestran los errores. Settings muestra cada error bajo su campo (infios-form-field :errors), por ejemplo "A setting with this key already
+  exists." con un spinner mientras valida. Products usa un infios-alert fijo al pie con otro texto ("This setting key already exists.") y no marca el
+  campo.
+  3. Campo de la expresión. Settings usa infios-input y Products infios-search, que lleva la lupa y se parece a un buscador. Es el único lugar fuera de las
+  tablas donde se usa infios-search para escribir un valor.
+  4. Error visible de Products. Con Expression, el formulario muestra también Type y Length. Lo vi en la captura: bajo el campo de la expresión aparecen
+  Type y Length con Base64 y 16 marcados, y con la lista abierta asoma la "T" de Type debajo.
+    - Causa. En ProductAddConfigurationDrawer.vue, el <template v-else> de Type y Length quedó pegado al v-if del infios-alert de "Unable to load the
+  available fields", no al del buscador. Por eso se muestra siempre que no falle la carga de la lista, también con Expression.
+    - Qué se oculta. Con Generated se ve bien. Las pruebas e2e no lo detectaron porque no comprueban que esos radios estén ausentes con Expression.
+    - Mi error anterior. Cuando comparé las seis imágenes, dije que el contenido de Add Configuration coincidía. Eso es falso para Expression. Solo miré la
+  captura de Generated, y en la de Expression no vi la "T" detrás de la lista.
+  
+  5. Espaciado. Settings añade infios-mb-2xs a cada campo. Products no lo usa, y en la captura "Type" queda pegado al campo de la expresión.
+  
+  Qué se puede reutilizar
+  
+  - Validación de campos. validateExpressionTokens, de SettingDrawer.vue, ya produce el mensaje "References unsupported token". Products puede mostrar el
+  mismo mensaje bajo el campo, en vez de solo desactivar Submit.
+  - Error de clave duplicada. Settings ya lo muestra bajo el campo y con checkSettingKeyExists. Products tiene su propio servicio
+  (settingKeyExistsIgnoringCase, que ignora mayúsculas) y un infios-alert.
+  - Etiquetas, asteriscos y espaciado. Se pueden alinear con los de Settings (required, infios-mb-2xs), si decides que Products siga el patrón de Settings
+  y no el mockup.
+  - Todo el formulario. SettingDrawer.vue ya cubre el alta de un Setting, y con lockPlacement puede quedar fijo en Configuration. Es lo que propone el
+  comentario de Eli (reutilizar el drawer de Add/Edit Setting). No lo adopté porque no lo has confirmado. Perderías la lista de campos y los valores por
+  defecto, que no existen en Settings.
+  
+  Decisiones tuyas
+  
+  - El error de Type y Length con Expression. Es un fallo real, no una diferencia de diseño. La corrección es pequeña: que Type y Length dependan de
+  strategy === Generated. No lo corregí porque pediste solo comparar. Dime si lo corrijo y añado una prueba que lo cubra.
+  - Qué patrón seguir en Add Configuration: el mockup (Value con recuadros anidados, "Type") o Settings (campos planos, "Format", asteriscos). Hoy mezcla
+  ambos.
+  - Si reutilizas SettingDrawer.vue en lugar de mantener ProductAddConfigurationDrawer.vue. Es la decisión de más peso. Cambiaría el código del PBI y
+  habría que repetir las pruebas e2e.
+ 
+▸ Credits: turn 9.12 • session 517.50 | Time: 4m 11s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◔ 17%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
