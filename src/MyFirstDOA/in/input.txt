@@ -1,5 +1,183 @@
-Haz la revisión de cierre del PBI 494908 con la rama actual. Usa la descripción, las reglas de negocio, los criterios de aceptación y lo confirmado por Eli en la llamada. Para cada criterio, indica en español qué pide, qué prueba o verificación manual lo demuestra y si está verificado, falla o falta evidencia. Aprovecha los resultados existentes y ejecuta únicamente las pruebas necesarias para cubrir dudas concretas.
+• Observado. Ahora los resultados frescos de las suites relevantes sobre el estado actual de la rama (todo desde un único punto de partida)
+  y la comprobación de limpieza.
+• 2 tool calls · ran 2 commands
 
-En From Version, identifica la evidencia de que el usuario elige una versión de origen y se copian sus configuraciones. En Edit, registra por separado que el formulario permite cambiar Placement de Config a Secret, e indica si el PBI define ese comportamiento. Hacer esta revisión no autoriza cambios de código, commit ni push.
+• Thought for 1s...
+    ╰ That settings query failed because the "or" filter had unencoded spaces. I need to fix the encoding and retry before putting together
+      the final report.
+• Shell B=http://localhost:35000/admin/odata; curl -s "$B/settings?\$filter=startswith(key,'e2e.')&\$select=key" | python3 -c "import 
+  sys,json;print('e2e.*:',json.load(sys.stdin)['value'])"; curl -s "$B/settings?\$filter=contains(key,'egion')&\$select=key" | python3 -c 
+  "import sys,json;print('*egion*:',json.load(sys.stdin)['value'])"
+    ╰ run_in_background=false
+    ╰ e2e.*: []
+      *egion*: []
 
-Al final, dime qué falta para abrir el PR. Si todos los criterios tienen evidencia, dilo directamente.
+• Revisión de cierre del PBI 494908
+  
+  Rama: pbi/494908_manage-product-version-configurations, HEAD 43cc0110. Los 42 archivos de cambios siguen sin commit.
+  
+  Resultado
+  
+  Falta evidencia en dos criterios y hay un fallo parcial en uno. No todos los criterios tienen evidencia completa: Edit no está definido
+  por el PBI en un punto concreto (Placement) y la regla "Keys sin distinguir mayúsculas" solo se cumple dentro de una versión. Los demás
+  criterios están verificados.
+  
+  Pruebas ejecutadas para esta revisión
+  
+  ┌────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────────┐
+  │ Suite                                                      │ Resultado                                                           │
+  ├────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Backend (dotnet test)                                      │ 1795 pasan, 15 omitidas (ya lo estaban), 0 fallan                   │
+  ├────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Frontend (vitest)                                          │ 1086 pasan en 81 archivos                                           │
+  ├────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ API e2e (versiones, asignaciones, bloqueo de release,      │ 75 pasan, 1 omitida                                                 │
+  │ ciclo de vida)                                             │                                                                     │
+  ├────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Admin UI e2e, Product Management                           │ 16 pasan                                                            │
+  ├────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Sondas en navegador (tres dudas concretas)                 │ Detalle abajo; no dejé archivos de prueba en el repositorio ni      │
+  │                                                            │ datos en la base                                                    │
+  └────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────────┘
+  
+  Lo confirmado por Eli en la llamada
+  
+  Solo tengo registrada una indicación: las acciones de fila deben ocultarse, siguiendo el comportamiento de Templates. Está implementado y
+  verificado (ver "Released y Deprecated" abajo). Templates no tiene estados bloqueados; el mecanismo salió de las pestañas de
+  Configurations y Secrets de los tenants. Si Eli confirmó algo más en la llamada que usted no me haya pasado, no lo puedo evaluar.
+  
+  Criterios y reglas del PBI
+  
+  ┌─────┬─────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────┬────────────┐
+  │ #   │ Qué pide                                            │ Evidencia                                               │ Estado     │
+  ├─────┼─────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────┼────────────┤
+  │ 1   │ Al seleccionar una versión se cargan y muestran sus │ e2e "Configurations tab lists…"                         │ Verificado │
+  │     │ Configurations                                      │                                                         │            │
+  ┌─────┬───────────────────────────────────────────────────┬────────────────────────────────────────────────────────┬───────────────┐
+  │ #   │ Qué pide                                          │ Evidencia                                              │ Estado        │
+  ├─────┼───────────────────────────────────────────────────┼────────────────────────────────────────────────────────┼───────────────┤
+  │ 1   │ Al seleccionar una versión se cargan y muestran   │ e2e "Configurations tab lists…"                        │ Verificado    │
+  │     │ sus Configurations                                │                                                        │               │
+  ├─────┼───────────────────────────────────────────────────┼────────────────────────────────────────────────────────┼───────────────┤
+  │ 2   │ Orden alfabético por Key                          │ Misma prueba e2e                                       │ Verificado    │
+  ├─────┼───────────────────────────────────────────────────┼────────────────────────────────────────────────────────┼───────────────┤
+  │ 3   │ La columna Value muestra tipo y definición, como  │ e2e (Expression: …, Generated: Type = Hex, Length =    │ Verificado    │
+  │     │ en Templates                                      │ 32); usa la misma función que Templates                │               │
+  ├─────┼───────────────────────────────────────────────────┼────────────────────────────────────────────────────────┼───────────────┤
+  │ 4   │ Agregar solo con la versión In Development        │ Unitaria; backend 422; sonda: Add Configuration        │ Verificado    │
+  │     │                                                   │ deshabilitado en Released y Deprecated                 │               │
+  ┌─────┬────────────────────────────────────────────────┬────────────────────────────────────────────────────┬──────────────────────┐
+  │ #   │ Qué pide                                       │ Evidencia                                          │ Estado               │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 1   │ Al seleccionar una versión se cargan y         │ e2e "Configurations tab lists…"                    │ Verificado           │
+  │     │ muestran sus Configurations                    │                                                    │                      │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 2   │ Orden alfabético por Key                       │ Misma prueba e2e                                   │ Verificado           │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 3   │ La columna Value muestra tipo y definición,    │ e2e (Expression: …, Generated: Type = Hex, Length  │ Verificado           │
+  │     │ como en Templates                              │ = 32); usa la misma función que Templates          │                      │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 4   │ Agregar solo con la versión In Development     │ Unitaria; backend 422; sonda: Add Configuration    │ Verificado           │
+  │     │                                                │ deshabilitado en Released y Deprecated             │                      │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 5   │ Elegir una existente (campos Value de solo     │ e2e "Assign shows the chosen key's definition",    │ Verificado           │
+  │     │ lectura) o crear una nueva en el catálogo      │ "read-only…"                                       │                      │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 6   │ Crear con Key única y tipo de definición       │ e2e "from + saves the key…" con recarga            │ Verificado           │
+  ├─────┼────────────────────────────────────────────────┼────────────────────────────────────────────────────┼──────────────────────┤
+  │ 7   │ Expression como interpolación, con lista de      │ e2e: hola no se guarda, hola {{ClusterName}} sí; │ Verificado          │
+  │     │ campos del sistema y selección obligatoria       │ lista fallida bloquea y no envía la petición     │                     │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 8   │ Generated: Base64/Hex y 16/32                    │ e2e con Hex y 32, y recarga                      │ Verificado          │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 9   │ Key única dentro de la versión                   │ API 409 y e2e; el selector oculta las asignadas  │ Verificado          │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 10  │ Keys no distinguen mayúsculas                    │ Ver detalle abajo                                │ Falla parcial       │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 11  │ Quitar con la versión In Development             │ e2e "Remove Configuration…": quita y persiste    │ Verificado          │
+  │     │                                                  │ tras recargar                                    │                     │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 12  │ Confirmación antes de quitar                     │ La misma prueba: Cancel conserva la fila         │ Verificado          │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 13  │ Editar solo en In Development (descripción y     │ e2e "Edit Configuration…": nueva revisión y      │ Verificado, con una │
+  │     │ regla)                                           │ ambas versiones la muestran tras recargar        │ reserva (ver Edit)  │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 14  │ From Version copia las Configurations de la      │ Ver detalle abajo                                │ Verificado          │
+  │     │ versión elegida                                  │                                                  │                     │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 15  │ Released y Deprecated: crear, editar y quitar    │ Add deshabilitado (sonda); lápiz y papelera      │ Verificado          │
+  │     │ deshabilitados; las existentes siguen visibles   │ ausentes con la fila visible (e2e)               │                     │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 16  │ Los valores no se generan, resuelven ni guardan  │ Prueba unitaria del cuerpo enviado: solo la      │ Verificado          │
+  │     │ al definir                                       │ definición; DeploymentFieldLookup es un marcador │                     │
+  ├─────┼──────────────────────────────────────────────────┼──────────────────────────────────────────────────┼─────────────────────┤
+  │ 17  │ Una Configuration tiene Key y Value Definition   │ Estructura de ProductVersionSetting +            │ Verificado          │
+  │     │                                                  │ SettingVersion                                   │                     │
+  └─────┴──────────────────────────────────────────────────┴──────────────────────────────────────────────────┴─────────────────────┘
+  
+  Detalle de los puntos que lo piden
+  
+  Keys sin distinguir mayúsculas (criterio 10): falla parcial
+  
+  - Dentro de una versión: verificado. Con Region asignada, asignar region responde 409 (ProductVersionSettings.test.ts, 8 pruebas
+  unitarias nuevas del servicio).
+  - En pantalla (sonda): al crear region con el botón +, el formulario guarda el Setting nuevo y vuelve a Assign Configuration. Al pulsar
+  Submit, el panel muestra "This setting is already associated with the product version." y la tabla no cambia.
+  - En el catálogo global: no se cumple. Region y region siguen siendo Settings distintos y el catálogo acepta ambos (SettingService
+  compara con ==). Su regla "el catálogo queda fuera de este paso" lo dejó así. La regla del PBI es "Keys case-insensitive" sin acotarla a
+  la versión.
+  - Efecto secundario de la sonda: crear region desde el botón + deja un Setting nuevo en el catálogo aunque luego no se pueda asignar.
+  
+  From Version (criterio 14): evidencia de que el usuario elige el origen
+  
+  - e2e "Add Version > From Version copies the chosen version's Configurations, not the previous one's" (pasa): hay versiones 1.0.0 y 2.0.0
+  con configuraciones distintas (2.0.0 hereda las de 1.0.0 y añade otra). El usuario crea la 3.0.0 eligiendo la 1.0.0 en el selector. La
+  3.0.0 queda solo con la Key de la 1.0.0; si copiara de la anterior (2.0.0) tendría ambas. Tras recargar, la 3.0.0 conserva la copia, y la
+  2.0.0 queda intacta.
+  - Backend: 7 pruebas de CreateFromVersion (copia del origen elegido, origen más nuevo, origen Deprecated, origen inexistente, de otro
+  producto, Removed, versión repetida) y 3 del controlador (con origen llama a CreateFromVersion, sin origen sigue el flujo anterior).
+  - Frontend: drawer, store y dashboard con pruebas unitarias.
+  - Reserva: copia todos los Settings del origen, también los de tipo Secret, no solo las Configurations. Es el comportamiento de la copia
+  automática existente y de Templates; el PBI habla solo de Configurations.
+  
+  Edit: Placement de Config a Secret (registrado por separado)
+  
+  - Observado en el navegador (sonda): el drawer Edit Setting del catálogo ofrece los radios Configuration y Secret, ambos habilitados. Al
+  cambiar a Secret aparecen los campos Vault Key y Vault OCID, se pueden llenar y Save Changes se habilita. Al confirmar se creó la
+  revisión 2 del mismo Setting como Secret/Expression. La fila desaparece de la tabla Configurations, que muestra el vacío "No
+  configurations have been added yet.", aunque la asignación sigue existiendo.
+  - ¿Lo define el PBI? No. El PBI no dice nada sobre cambiar el placement al editar. Lo único relacionado es que una Configuration tiene
+  una definición Expression o Generated, y que la estrategia Retrieved y el placement Secret pertenecen a los Secrets, otro PBI. Es una
+  consecuencia de reutilizar el drawer del catálogo sin cambios, que fue la instrucción dada. Como la revisión es global, el cambio afecta
+  a todas las versiones y plantillas que usan la llave. Necesita una decisión de producto.
+  
+  Released y Deprecated
+  
+  Con productos creados por la prueba, en cada estado la fila muestra Key y Value, y al pasar el mouse no se dibuja ninguna acción (ni
+  lápiz ni papelera). Add Configuration queda deshabilitado.
+  
+  Qué falta para abrir el PR
+  
+  No hay ningún criterio sin ejecutar, pero no todo está cerrado. Antes de abrir:
+  
+  1. Decisión sobre Placement en Edit (Config a Secret): si se deja como está, el PR debe decirlo explícitamente. Si se restringe, es un
+  cambio de código aparte.
+  2. Decisión sobre el alcance de "Keys case-insensitive": hoy solo rige dentro de una versión. Si el catálogo debe rechazar region cuando
+  existe Region, es un cambio de backend y posiblemente de base de datos.
+  3. Confirmar la copia de Secrets en From Version.
+  4. Commit y rama: nada está commiteado. Hay 42 archivos con cambios, algunos que no escribí yo (por ejemplo
+  e2e/api/tests/ProductVersionSettings.test.ts, modelos y mocks). Conviene revisar qué entra al PR. El título debe seguir [AB#494908] … con
+  Closes AB#494908, según las reglas del repo.
+  5. Pruebas en el CI: esas pruebas Playwright las corrí contra el stack de desarrollo con proxies, no con la tarea Docker oficial del
+  README. Conviene correr esa tarea una vez antes del PR.
+  6. Condiciones de la prueba intermitente anterior: ya no la vi fallar. Las 16 pasaron en la última ejecución.
+  
+  No modifiqué código, no hice commit ni push. La base quedó limpia: sin Settings ni productos e2e, y review-released-3qzx1t sigue
+  Released.
+ 
+▸ Credits: turn 16.75 • session 357.45 | Time: 4m 13s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◕ 69%                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
