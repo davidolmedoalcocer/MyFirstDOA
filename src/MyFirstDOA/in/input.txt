@@ -1,3 +1,60 @@
-En el portal de desarrollo que abro en localhost:35001, prepara un producto de prueba con una versión In Development. Asígnale una configuración y usa la API para llevar esa versión a Released, registrando un build si el flujo lo requiere. Usa datos nuevos de prueba, porque liberar una versión es irreversible.
+• La versión quedó en Released y conserva la configuración. La API no puso ningún obstáculo.
+  
+  Datos para su revisión
+  
+  ┌──────────┬───────────────────────────────┐
+  │ Dato     │ Valor exacto                  │
+  ├──────────┼───────────────────────────────┤
+  │ Producto │ review-released-3qzx1t        │
+  ├──────────┼───────────────────────────────┤
+  │ Versión  │ 1.0.0                         │
+  ├──────────┼───────────────────────────────┤
+  │ Key      │ review.released.config.3qzx1t │
+  └──────────┴───────────────────────────────┘
+  
+  En Product Management, elija ese producto, la versión 1.0.0 y la pestaña Configurations. La definición de la Key es review
+  {{ClusterName}}.
+  
+  Qué hice y qué respondió la API
+  
+  ┌─────────────────────────────────────────────────────┬───────────────────────────┐
+  │ Paso                                                │ Respuesta                 │
+  ├─────────────────────────────────────────────────────┼───────────────────────────┤
+  │ Crear el Setting (Config, Expression)               │ 201                       │
+  ├─────────────────────────────────────────────────────┼───────────────────────────┤
+  │ Crear el producto                                   │ 201                       │
+  ├─────────────────────────────────────────────────────┼───────────────────────────┤
+  │ Crear la versión 1.0.0                              │ 201, estado InDevelopment │
+  ├─────────────────────────────────────────────────────┼───────────────────────────┤
+  │ Asignar la configuración a la versión               │ 201                       │
+  ├─────────────────────────────────────────────────────┼───────────────────────────┤
+  │ Registrar un build (la liberación exige uno activo) │ 201, isActive: true       │
+  ├─────────────────────────────────────────────────────┼───────────────────────────┤
+  │ Liberar: POST ProductVersions(<id>)/Release         │ 200, estado Released      │
+  └─────────────────────────────────────────────────────┴───────────────────────────┘
+  
+  Confirmación por API
+  
+  - La versión 1.0.0 está Released y su releaseProductBuildId es el build que registré.
+  - Sigue con 1 asignación: review.released.config.3qzx1t.
+  - La lista de versiones del producto muestra solo 1.0.0 Released, que es lo que verá la pantalla.
+  - Extra: intenté asignarle otra configuración a la versión liberada y la API respondió 422. Creo que el bloqueo por estado se evalúa
+  antes que cualquier otra regla, según un comentario del código, pero lo vi por la respuesta, no lo aislé.
+  
+  Estado de los datos
+  
+  Quedan disponibles hasta que usted termine. Nadie los borra solo: no los creé con el fixture de limpieza de las pruebas, y mis pruebas
+  solo borran lo suyo.
+  
+  Como liberar es irreversible, no hay forma de devolver la versión a In Development. Cuando termine, avíseme y lo limpio. Antes de
+  prometerlo, tendría que comprobar que la API deja borrar un producto con una versión Released.
+  
+  No modifiqué código.
+ 
+▸ Credits: turn 9.40 • session 282.16 | Time: 50s
 
-Confirma por API que la versión quedó en Released y que conserva la configuración. Dame el nombre exacto del producto, el número de versión y la Key para que yo pueda seleccionarlos en Product Management → Configurations. Deja esos datos disponibles hasta que termine mi revisión. Si la API impide liberarla, dime qué operación falló y qué respondió. Hazlo sin modificar código.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◕ 61%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
+
