@@ -1,9 +1,53 @@
-Corrige la validación de Expression en sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue, el formulario que abre el botón +. El PBI 494908 pide que el usuario seleccione un campo de la lista de fuentes disponibles.
+• El formulario Add Configuration ya impide guardar una Expression sin un campo de la lista. Lo comprobé en el navegador con los tres pasos
+  que pidió.
+  
+  El cambio
+  
+  En ProductAddConfigurationDrawer.vue, Submit solo se habilita con Expression si el texto contiene al menos un campo cerrado ({{Campo}})
+  que esté en la lista que el formulario ya carga. Por eso hola solo, hola {{ sin cerrar, o {{NotAField}} (un campo que la lista no ofrece)
+  dejan Submit deshabilitado. Generated no cambia.
+  
+  Si la lista no se pudo cargar, no hay con qué comparar. En ese caso acepto cualquier campo cerrado y dejo la validación al servidor. Es
+  el mismo comportamiento que el formulario ya tenía en esa situación.
+  
+  Resultado en el navegador
+  
+  ┌────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┐
+  │ Paso                                           │ Observado                                                                        │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 1. Key nueva y solo hola                       │ Submit deshabilitado.                                                            │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 2. Escribir hola {{ y elegir ClusterName       │ El campo queda exactamente hola {{ClusterName}} y Submit se habilita.            │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 3. Dejar solo hola                             │ Submit se deshabilita otra vez.                                                  │
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 3. Volver a elegir ClusterName y pulsar Submit │ El formulario se cierra y vuelve a Assign Configuration con la Key nueva         │
+  │                                                │ seleccionada. La definición muestra hola {{ClusterName}}.                        │
+  └────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┘
+  
+  Sin la validación, la prueba falla en el paso 1: con hola el botón Submit queda habilitado, tal como usted lo reprodujo. Con la
+  corrección pasa. La corrida completa de Product Management pasó 4 de 4 veces, 12 pruebas cada una, y no quedaron datos de prueba.
+  
+  Archivos modificados
+  
+  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue: la validación.
+  - sharedUIComponents/src/components/__tests__/ProductAddConfigurationDrawer.spec.ts: 6 pruebas unitarias nuevas (sin campo, campo sin
+  cerrar, campo fuera de la lista, texto exacto al elegir, Generated sin campo, y lista sin cargar).
+  - e2e/ui/tests/adminUi/ProductManagement.test.ts: la prueba nueva de los tres pasos, con una Key propia que se borra al terminar.
+  
+  Dos pruebas existentes que tuve que cambiar
+  
+  Ambas guardaban sin elegir un campo de la lista, y la regla nueva lo impide:
+  - Clave duplicada: la expresión pasó de my-value a my-value {{CName}}.
+  - Campo no admitido ({{NotAField}}): esa prueba esperaba el error del servidor. Ahora el formulario lo bloquea antes de enviar, así que
+  la reescribí para comprobar que Submit queda deshabilitado. El error del servidor para un campo no admitido ya no se puede provocar desde
+  este formulario. Sigue cubierto por una prueba unitaria.
+  
+  Frontend completo: 1077 pruebas pasan. Sin commit ni push.
+ 
+▸ Credits: turn 17.99 • session 258.73 | Time: 4m 40s
 
-Lo comprobé en el portal: escribí hola, pulsé Submit y se creó la llave sin haber elegido ningún campo.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 59%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Limita el cambio al alta de configuraciones con Expression. Usa la lista de campos que ya carga el formulario. Verifica en el navegador con una prueba básica de Playwright:
-1. Con una Key nueva y solo hola, el formulario debe impedir el guardado.
-2. Al escribir hola {{ y seleccionar ClusterName de la lista, la expresión debe quedar exactamente como hola {{ClusterName}}.
-3. Si borro el campo seleccionado y dejo solo hola, debe volver a impedir el guardado. Si lo selecciono de nuevo y pulso Submit, debe regresar a Assign Configuration con la nueva Key seleccionada y mostrar hola {{ClusterName}}.
-Usa una Key propia de la prueba. Escribe el código y la prueba en inglés. Respóndeme en español con los archivos modificados y el resultado observado en el navegador.
+›  ask a question or describe a task ↵
