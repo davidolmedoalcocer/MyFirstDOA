@@ -1,7 +1,62 @@
-Resuelve localmente los conflictos del PR #376 entre mi rama pbi/494908_manage-product-version-configurations y develop.
+• Resolví los 10 conflictos del PR #376 en local. El merge de origin/develop (c900ccd1) está sin commit sobre tu rama (2acce51f) y ya no quedan marcadores
+  de conflicto. Las pruebas unitarias y E2E pasan. ESLint no pude ejecutarlo, porque a e2e/node_modules le falta eslint-plugin-playwright.
+  
+  El árbol estaba limpio al empezar (tu trabajo ya estaba en el commit 2acce51f), así que no hubo que detenerse. Los 10 archivos siguen marcados como no
+  resueltos para Git. Cuando los revises, hay que hacer git add sobre ellos y luego el commit. No hice commit, push ni git add.
+  
+  Qué combiné y por qué
+  
+  Pantalla (sharedUIComponents)
+  - stores/productManagement.ts: conservé de develop la gestión de Products (alta, edición, borrado, estado de referencias, avisos). Conservé de tu rama
+  las versiones y Configurations desde la API, con la protección contra respuestas fuera de orden. El store ya no usa ManagedProduct ni removable, porque
+  develop los eliminó. Eso cierra la pregunta pendiente de removable: false: el botón Remove Product ahora depende de si el Product tiene referencias.
+  - ProductManagementDashboard.vue: quedan juntos el drawer de Product, el diálogo Remove y los eventos en vivo de develop, y el menú Add Version > From
+  Version y las acciones de Configurations de tu rama. Al cambiar de Product limpio las versiones al instante, como hacía tu rama, y mantengo la
+  comprobación de referencias de develop.
+  - models/productManagement.ts, models/product.ts, mocks/productManagementMockData.ts: tomé la versión de develop y quité de los mocks lo que tu rama ya
+  lee de la API (mockConfigurations). Dejé fuera tu displayName?: develop ya lo declara como obligatorio, y la displayName que preguntaste antes queda
+  cubierta así.
+  - Pruebas unitarias de pantalla:
+    - En el store dejé las pruebas de develop sobre Products (carga, alta, edición, borrado, referencias) y todas las tuyas.
+    - En el dashboard, develop manda en lo que depende de las referencias de Products. Quité mi prueba "no ofrece Remove Product" y su prueba "se cae al
+  nombre cuando falta displayName", y la de develop "devuelve copias de los mocks de versiones". Las tres comprobaban comportamiento que ya no existe.
+  
+  E2E
+  - ProductManagementPage.wrapper.ts: quedan los dos juegos de locators y métodos. Para openFromNav y selectProduct usé los de develop, que añaden la
+  espera del stream en vivo y la corrección del PBI 507939.
+  - ApiHelpers.ts: createProduct acepta ahora los campos de develop o un solo texto, que uso para el nombre, el namespace y el nombre visible. Así sirven
+  los dos tipos de llamada. El resto de helpers de ambos lados se conserva.
+  - ProductManagement.test.ts: tests de develop (@pbi-494905) y los míos (@pbi-494908), en un describe aparte con el tag de área @product-versions.
+  - Convenciones nuevas de develop que adapté en mis tests:
+    - IDs en tags y no en títulos (@pbi-494908), también en las 4 pruebas de ProductVersionSettings.test.ts.
+    - Las comprobaciones de desactivado pasan por TestHelpers.expectDisabled.
+    - Quité los dos waitForTimeout.
+    - Formato con prettier.
+  
+  Pruebas ejecutadas
+  
+  - Vitest (front): 84 archivos, 1157 pruebas, todas pasan. vue-tsc sin errores nuevos en los archivos que toqué. Los demás errores ya estaban.
+  - Backend (.NET): 1801 pasan, 15 se omiten (las mismas omitidas de antes). Develop solo tocó un archivo de backend en estos 49 commits.
+  - E2E en Docker:
+    - Con --grep "@pbi-49490[58]" en admin-ui, 27 pasan: 10 de @pbi-494905 y 17 de @pbi-494908.
+    - Proyecto API completo: 148 pasan y 1 se omite (un test.fixme de develop en ProductVersions.test.ts).
+    - Admin-ui completo: 29 pasan.
+    - Tenant-ui completo: 57 pasan.
+  
+  - E2E, comprobaciones locales: tsc solo falla por el módulo de ESLint que falta. Prettier y la comprobación de tags (235 pruebas) pasan.
+  
+  Pendiente
+  
+  - ESLint no ejecutado. Revisé a mano que mis tests no usen waitForTimeout ni importen test de @playwright/test. Corre pnpm check en e2e/ antes del push,
+  con las dependencias al día.
+  - Reglas incompatibles: no encontré ninguna que obligara a decidir. La más cercana: develop deja las versiones en datos de ejemplo hasta el PBI 494906, y
+  tu rama ya las lee de la API porque las Configurations dependen de versiones reales. Sigo tu lectura de la API.
+  - Decisiones previas que siguen abiertas: el nombre SourceProductVersionId frente a CopyFromProductVersionId, si From Version copia también los Secrets,
+  y el ítem "New Version" deshabilitado. Los detalles están en mi respuesta anterior.
+ 
+▸ Credits: turn 39.86 • session 562.23 | Time: 12m 27s
 
-Primero verifica que estás en el repositorio dev-portal, en esa rama, y que el árbol de trabajo está limpio. Si hay cambios locales, detente y dime cuáles son antes de tocar nada.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 33%                                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Trae origin/develop e intégralo en mi rama dejando el merge sin commit. Revisa los 10 archivos en conflicto completos. Conserva las funciones y pruebas de Product Management que ya están en develop y las de configuraciones del PBI 494908. Combina las partes compartidas según lo que necesitan sus llamadas y pruebas. Si encuentras dos reglas de negocio incompatibles, explícame el caso concreto antes de decidir.
-
-Ejecuta las pruebas afectadas de ambos lados, incluidas las E2E del PBI 494908 en Docker. Al terminar, dime en español qué combinaste, por qué, qué pruebas ejecutaste y qué queda pendiente. Deja el resultado local para mi revisión, sin commit ni push.
+›  ask a question or describe a task ↵
