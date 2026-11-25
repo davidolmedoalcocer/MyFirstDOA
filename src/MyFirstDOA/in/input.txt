@@ -1,49 +1,7 @@
-• Editar key-doa desde la versión 1.0.0 no permite una definición solo para esa versión. Con el código actual crearía una revisión nueva
-  del Setting, compartida por todas las versiones que usan la llave.
-  
-  Qué guarda ProductVersionSetting
-  
-  Solo tres columnas: Id, ProductVersionId y SettingId. La DTO tiene solo dos (ProductVersionId, SettingId). No hay valor, expresión,
-  formato, longitud ni número de revisión. Un comentario del servicio lo confirma: la fila "no tiene SettingVersionId, así que nunca se
-  fija una revisión". La versión de producto solo declara qué Setting requiere. Está en
-  devPortalService/src/Domain/Models/ProductVersionSetting.cs y Dto/ProductVersionSettingDto.cs.
-  
-  Dónde vive la definición
-  
-  Está en SettingVersion (cada revisión), colgando del Setting del catálogo global, con RevisionNumber, placement, estrategia, expresión,
-  formato y longitud (Domain/Models/SettingVersion.cs). La revisión vigente de un Setting es la de mayor RevisionNumber. Lo hace el
-  frontend en util/settingVersion.ts (latestSettingVersion), y el backend en TenantRepository, que considera "actual" la revisión sin
-  ninguna más nueva.
-  
-  Qué llamada hace el formulario de edición existente
-  
-  El formulario es SettingDrawer.vue en modo Edit, del catálogo de Settings:
-  1. SettingDashboard.vue (onDrawerConfirm) llama a settingStore.addSettingVersion(selectedSetting.id, payload.version).
-  2. En stores/setting.ts (addSettingVersion), eso llama a createSettingVersion, en services/settingVersionService.ts.
-  3. El servicio hace POST /settingversions con { settingId, revisionNumber: 0, ...campos }.
-  4. El backend, en SettingVersionService.Create, asigna el siguiente número de revisión y guarda la fila nueva.
-  
-  SettingVersionsController es de solo agregar: tiene GET y POST, y no tiene PUT, PATCH ni DELETE (el comentario dice "append-only"). Antes
-  de guardar, el drawer muestra la confirmación "Save New Revision", que avisa que los despliegues futuros usarán los valores nuevos.
-  
-  Por qué no puede ser por versión
-  
-  - El POST no recibe ningún dato de la versión de producto. La revisión se ata al SettingId, así que la leen todas las versiones y
-  plantillas que usan la llave.
-  - No hay candado por versión. SettingVersionService solo comprueba que el Setting exista. No consulta ProductVersionLock, así que también
-  crearía revisión sobre un Setting usado por una versión Released.
-  - Si ProductVersionSetting ya tuviera una revisión fijada, habría que añadir una columna y migración. Hoy no existe.
-  
-  Estado de key-doa en el portal de desarrollo
-  
-  Solo lecturas (GET): tiene una sola revisión (rev 1: Config, Expression {{ClusterFQDN}}). Ninguna versión de producto la tiene asignada,
-  ninguna plantilla la usa, y hasReferences es false. Por eso desde la versión 1.0.0 no se vería: primero habría que asignarla.
-  
-  No modifiqué archivos ni datos.
- 
-▸ Credits: turn 8.93 • session 313.15 | Time: 48s
+Implementa Edit para el PBI 494908 en Product Management → Configurations. Revisa sharedUIComponents/src/components/ProductConfigurationsTabPanel.vue, que muestra las filas y sus acciones. Cuando la versión esté In Development, ofrece Edit en la fila de cada configuración asignada. En Released y Deprecated, la acción debe quedar oculta.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-sonnet-5.5 · medium · ◕ 64%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+Al pulsar Edit, abre SettingDrawer.vue en modo edición con la definición actual de la llave seleccionada. Reutiliza el flujo de guardado del catálogo, incluida la confirmación Save New Revision. Al confirmar, crea una revisión del mismo Setting y actualiza la fila. Al cancelar, conserva la revisión anterior. Mantén al usuario en Product Management durante todo el flujo.
 
-›  ask a question or describe a task ↵
+Compruébalo en el navegador con Playwright. Usa una llave propia de la prueba asignada a dos versiones. Desde una versión In Development, cambia la expresión de antes {{ClusterName}} a despues {{ClusterName}}. Comprueba que cancelar conserva la definición original. Después confirma el cambio, recarga la pantalla y verifica que ambas versiones muestran la nueva expresión. Comprueba también que Edit está oculto en Released y Deprecated.
+
+Escribe el código, los comentarios y las pruebas en inglés. Respóndeme en español con los archivos modificados y los resultados que observaste en el navegador.
