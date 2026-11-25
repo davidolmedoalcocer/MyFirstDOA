@@ -1,66 +1,19 @@
-• Resultado: se guardó una sola asignación, como se esperaba.
+• Pasaron las 17 pruebas de admin-ui en Docker, en 25,7 s.
   
-  Datos de la prueba (stack de pruebas, dev-portal-testing)
-  - Versión nueva en estado In Development.
-  - Dos Configurations con placement Configuration y claves que solo difieren en mayúsculas: Region.020dwu y region.020dwu.
-  - Envié las dos solicitudes POST /productVersionSettings en paralelo a esa misma versión. Las dos salieron a la vez, con una barrera de
-  sincronización.
+  - Qué probé: corrí bash .workspaceScripts/task_e2eRun.sh --project=admin-ui -g 494908. Fue contra el stack de pruebas, con el código actual, incluida la
+  regla de claves limitada a Configurations.
+  - Qué falta: el -g 494908 filtra por etiqueta. Cuenta 17 pruebas, y en mi último resumen ProductManagement.test.ts tenía 19. No averigüé cuáles son las 2
+  de diferencia. Si no llevan la etiqueta 494908, esta corrida no las incluye.
+  - Cobertura: las pruebas cubren Add, Edit, Remove, From Version, las validaciones del formulario y la ocultación de acciones en Released y Deprecated.
+  - Lo que no cambió:
+    - Tu stack de desarrollo sigue detenido.
+    - No toqué código.
+    - El reporte HTML quedó en e2e/playwright-report.
   
-  Respuestas
-  - Region.020dwu: 201 Created.
-  - region.020dwu: 409 Conflict, con el mensaje This setting is already associated with the product version.
-  
-  Estado final de la versión
-  - Quedó 1 configuración asignada, Region.020dwu.
-  
-  Repetición
-  - Repetí la prueba 40 veces más, cada una con versión y claves nuevas.
-  - En las 40 hubo un 201 y un 409, y quedó exactamente 1 asignación. No hubo ningún caso con 0 o con 2.
-  - No registré cuál de las dos solicitudes ganó en cada ronda. Eso no importa para el resultado.
-  
-  Limpieza y código
-  - Borré los productos race-* y los settings Region.* y region.* que creé. Lo comprobé después.
-  - No modifiqué código. git status sigue igual.
-  
-  Observaciones
-  - Sobre el comentario del código. Por lo que leí en el código, las asignaciones a una misma versión se serializan. Create corre bajo
-  ProductVersionLock.WithVersionsLockedAsync, que bloquea la fila de la versión con SELECT … FOR UPDATE. Esto lo deduje del código, no lo
-  observé directamente.
-  - Consecuencia. El comentario en ProductVersionSettingService.ValidateModel dice que dos solicitudes simultáneas podrían pasar la
-  validación. Eso parece falso para asignaciones a la misma versión, y yo lo afirmé antes. Puedo corregir el comentario si quieres. No lo
-  toqué porque pediste dejar el código sin cambios.
-  - Tu stack de desarrollo está detenido (dev-portal-service, admin-ui, tenant-ui). Se detuvo por un reinicio de Docker del entorno a las
-  13:55 UTC, no por mí. Solo levanté el stack de pruebas. Los datos de review-released-3qzx1t siguen en dev-portal-postgres-db, que está
-  activo. ¿Quieres que levante el stack de desarrollo?
-  
-  Decisiones tuyas pendientes antes del commit
-  - removable: false en stores/productManagement.ts, que oculta Remove Product.
-  - Si From Version debe copiar también los Secrets.
-  - El nombre SourceProductVersionId, en lugar de CopyFromProductVersionId (el de AB#509995).
-  - El ítem "New Version" deshabilitado (es de la PBI 494906).
-  - El catálogo sigue permitiendo Region y region. Solo lo bloquean el formulario "+" y la asignación a la versión.
-  - Qué archivos sin commit que no hice yo se incluyen.
-  - El reporte reporte-final-pbi-494908.html está desactualizado respecto a la regla de Secrets.No puedo continuar sin saber con qué,
-  porque lo que queda depende de decisiones tuyas. Estas son las opciones:
-  
-  1. Levantar tu stack de desarrollo. Está detenido por el reinicio de Docker. Los datos de review-released-3qzx1t siguen en
-  dev-portal-postgres-db, así que no se pierden. No lo toco hasta que me lo pidas.
-  2. Corregir el comentario obsoleto en ProductVersionSettingService.ValidateModel. Es solo un comentario, pero es código, y antes pediste
-  dejarlo sin cambios.
-  3. Volver a correr el E2E de admin-ui en Docker. La última corrida completa fue antes de los últimos cambios. Con el stack de pruebas son
-  unos minutos.
-  4. Resolver las decisiones pendientes antes del commit:
-    - removable: false.
-    - Si From Version copia los Secrets.
-    - SourceProductVersionId o CopyFromProductVersionId.
-    - El ítem "New Version" deshabilitado.
-    - Qué archivos que no hice yo se incluyen.
-  
-  5. Regenerar el reporte final, que quedó desactualizado en la regla de Secrets.
-  
-  Si me dices solo un número, empiezo por ahí. Mi recomendación es el 3 y luego el 4, porque no cambian nada tuyo.
+  Si quieres, sigo con el punto 4, las decisiones pendientes antes del commit. También puedo averiguar cuáles son las 2 pruebas que quedan fuera del
+  filtro.
  
-▸ Credits: turn 18.40 • session 498.96 | Time: 3m 54s
+▸ Credits: turn 0.63 • session 499.59 | Time: 1m 26s
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-qa · claude-sonnet-5.5 · medium · ◔ 5%      
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◔ 5%       
