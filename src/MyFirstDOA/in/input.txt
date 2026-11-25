@@ -1,1 +1,57 @@
-Revisa solo removable: false en stores/productManagement.ts. Compara la rama con develop y dime cuándo se mostraba Remove Product, qué dato controlaba el botón y si ese dato existe en la respuesta real de la API. Explícame en español cuál sería el cambio mínimo para conservar el comportamiento anterior. Solo revisa y responde, sin modificar archivos.
+• Resumen: en develop el botón Remove Product salía solo con los productos de ejemplo marcados como removibles. En la rama, removable:
+  false lo oculta siempre. La API real no trae ningún dato que lo controle. Debe decidir usted cómo deducirlo.
+  
+  Cuándo se mostraba Remove Product en develop
+  
+  - Dato que lo controlaba: ManagedProduct.removable. El modelo lo comenta como "Drives the Remove Product button", y
+  ProductManagementDashboard.vue lo lee con v-if="selectedProduct?.removable". Ese archivo no cambió entre develop y la rama.
+  - Origen del dato: en develop, fetchProducts leía los productos de mockProducts, no de la API. Los mocks marcan removable: true en New
+  Product y Empty Product, y false en Warehouse Service.
+  - Resultado: el botón aparecía al seleccionar uno de esos dos productos de ejemplo. La pantalla de develop solo listaba esos tres
+  productos de ejemplo, no los reales del portal.
+  - Qué hacía: nada. El botón no tiene @click ni en develop ni en la rama, y su comentario dice que es parte de lo que queda fuera del PBI
+  495005.
+  
+  Qué hace la rama
+  
+  fetchProducts ahora lee getProducts() de la API y fuerza removable: false en todos, con el comentario "no backend rule yet for removing a
+  Product". Hay una prueba que lo fija ("loads the products from the API… with none removable"). Resultado: el botón no aparece nunca.
+  
+  ¿Existe ese dato en la respuesta real de la API?
+  
+  No. Un producto real devuelve solo customerId, displayName, id, namespace y productName. En el backend no hay ningún campo removable,
+  canDelete ni parecido.
+  
+  Lo único relacionado es otra llamada, no un campo del producto:
+  - GET /Products({id})/HasReferences, función de admin. La probé solo con GET: Test Product y Billing Portal devuelven true; Carrier
+  Gateway, false.
+  - DELETE /Products({id}): está expuesto. ProductService.ValidateDelete lo rechaza con 422 si algún build del producto lo usa un tenant o
+  una solicitud de despliegue.
+  
+  El comentario "no backend rule yet" está desactualizado: la regla del PBI 510001 ya existe en el backend. Pero el botón no llama a
+  ninguna de esas dos operaciones.
+  
+  Cambio mínimo para conservar el comportamiento anterior
+  
+  El comportamiento anterior dependía de datos de ejemplo, así que no se puede conservar tal cual con productos reales. Las opciones, de
+  menor a mayor:
+  
+  1. Dejar removable: false. Es lo actual: el botón nunca sale con productos reales, y nunca hacía nada.
+  2. Quitar solo la línea de removable: false. Cambia una línea, pero el campo quedaría undefined, así que el botón tampoco saldría.
+  Visualmente es igual que hoy y deja el tipo removable: boolean incumplido, así que no lo recomiendo.
+  3. Derivarlo de HasReferences al cargar los productos (removable = !hasReferences, una llamada por producto). Sería el cambio mínimo que
+  devuelve un botón basado en datos reales: el botón saldría en los productos sin uso, como Carrier Gateway. Sigue sin hacer nada al
+  pulsarlo, y es una función nueva, no el comportamiento anterior.
+  
+  Mi lectura: el comportamiento anterior no existe con productos reales, y removable: false no es del PBI 494908. Quitar esa línea sin más
+  dejaría el estado actual. La decisión de producto es si quiere el botón (opción 3 y luego su flujo de borrado) o dejarlo oculto hasta el
+  PBI de Remove Product.
+  
+  No modifiqué archivos.
+ 
+▸ Credits: turn 7.33 • session 419.08 | Time: 50s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◕ 75%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
