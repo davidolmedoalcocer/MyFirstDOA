@@ -1,6 +1,83 @@
-Corrige la validación de asignaciones en ProductVersionSettingService.cs para el PBI 494908. Dentro de una misma versión de producto, compara las claves sin distinguir mayúsculas cuando ambas sean configuraciones. Para asignaciones que involucren Secrets, conserva el comportamiento de develop. Mantén la protección que impide asignar dos veces el mismo SettingId.
+• La validación ya aplica la regla de mayúsculas solo entre dos Configurations; los Secrets quedan como en develop. Los dos casos dieron el
+  resultado esperado y las pruebas pasan.
+  
+  Cambio
+  
+  En ValidateModel de ProductVersionSettingService.cs, una asignación entra en conflicto en dos situaciones, con el mismo 409 y el mismo
+  mensaje de siempre:
+  - El mismo SettingId ya está asignado. Esta protección sigue igual.
+  - Otra Configuration de la versión tiene la misma Key sin distinguir mayúsculas. Esto solo cuenta si ambos Settings son Configurations.
+  
+  Un Setting es Configuration o Secret según su revisión vigente, la de mayor número. Por eso un Setting que pasó de Config a Secret deja
+  de entrar en la regla, y uno que pasó de Secret a Config entra.
+  
+  Resultado observado en el entorno de pruebas de Docker
+  
+  Tomé los estados por HTTP contra el servicio de pruebas, que la tarea reconstruyó con este código. Cada caso usó su propia versión In
+  Development.
+  
+  Caso 1: Configuration Region, luego Configuration region
+  
+  ┌─────────────────────────┬────────────────────────────────────────────────────────────────────────────────────┐
+  │ Paso                    │ HTTP                                                                               │
+  ├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+  │ Asignar Region (Config) │ 201                                                                                │
+  ├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+  │ Asignar region (Config) │ 409, con el mensaje "This setting is already associated with the product version." │
+  ├─────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+  │ Consulta final          │ Solo Region (Config).                                                              │
+  └─────────────────────────┴────────────────────────────────────────────────────────────────────────────────────┘
+  
+  Caso 2: Configuration Region, luego Secret region
+  
+  ┌─────────────────────────────────────────┬────────────────────────────────────────────────────┐
+  │ Paso                                    │ HTTP                                               │
+  ├─────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ Asignar Region (Config)                 │ 201                                                │
+  ├─────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ Asignar region (Secret)                 │ 201                                                │
+  ├─────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ Consulta final                          │ Quedaron ambas: Region (Config) y region (Secret). │
+  ├─────────────────────────────────────────┼────────────────────────────────────────────────────┤
+  │ Extra: asignar de nuevo el mismo Secret │ 409 (el mismo SettingId), y siguen las dos.        │
+  └─────────────────────────────────────────┴────────────────────────────────────────────────────┘
+  
+  Los datos de prueba se borraron del entorno de pruebas (sin restos).
+  
+  Pruebas ejecutadas
+  
+  - API, tarea E2E de Docker (task_e2eRun.sh --project=api -g 494908): 4 pasaron, 0 fallaron, 0 omitidas. Incluye el caso 1 (409) y el caso
+  2 (201, con las dos asignaciones y el 409 del mismo Secret).
+  - Backend completo: 1801 pasan, 15 omitidas (ya lo estaban), 0 fallan.
+  - Pruebas en memoria de la regla (ProductVersionSettingKeyConflictTests): 14 pasan. Cubren:
+    - Config contra Config en tres combinaciones de mayúsculas.
+    - Secret contra Config, y Config contra Secret, aceptados.
+    - Dos Secrets con Keys que difieren por mayúsculas, aceptados.
+    - El mismo Secret dos veces, rechazado.
+    - Un Setting cuyo placement cambió entre revisiones, en ambos sentidos.
+    - Update con y sin conflicto.
+  
+  Archivos modificados
+  
+  - devPortalService/src/Domain.Services/ProductVersionSettingService.cs: la validación.
+  - devPortalService/test/Domain.Services.Test/ProductVersionSettingKeyConflictTests.cs: sus Settings de prueba ahora llevan una revisión
+  con placement, y añadí los casos con Secrets.
+  - e2e/api/tests/ProductVersionSettings.test.ts: prueba nueva del caso 2 y un comentario ajustado en la del caso 1.
+  
+  El catálogo y la pantalla no cambiaron, y el portal de desarrollo sigue con los mismos contenedores y el mismo arranque. Sin commit ni
+  push.
+  
+  Lo que debe saber
+  
+  - Cambió la regla que le dije en la revisión de cierre (decisión 3): ya no aplica entre Secrets y Configurations. Mi revisión de cierre
+  quedó desactualizada en ese punto.
+  - Sigue sin haber una restricción en la base de datos para la Key. Dos peticiones simultáneas con Region y region pueden pasar las dos.
+  - Efecto en pantalla (deducido leyendo el código, no lo probé en el navegador): el alta desde el botón + sigue rechazando region si
+  existe Region en el catálogo, sin mirar el placement. Esa comprobación es distinta de esta y no la toqué, tal como pidió.
+ 
+▸ Credits: turn 22.01 • session 480.55 | Time: 5m 4s
 
-Compruébalo por API en el entorno de pruebas de Docker con una versión In Development y dos casos independientes:
-1. Asigna la configuración Region y luego otra configuración region. La segunda debe devolver 409. Consulta la versión y confirma que solo quedó la primera.
-2. Asigna la configuración Region y luego el Secret region. La segunda debe devolver 201. Consulta la versión y confirma que quedaron ambas asignaciones.
-Limita los cambios a la validación de la API y sus pruebas. Deja intactos el catálogo y la pantalla. Respóndeme en español con los archivos modificados, el resultado observado de cada caso y las pruebas ejecutadas. Sin commit ni push.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◕ 79%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
