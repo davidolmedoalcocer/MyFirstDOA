@@ -1,1 +1,66 @@
-Completa la propuesta de archivos del PBI 494908. Usa tu revisión anterior y revisa solo lo que dejaste sin clasificar. Aclara si displayName debe incluirse para que funcione la pantalla que ya probaste. Dime en español qué incluirías y señala únicamente los cambios que requieran una decisión mía, explicando qué pasaría al incluirlos o dejarlos fuera. Responde aquí en el chat. Solo lectura, sin crear documentos, modificar archivos, preparar cambios en Git, hacer commit ni push.
+• Qué incluiría
+  
+  Incluiría todo lo que clasifiqué antes como parte del PBI, en los tres grupos (API, pantalla y pruebas e2e), con las excepciones y condiciones de los
+  puntos de decisión de abajo.
+  
+  Lo que me faltaba clasificar queda así:
+  
+  - e2e/api/tests/ProductVersionSettings.test.ts: lo incluyo entero. Las 159 líneas añadidas son 4 tests etiquetados @[494908], más un comentario de
+  cabecera. No hay pruebas ajenas mezcladas, así que esto cierra el punto 10 de mi propuesta anterior.
+  - Los 3 archivos que aparecían sin commit antes de mi trabajo (odataPaging.ts, productVersionSetting.ts y ProductSettingDefinition.vue): los incluyo. Mi
+  código los importa, y el spec de odataPaging va en el mismo grupo.
+  - mocks/productManagementMockData.ts, models/productManagement.ts, models/index.ts y services/index.ts: los incluyo. Son consecuencia directa de leer
+  Configurations desde la API: quitan mockConfigurations y ProductVersionConfiguration, y exportan los servicios y el modelo nuevos.
+  - SettingDrawer.vue: lo incluyo. El cambio es la prop lockPlacement, que por defecto no altera el catálogo.
+  - Los specs de Vitest: los incluyo. Cubren mi código y el store.
+  
+  Sobre displayName: sí hay que incluirlo para que la pantalla funcione
+  
+  - Qué necesita la pantalla: el listado, el título y el campo "Display Name" de ProductManagementDashboard.vue leen product.displayName. El store también
+  ordena productos con él.
+  - De dónde viene el dato: el backend ya lo devuelve (ProductDto.DisplayName, obligatorio). Lo que falta es el tipo en el front: en HEAD,
+  models/product.ts no declara displayName. Sin esa línea, p.displayName ?? p.productName en el store no compila con el tipo Product.
+  - Qué incluir exactamente: la línea displayName?: string de models/product.ts y el .map del store que rellena displayName con productName si falta.
+  - Detalle: el comentario de esa línea dice "PBI 510001". Es una referencia a otro PBI, pero el campo sí es necesario aquí.
+  
+  Cambios que requieren tu decisión
+  
+  1. removable: false en stores/productManagement.ts
+    - Si lo incluyes: el botón Remove Product queda oculto para todos los productos, que es lo que probé en e2e. Los usuarios pierden un botón que en
+  develop se veía, aunque sin acción.
+    - Si lo dejas fuera: el campo removable queda sin valor y falla el tipo ManagedProduct. Habría que decidir un valor, por ejemplo derivarlo de
+  HasReferences.
+    - Qué propongo: decidirlo antes del commit. No es del PBI, pero el commit no compila ni funciona sin algún valor.
+  
+  2. Lectura de Products y Versions desde la API (fetchProducts y fetchVersions)
+    - Si lo incluyes: la pantalla muestra productos y versiones reales. Es lo que probé y lo que hace falta para trabajar sobre una versión real.
+    - Si lo dejas fuera: la pantalla vuelve a los datos mock. No hay versiones reales donde asignar Configurations, y las 17 pruebas e2e de UI fallan.
+    - Qué propongo: incluirlo. Dentro de ese mismo cambio hay una decisión menor: console.error más lista vacía cuando falla la carga, sin mensaje al
+  usuario.
+  
+  3. Nombre SourceProductVersionId en lugar de CopyFromProductVersionId
+    - Si lo dejas: no hay choque con la migración de AB#509995. Después habrá que renombrar si el equipo quiere el otro.
+    - Si lo cambias: el nombre coincide con lo planeado. Hay que tocar DTO, mapper, controlador, servicio, front y pruebas, y puede chocar con esa
+  migración.
+  
+  4. From Version copia también los Secrets
+    - Si lo dejas: la versión nueva hereda todo lo asignado a la origen, incluidos los Secrets. Es lo que probé.
+    - Si lo cambias a solo Configurations: el comportamiento queda más acotado al PBI. Cambia ProductVersionService.cs y sus tests.
+  
+  5. Ítem "New Version" deshabilitado (ProductVersionDrawer.vue y ProductManagementDashboard.vue)
+    - Si lo incluyes: el menú Add Version muestra la opción inactiva como marcador de la PBI 494906.
+    - Si lo quitas: el menú tiene solo From Version, y el 494906 la añade después. Sale un test menos y cambia la prueba de ese menú.
+  
+  6. Comentario obsoleto en ProductVersionSettingService.ValidateModel
+    - Si lo dejas: afirma que dos solicitudes simultáneas podrían pasar la validación. Mis 41 rondas lo desmienten para la misma versión, aunque el
+  comentario sigue en el código.
+    - Si lo corrijo: es un cambio solo de comentario, pero toca código, y pediste dejarlo sin cambios.
+  
+  Todo lo demás de la propuesta anterior sigue igual. Puede partirse en los mismos tres commits: API, pantalla y pruebas.
+ 
+▸ Credits: turn 1.33 • session 502.53 | Time: 20s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 8%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
