@@ -1,8 +1,8 @@
-What’s up?
-Yesterday, I completed the third practice test and started summarizing how Eli’s proposal aligns with what I’ve seen in the code. I also met with Mariana to clarify questions about what we’ve learned.
+What’s Up
+Yesterday I tested four API scenarios for PBI 494908. I verified that each version loads its own configurations, that assigning the same configuration twice is rejected, and that Region and region count as the same configuration key within a version. The fourth test confirmed that the change preserved the existing behavior for Secret assignments. All four passed in Docker.
 
-Top priority
-Continue working on the summary.
+Top Priority
+Today I’ll run the 17 Admin UI tests for PBI 494908 in Docker. I’ll verify that users can add, edit, and remove configurations in an In Development version, that Released and Deprecated versions are read-only, and that From Version copies the configurations from the version the user selects. Then I’ll review which changes to include in the commit.
 
 Blockers
-No blockers.
+No blockers at the moment.
