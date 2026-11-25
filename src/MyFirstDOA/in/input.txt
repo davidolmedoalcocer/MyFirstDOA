@@ -1,1 +1,56 @@
-Compara develop con la rama del PBI 494908 para este único caso: una versión In Development ya tiene asignada una Configuration Region y se intenta asignar a esa misma versión un Secret region. Dime en español qué hacía develop, qué hace la rama y si el cambio del PBI introdujo una diferencia. Distingue lo observado en ejecución de lo deducido al leer el código. Usa el entorno de pruebas si necesitas reproducirlo. No modifiques archivos ni el portal de desarrollo.
+• Config Region asignada, luego Secret region en la misma versión In Development
+  
+  Sí, el cambio del PBI introdujo una diferencia. En develop el Secret region se aceptaba y la versión terminaba con las dos llaves. En la
+  rama se rechaza con 409.
+  
+  Qué hacía develop
+  
+  Observado (ejecución): corrí el caso sobre el código de develop con los repositorios reales y una base en memoria.
+  1. Asignar la Configuration Region → aceptada.
+  2. Asignar el Secret region → aceptado.
+  3. Filas de la versión: region y Region, las dos.
+  
+  Deducido (código): ValidateModel de develop solo comprobaba dos cosas: que el Setting existiera, y que no existiera ya una fila con el
+  mismo par (versión, SettingId). Region y region son Settings con ID distinto, así que el par no se repetía. La base de datos solo tiene
+  un índice único sobre (ProductVersionId, SettingId), sin restricción sobre la Key. Nada miraba la Key ni el placement.
+  
+  Qué hace la rama
+  
+  Observado (ejecución), en dos niveles:
+  - En memoria, con el código de la rama: la segunda asignación lanza EntityAlreadyExistsException: This setting is already associated with
+  the product version. La versión conserva solo Region.
+  - Por HTTP, en el entorno de pruebas (que corre el código de la rama sobre Postgres real), con datos propios Region.<sufijo> (Config) y
+  region.<sufijo> (Secret, con campos de vault):
+    1. Asignar la Configuration: HTTP 201.
+    2. Asignar el Secret: HTTP 409, con el cuerpo {"error":{"code":"409","message":"This setting is already associated with the product
+  version."}}.
+    3. Asignaciones de la versión: solo la Configuration.
+  
+  Deducido (código): la rama compara con pvs.Setting.Key.ToLower() == key, sobre todas las asignaciones de la versión, sin filtrar por
+  placement. La excepción que se lanza se convierte en 409 por el manejo de conflicto que ya existía.
+  
+  ¿Lo introdujo el PBI?
+  
+  Sí. Es exactamente la regla "las Keys no distinguen mayúsculas dentro de una versión" que agregué en este PBI.
+  
+  Observado: en develop, el Secret se aceptaba. En la rama no.
+  
+  Deducido:
+  - No hay ningún otro cambio entre develop y la rama en el controlador, el validador ni la base de datos que afecte a esta asignación.
+  - La diferencia sale solo de ValidateModel.
+  - El PBI habla de Configurations, pero la regla se aplica también a Secrets. Eso ya figuraba en mi revisión de cierre como la decisión 3:
+  está pendiente de su confirmación.
+  
+  Qué no hice
+  
+  El comportamiento de develop lo observé con el servicio, no por HTTP. No levanté un backend de develop en el entorno de pruebas, para no
+  cambiar sus contenedores. No modifiqué archivos del repositorio ni el portal de desarrollo (mismos contenedores y arranque). Los datos de
+  prueba se borraron del entorno de pruebas (producto y los dos Settings, 204 los tres) y no quedaron restos. Las copias temporales de
+  develop y de la rama, y la prueba temporal, ya están eliminadas.
+ 
+▸ Credits: turn 9.65 • session 458.54 | Time: 1m 35s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◕ 78%                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
