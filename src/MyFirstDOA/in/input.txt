@@ -1,5 +1,59 @@
-Corrige ese caso en sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue, el formulario que abre el botón +. Para Expression, mantén Submit deshabilitado mientras carga la lista. Si la carga falla, muestra el mensaje Unable to load the available fields. e impide enviar la solicitud de guardado. Aplica esta validación únicamente a Expression.
+• Con Expression, el formulario ya no deja guardar mientras la lista de campos carga ni cuando falla. Si falla, muestra "Unable to load the
+  available fields." y Submit sigue deshabilitado. Lo comprobé en el navegador.
+  
+  Cambio
+  
+  En ProductAddConfigurationDrawer.vue la lista de campos tiene ahora tres estados: cargando, cargada y fallida. Una Expression solo se
+  puede guardar con la lista cargada y un campo cerrado que esté en ella. Si falla, aparece la alerta roja "Unable to load the available
+  fields." y el envío queda bloqueado. Eso reemplaza el comportamiento anterior, que aceptaba cualquier campo cerrado si la lista no
+  cargaba.
+  
+  Generated no se toca: no usa la lista, no muestra el mensaje y su Submit sigue disponible. Si cambia a Generated con la lista fallida, el
+  mensaje desaparece.
+  
+  Resultado en el navegador
+  
+  Simulé el fallo respondiendo 500 a la petición de la lista. Escribí una Key nueva y hola {{ClusterName}}:
+  
+  ┌───────────────────────────┬─────────────────────────────────────────────────────┐
+  │ Comprobación              │ Observado                                           │
+  ├───────────────────────────┼─────────────────────────────────────────────────────┤
+  │ Mensaje                   │ Unable to load the available fields. visible.       │
+  ├───────────────────────────┼─────────────────────────────────────────────────────┤
+  │ Submit                    │ Deshabilitado.                                      │
+  ├───────────────────────────┼─────────────────────────────────────────────────────┤
+  │ Clic forzado sobre Submit │ No salió ninguna petición createWithInitialVersion. │
+  ├───────────────────────────┼─────────────────────────────────────────────────────┤
+  │ Formulario                │ Sigue abierto y conserva hola {{ClusterName}}.      │
+  ├───────────────────────────┼─────────────────────────────────────────────────────┤
+  │ Cambiar a Generated       │ El mensaje desaparece y Submit queda disponible.    │
+  └───────────────────────────┴─────────────────────────────────────────────────────┘
+  
+  
+  Contra la versión anterior del formulario la prueba falla: no aparece el mensaje, porque aceptaba el campo. Con el cambio pasa. La
+  corrida completa de Product Management pasó 4 de 4 veces, 13 pruebas cada una, y no quedaron datos de prueba.
+  
+  Archivos modificados
+  
+  - sharedUIComponents/src/components/ProductAddConfigurationDrawer.vue: estados de la lista, mensaje y validación.
+  - sharedUIComponents/src/components/__tests__/ProductAddConfigurationDrawer.spec.ts: sustituí la prueba que aceptaba cualquier campo con
+  la lista fallida por tres. Una cubre Submit deshabilitado mientras carga y habilitado al llegar la lista. Otra, el mensaje y que no se
+  emite el guardado si falla. La tercera, que Generated no depende de la lista.
+  - e2e/ui/tests/adminUi/ProductManagement.test.ts: la prueba Playwright nueva.
+  - e2e/ui/src/pages/ProductManagementPage.wrapper.ts: el localizador del mensaje.
+  
+  Frontend completo: 1079 pruebas pasan. Sin commit ni push.
+  
+  Consecuencias que debe saber
+  
+  - Sin reintento. Si la lista falla, el usuario debe cerrar y volver a abrir el formulario, o cambiar a Generated. No añadí un botón de
+  reintentar porque no se pidió.
+  - Lista vacía. Si el servidor responde bien pero con la lista vacía, tampoco se puede guardar una Expression, porque no hay ningún campo
+  que elegir.
+ 
+▸ Credits: turn 14.02 • session 272.75 | Time: 3m 56s
 
-Compruébalo con una prueba básica de Playwright: simula el fallo al cargar la lista, escribe una Key nueva y la expresión hola {{ClusterName}}. Aunque ClusterName normalmente sea válido, verifica que aparezca el mensaje, que Submit siga deshabilitado y que no se envíe la petición para crear la configuración.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◕ 61%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Escribe el código, el mensaje y la prueba en inglés. Respóndeme en español con los archivos modificados y el resultado observado en el navegador.
+›  ask a question or describe a task ↵
