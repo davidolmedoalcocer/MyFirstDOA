@@ -1,1 +1,48 @@
-Atiende el comentario de Eli sobre createVersion y fetchVersions del PR #376. Haz que la pantalla muestre el motivo que devuelve el servidor cuando falla la creación de una versión. Si falla la carga de la lista, muestra un error de carga. Si la carga funciona y hay cero versiones, muestra la lista vacía. Prueba esos casos y explícame qué verá el usuario en cada uno. Conserva los cambios locales que ya tenemos y déjame a mí el commit y el push.
+• La pantalla ya muestra el motivo del servidor cuando falla la creación de una versión, y distingue una lista que no cargó de una que está vacía. Las
+  pruebas pasan, incluidas las de Docker. Dejo todo sin commit ni push, para que lo hagas tú.
+  
+  Qué verá el usuario
+  - Falla la creación de una versión (From Version): sale un aviso con el mensaje del servidor y el drawer se queda abierto para corregir.
+    - Versión que ya existe, incluida una Removed (la lista la oculta, pero su número sigue ocupado): "A ProductVersion with this ProductId, MajorVersion,
+  MinorVersion and PatchVersion already exists." (409).
+    - Origen no válido: "CopyFromProductVersionId must reference a version of the same Product." (422).
+    - Si el error no trae mensaje: "Failed to create version".
+  
+  - Se crea bien: el aviso "Version created successfully", el drawer se cierra y la versión nueva queda seleccionada, como antes.
+  - Falla la carga de la lista de versiones: en lugar de la lista aparece un estado de error con título "Error" y el motivo del servidor. Si el error no
+  trae motivo, dice "Failed to load versions. Please try again." La lista queda oculta, así que no se confunde con un producto sin versiones. Al cambiar de
+  producto, el error desaparece.
+  - La carga funciona y hay cero versiones: se ve la lista vacía y no hay error.
+  - La versión se creó pero la recarga de la lista falla: el aviso de éxito aparece igual y la lista muestra el estado de error.
+  
+  Qué cambió
+  - stores/productManagement.ts:
+    - Añade versionsError, con el mismo papel que configurationsError.
+    - createVersion muestra su propio aviso, como addProduct y editProduct.
+  
+  - ProductManagementDashboard.vue:
+    - Muestra el estado de error de la lista.
+    - Ya no genera su propio aviso al crear una versión.
+  
+  - E2E: añadí versionList y versionsError al page object y el helper removeProductVersion a ApiHelpers.
+  
+  Pruebas
+  - Unitarias del store: versiones vacías sin error, fallo con motivo del servidor y con mensaje genérico, error que se limpia en la siguiente carga y con
+  clearVersions, aviso de éxito, 409 y 422 con su motivo, mensaje genérico, y creación exitosa con recarga fallida.
+  - Unitaria del dashboard: fallo de carga sin lista, y luego un producto con cero versiones sin error. Ya existía la que comprueba que el drawer sigue
+  abierto al fallar.
+  - Vitest completo: 1166 pruebas, todas pasan.
+  - Playwright en Docker (2 nuevas):
+    - From Version contra una versión 2.0.0 Removed: muestra el 409 del servidor y el drawer sigue abierto con la lista intacta.
+    - Con la lectura de versiones de un producto respondida con 500 se ve el error. Después, otro producto sin versiones muestra la lista vacía.
+  
+  - Admin-ui completo: 31 pasan. pnpm check en e2e/: 0 errores, 144 advertencias que ya existían; la comprobación de tags (251 pruebas) y Prettier pasan.
+  
+  El merge de develop sigue pendiente de commit.
+ 
+▸ Credits: turn 22.03 • session 677.00 | Time: 5m 12s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 49%                                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
