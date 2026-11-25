@@ -1,1 +1,63 @@
-En la rama del PR #376, implementa la regla de Eli en el catálogo Settings. Si ya existe Region, crear region debe rechazarse tanto para Configurations como para Secrets. Aplica la regla en SettingService y en la base de datos con un índice único sobre lower(key). La migración debe detectar duplicados existentes y detenerse con un mensaje claro si los encuentra, conservando los datos. En la asignación a una versión, conserva la protección contra asignar dos veces el mismo Setting. Actualiza y ejecuta las pruebas afectadas. Explícame el resultado en español y deja los cambios locales para que yo los revise antes del commit.
+• La regla de Eli ya funciona en SettingService y en la base de datos. Las pruebas pasan y los cambios están sin commit en tu rama, encima del merge
+  f3390830. El pnpm check de e2e/ cierra con 0 errores. Hay 142 advertencias de ESLint, todas de la regla playwright/* y ya existentes en el repo.
+  
+  Qué hace ahora
+  - SettingService: al crear o editar un Setting compara la clave sin distinguir mayúsculas. Si ya existe Region, region o REGION se rechaza con 409 y el
+  mensaje de siempre, "This setting key already exists.". Vale igual para Configuration y Secret, en cualquier combinación. El Setting al que se edita se
+  excluye de la comparación, así que puede guardarse con otra capitalización de su propia clave.
+  - Carrera entre dos creaciones simultáneas: si ambas pasan la comprobación, la segunda choca con el índice. Ahora ese error se convierte en el mismo 409
+  y no en un 500.
+  - Migración (database/liquibase/tables/settings.yaml): nuevo changeset create-setting-unique-lower-key-index, con CREATE UNIQUE INDEX
+  "IX_Setting_Key_Lower" ON "Setting" (lower("Key")).
+    - Antes de crear el índice busca claves repetidas sin distinguir mayúsculas. Si las hay, se detiene sin cambiar nada.
+    - Ese mensaje explica qué pasó, trae la consulta que lista las claves en conflicto y dice qué hacer. El índice anterior IX_Setting_Key se queda; no
+  estorba.
+  
+  - Asignación a una versión: ProductVersionSettingService vuelve a comprobar solo el mismo Setting. La regla extra de claves repetidas que añadí antes ya
+  no hace falta, porque el catálogo no deja que existan dos. La protección contra asignar dos veces el mismo Setting sigue y tiene prueba.
+  
+  Verificación de la migración en una base temporal de Docker
+  - Base nueva: migra y crea el índice. Las semillas de pruebas no tienen duplicados.
+  - Base con Region.dup y region.dup:
+    - Liquibase termina con código 1 y el mensaje completo.
+    - El índice no se crea y el cambio no queda registrado.
+    - Los 14 Settings, duplicados incluidos, siguen intactos.
+    - El servicio no arranca, porque depende de que Liquibase termine bien.
+  
+  - Tras borrar un duplicado: la migración pasa y el índice queda creado. Un INSERT de REGION.DUP con Region.dup ya existente falla con
+  IX_Setting_Key_Lower.
+  - Base de la que viene tu entorno de desarrollo: no tiene claves repetidas sin distinguir mayúsculas, así que su migración no se detendrá. Solo consulté,
+  no modifiqué nada.
+  - Base de pruebas: ya tiene el índice, porque la corrida de E2E aplicó la migración.
+  - Limpieza: la base temporal, el contenedor y la imagen que creé ya no existen.
+  
+  Pruebas
+  - Backend: 1794 pasan y 15 se omiten, las mismas de antes. El total baja de 1801 porque quité los 14 tests de la regla anterior, que ya no existe, y
+  añadí 7. Los 7 son 4 combinaciones Config/Secret, la edición, una clave no relacionada que sigue aceptándose y la carrera del índice. Los de comparación
+  fallan sin la corrección (6 en rojo) y pasan con ella.
+  - E2E en Docker: la API pasa con 150 (1 omitida). Admin-ui pasa con 29 y tenant-ui con 57.
+  - Tests de API que reescribí: los dos que daban por buenos Region/region. Ahora hay cuatro, uno por cada combinación de Configuration y Secret, que
+  comprueban el 409 y que el catálogo conserva un solo Setting.
+  
+  Archivos
+  - Código: SettingService.cs, ProductVersionSettingService.cs y settings.yaml.
+  - Pruebas: SettingServiceTests.cs, ProductVersionSettingServiceTests.cs, ProductVersionSettings.test.ts. Eliminé
+  ProductVersionSettingKeyConflictTests.cs, aún como cambio sin añadir.
+  - Comentarios: corregí cuatro, porque decían que el catálogo distinguía mayúsculas.
+  
+  Cosas que conviene que sepas
+  - Formulario Add Setting del catálogo: su aviso de clave repetida sigue comparando exacto. Con region y Region existente deja enviar, y el servidor
+  responde 409 con "This setting key already exists.". Ese texto sale en el aviso de error. Si quieres que lo detecte antes de enviar, se puede cambiar
+  checkSettingKeyExists; no lo toqué.
+  - Registro de builds por pipeline: busca las claves tal como llegan. Si pide db_host y el catálogo tiene DB_HOST, responde 422 "Unknown setting keys". No
+  cambié ese comportamiento.
+  - Entornos con datos existentes: si algún día hay claves repetidas sin distinguir mayúsculas, hay que renombrarlas o borrarlas antes de migrar. El
+  mensaje lo indica.
+  - Merge de develop: estaba ya commiteado como f3390830, así que mis cambios quedan encima como cambios sin añadir. No hice git add, commit ni push.
+ 
+▸ Credits: turn 48.56 • session 621.53 | Time: 25m 56s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◑ 41%                                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
