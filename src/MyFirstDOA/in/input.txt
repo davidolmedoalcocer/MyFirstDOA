@@ -1,1 +1,212 @@
-Revisa los cambios actuales de la rama del PBI 494908, incluidos los archivos nuevos que Git aún no rastrea. Agrúpalos por función y explica en una línea qué requisito cubre cada grupo. Señala cualquier cambio que afecte el comportamiento de otras pantallas, de Secrets o de otros PBIs. Distingue lo que observaste en una prueba de lo que deduces al leer el código. Termina con los archivos o cambios concretos que requieren mi decisión antes del commit. Solo revisa: no modifiques, descartes ni prepares archivos para commit. Respóndeme en español.
+• Revisión de los cambios de la rama del PBI 494908
+  
+  Es la rama pbi/494908_manage-product-version-configurations, HEAD 43cc0110. Hay 41 archivos con cambios: 24 modificados y 17 nuevos sin
+  rastrear. Nada está preparado para commit, no hay archivos en el índice. Solo leí código y git; no modifiqué, descarté ni preparé nada.
+  
+  1. Cambios agrupados por función
+  
+  A. Backend: copia desde una versión elegida (From Version)
+  - Archivos: Dto/ProductVersionDto.cs, Api/Mappings/DtoMapper.cs, Api/Controllers/OData/ProductVersionsController.cs,
+  Domain/Services/Interfaces/IProductVersionService.cs, IProductVersionSettingService.cs, Domain.Services/ProductVersionService.cs,
+  ProductVersionSettingService.cs, Api/Constants/ProductBuildDocs.cs.
+  - Requisito: "al crear una versión con From Version se copian las Configurations de la versión origen elegida".
+  
+  B. Backend: una versión no acepta dos llaves iguales ignorando mayúsculas
+  - Archivo: ProductVersionSettingService.cs (ValidateModel).
+  - Requisito: "Keys únicas dentro de la versión" y "case-insensitive", responde 409.
+  
+  C. Backend: pruebas
+  - Archivos: ProductVersionServiceTests.cs, ProductVersionSettingServiceTests.cs, ProductVersionsControllerTests.cs, y el nuevo
+  ProductVersionSettingKeyConflictTests.cs.
+  - Requisito: respaldan A y B.
+  
+  D. Capa de datos del frontend
+  - Nuevos: services/productVersionService.ts, productVersionSettingService.ts, odataPaging.ts, models/productVersionSetting.ts, y las
+  pruebas de los tres servicios.
+  - Modificados: services/settingService.ts, services/index.ts, models/index.ts, models/product.ts, models/productManagement.ts,
+  stores/productManagement.ts, mocks/productManagementMockData.ts.
+  - Requisito: cargar las Configurations de la versión desde la API, asignar, quitar, crear versiones, y comprobar el duplicado de Key en
+  el catálogo.
+  
+  E. Pantalla Product Management → Configurations
+  - Nuevos: ProductAssignConfigurationDrawer.vue, ProductAddConfigurationDrawer.vue, ProductSettingDefinition.vue,
+  ProductVersionDrawer.vue.
+  - Modificados: ProductConfigurationsTabPanel.vue, ProductManagementDashboard.vue.
+  - Requisito: tabla ordenada con acciones (editar y quitar con confirmación), asignar una existente o crear una nueva (Expression con
+  lista de campos, o Generated), solo lectura en Released/Deprecated, y menú Add Version → From Version.
+  
+  F. Drawer compartido del catálogo
+  - Archivo: SettingDrawer.vue (9 líneas).
+  - Requisito: Edit desde Product Management conserva Placement en Configuration.
+  
+  G. Pruebas del frontend
+  - Nuevos: ProductAddConfigurationDrawer.spec.ts, ProductAssignConfigurationDrawer.spec.ts, ProductVersionDrawer.spec.ts.
+  - Modificados: ProductManagementDashboard.spec.ts, ProductTabPanels.spec.ts, SettingDrawer.spec.ts, settingService.spec.ts,
+  stores/__tests__/productManagement.spec.ts.
+  - Requisito: respaldan D, E y F.
+  
+  H. Pruebas de extremo a extremo
+  - Nuevos: e2e/ui/src/pages/ProductManagementPage.wrapper.ts, e2e/ui/tests/adminUi/ProductManagement.test.ts (845 líneas).
+  - Modificados: e2e/ui/src/pages/index.ts, e2e/ui/src/utils/ApiHelpers.ts, e2e/api/tests/ProductVersionSettings.test.ts.
+  - Requisito: demuestran los criterios en el portal y en la API.
+  
+  2. Cambios que afectan a otras pantallas, a Secrets o a otros PBIs
+  
+  ┌───────────────────┬──────────────┬────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+  ┌───────────────────┬─────────────┬────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+  │ Cambio            │ Afecta a    │ Observado en una prueba                    │ Deducido leyendo código                          │
+  ├───────────────────┼─────────────┼────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ SettingDrawer.vue │ Catálogo    │ En el navegador, el catálogo sigue con     │ Los únicos que usan el drawer son el catálogo    │
+  │ : prop            │ Settings    │ Placement editable, Secret seleccionable y │ (sin la prop) y Product Management.              │
+  │ lockPlacement,    │             │ campos de vault visibles. Product          │                                                  │
+  │ desactivada por   │             │ Management y catálogo juntos pasaron       │                                                  │
+  │ defecto           │             │ 19/19.                                     │                                                  │
+  ├───────────────────┼─────────────┼────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ ProductVersionSet │ Secrets y   │ 409 con Config (Region/region). Con        │ ProductVersionSettings es una sola tabla para    │
+  │ tingService.Valid │ futuros     │ Secrets no probé nada.                     │ Configurations y Secrets, y la comparación mira  │
+  │ ateModel: la      │ clientes    │                                            │ todas las llaves de la versión. Un Secret region │
+  │ regla de          │ del         │                                            │ chocaría con una Configuration Region.           │
+  │ mayúsculas        │ endpoint    │                                            │                                                  │
+  ├───────────────────┼─────────────┼────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ La misma          │ Registro de │ Las pruebas de registro de la suite pasan  │ El registro inserta ProductVersionSetting con    │
+  │ validación        │ productos   │ (1795 backend, 75 de API).                 │ AddRangeAsync directo en el repositorio, sin     │
+  │                   │             │                                            │ pasar por ValidateModel. No se ve afectado.      │
+  ├───────────────────┼─────────────┼────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+  │ CreateFromVersion │ Creación de │ Backend y API pasan completos.             │ Sin origen, Create hace lo de antes (copia desde │
+  │ y copia           │ versiones   │                                            │ la anterior) y el registro llama al mismo        │
+  │ compartida        │ por         │                                            │ método.                                          │
+  ┌───────────────────┬────────────────┬───────────────────────────────────────────┬────────────────────────────────────────────────┐
+  │ Cambio            │ Afecta a       │ Observado en una prueba                   │ Deducido leyendo código                        │
+  ├───────────────────┼────────────────┼───────────────────────────────────────────┼────────────────────────────────────────────────┤
+  │ SettingDrawer.vue │ Catálogo       │ En el navegador, el catálogo sigue con    │ Los únicos que usan el drawer son el catálogo  │
+  │ : prop            │ Settings       │ Placement editable, Secret seleccionable  │ (sin la prop) y Product Management.            │
+  │ lockPlacement,    │                │ y campos de vault visibles. Product       │                                                │
+  │ desactivada por   │                │ Management y catálogo juntos pasaron      │                                                │
+  │ defecto           │                │ 19/19.                                    │                                                │
+  ├───────────────────┼────────────────┼───────────────────────────────────────────┼────────────────────────────────────────────────┤
+  │ ProductVersionSet │ Secrets y      │ 409 con Config (Region/region). Con       │ ProductVersionSettings es una sola tabla para  │
+  │ tingService.Valid │ futuros        │ Secrets no probé nada.                    │ Configurations y Secrets, y la comparación     │
+  │ ateModel: la      │ clientes del   │                                           │ mira todas las llaves de la versión. Un Secret │
+  │ regla de          │ endpoint       │                                           │ region chocaría con una Configuration Region.  │
+  │ mayúsculas        │                │                                           │                                                │
+  ├───────────────────┼────────────────┼───────────────────────────────────────────┼────────────────────────────────────────────────┤
+  │ La misma          │ Registro de    │ Las pruebas de registro de la suite pasan │ El registro inserta ProductVersionSetting con  │
+  │ validación        │ productos      │ (1795 backend, 75 de API).                │ AddRangeAsync directo en el repositorio, sin   │
+  │                   │                │                                           │ pasar por ValidateModel. No se ve afectado.    │
+  ├───────────────────┼────────────────┼───────────────────────────────────────────┼────────────────────────────────────────────────┤
+  │ CreateFromVersion │ Creación de    │ Backend y API pasan completos.            │ Sin origen, Create hace lo de antes (copia     │
+  │ y copia           │ versiones por  │                                           │ desde la anterior) y el registro llama al      │
+  │ compartida        │ registro y por │                                           │ mismo método.                                  │
+  │                   │ API            │                                           │                                                │
+  ├───────────────────┼────────────────┼───────────────────────────────────────────┼────────────────────────────────────────────────┤
+  ├──────────────────┼────────────────────┼─────────────────────────────────────────┼───────────────────────────────────────────────┤
+  │ From Version     │ Secrets (otro PBI) │ Hay pruebas de copia de SettingId, pero │ La copia no filtra por placement. Es la misma │
+  │ copia todos los  │                    │ ninguna distingue Secrets.              │ lógica de la copia automática existente.      │
+  │ Settings del     │                    │                                         │                                               │
+  │ origen           │                    │                                         │                                               │
+  ├──────────────────┼────────────────────┼─────────────────────────────────────────┼───────────────────────────────────────────────┤
+  │ SourceProductVer │ PBI 509995         │ Sin prueba.                             │ Ese PBI prevé una propiedad persistida        │
+  │ sionId en        │                    │                                         │ CopyFromProductVersionId y Arguments; los     │
+  ┌────────────────────────┬───────────────────┬───────────────────────────────────────┬────────────────────────────────────────────┐
+  │ Cambio                 │ Afecta a          │ Observado en una prueba               │ Deducido leyendo código                    │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ SettingDrawer.vue:     │ Catálogo Settings │ En el navegador, el catálogo sigue    │ Los únicos que usan el drawer son el       │
+  │ prop lockPlacement,    │                   │ con Placement editable, Secret        │ catálogo (sin la prop) y Product           │
+  │ desactivada por        │                   │ seleccionable y campos de vault       │ Management.                                │
+  │ defecto                │                   │ visibles. Product Management y        │                                            │
+  │                        │                   │ catálogo juntos pasaron 19/19.        │                                            │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ ProductVersionSettingS │ Secrets y futuros │ 409 con Config (Region/region). Con   │ ProductVersionSettings es una sola tabla   │
+  │ ervice.ValidateModel:  │ clientes del      │ Secrets no probé nada.                │ para Configurations y Secrets, y la        │
+  │ la regla de mayúsculas │ endpoint          │                                       │ comparación mira todas las llaves de la    │
+  │                        │                   │                                       │ versión. Un Secret region chocaría con una │
+  │                        │                   │                                       │ Configuration Region.                      │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ La misma validación    │ Registro de       │ Las pruebas de registro de la suite   │ El registro inserta ProductVersionSetting  │
+  │                        │ productos         │ pasan (1795 backend, 75 de API).      │ con AddRangeAsync directo en el            │
+  │                        │                   │                                       │ repositorio, sin pasar por ValidateModel.  │
+  │                        │                   │                                       │ No se ve afectado.                         │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ CreateFromVersion y    │ Creación de       │ Backend y API pasan completos.        │ Sin origen, Create hace lo de antes (copia │
+  │ copia compartida       │ versiones por     │                                       │ desde la anterior) y el registro llama al  │
+  │                        │ registro y por    │                                       │ mismo método.                              │
+  │                        │ API               │                                       │                                            │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ From Version copia     │ Secrets (otro     │ Hay pruebas de copia de SettingId,    │ La copia no filtra por placement. Es la    │
+  │ todos los Settings del │ PBI)              │ pero ninguna distingue Secrets.       │ misma lógica de la copia automática        │
+  │ origen                 │                   │                                       │ existente.                                 │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ SourceProductVersionId │ PBI 509995        │ Sin prueba.                           │ Ese PBI prevé una propiedad persistida     │
+  │ en ProductVersionDto   │                   │                                       │ CopyFromProductVersionId y Arguments; los  │
+  │ (solo de solicitud)    │                   │                                       │ nombres no chocan, pero conviene           │
+  │                        │                   │                                       │ avisarles.                                 │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ Entrada New Version    │ PBI 494906        │ Visto en el navegador (captura).      │ Es un marcador: ese PBI debe construir el  │
+  │ deshabilitada en el    │                   │                                       │ drawer con Arguments.                      │
+  │ menú                   │                   │                                       │                                            │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ Edit crea una revisión │ Plantillas,       │ Una edición aparece en las dos        │ SettingVersionService no consulta ningún   │
+  │ del Setting            │ tenants y otras   │ versiones que usan la llave; 1        │ bloqueo por versión.                       │
+  │                        │ versiones que     │ revisión antes y 2 después.           │                                            │
+  │                        │ usan la llave     │                                       │                                            │
+  │                        │ (también          │                                       │                                            │
+  │                        │ Released)         │                                       │                                            │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ settingKeyExistsIgnori │ Nada más          │ Pasa en la prueba de Product          │ Solo la usa el alta desde el botón +.      │
+  │ ngCase (función nueva) │                   │ Management.                           │ checkSettingKeyExists del catálogo no      │
+  │                        │                   │                                       │ cambió.                                    │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ El store de Product    │ PBI 495005 (la    │ En el navegador el botón Remove       │ Línea 55 de stores/productManagement.ts.   │
+  │ Management lee         │ base de la        │ Product no aparece.                   │ Los mocks del PBI 495005 tenían removable: │
+  │ Productos y versiones  │ pantalla) y el    │                                       │ true en un producto.                       │
+  │ de la API, y fuerza    │ botón Remove      │                                       │                                            │
+  │ removable: false       │ Product           │                                       │                                            │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ Retiré                 │ Pestaña Secrets   │ 1093 pruebas del frontend y tipos sin │ Ya no queda ninguna referencia a esos      │
+  │ ProductVersionConfigur │                   │ errores.                              │ nombres. Secrets sigue usando mockSecrets. │
+  │ ation y                │                   │                                       │                                            │
+  │ mockConfigurations     │                   │                                       │                                            │
+  ├────────────────────────┼───────────────────┼───────────────────────────────────────┼────────────────────────────────────────────┤
+  │ Product.displayName    │ Todas las         │ Tipos sin errores.                    │ Es opcional, no cambia lo existente.       │
+  │ opcional               │ pantallas que     │                                       │                                            │
+  │                        │ usan Product      │                                       │                                            │
+  └────────────────────────┴───────────────────┴───────────────────────────────────────┴────────────────────────────────────────────┘
+  
+  3. Lo que requiere su decisión antes del commit
+  
+  Archivos que ya estaban sin commit cuando empecé y que no sé quién escribió. Hay que confirmar que entran a este PR:
+  - ProductSettingDefinition.vue, odataPaging.ts y su prueba, productVersionSetting.ts, productVersionService.ts (la parte de lectura) y
+  productVersionSettingService.ts (lectura y asignación).
+  - Cambios en models/product.ts, models/productManagement.ts y mocks/productManagementMockData.ts.
+  - stores/productManagement.ts: la lectura desde la API y removable: false.
+  - Dos pruebas de e2e/api/tests/ProductVersionSettings.test.ts, el desdoblamiento de createProductVersion en ApiHelpers.ts, y las pruebas
+  más antiguas de ProductManagement.test.ts.
+  
+  Decisiones concretas:
+  1. removable: false para todos los productos (stores/productManagement.ts, línea 55): oculta Remove Product en la pantalla real. No es de
+  este PBI.
+  2. From Version copia también los Secrets (ProductVersionSettingService.cs): el PBI habla solo de Configurations.
+  3. La regla de mayúsculas aplica también entre Secrets y Configurations de la misma versión (ProductVersionSettingService.cs). Si no es
+  lo que quiere, hay que filtrar por placement.
+  4. Nombre del campo SourceProductVersionId frente al CopyFromProductVersionId previsto en el PBI 509995.
+  5. Entrada New Version deshabilitada en ProductManagementDashboard.vue: confirmar que queda así hasta el PBI 494906.
+  6. Duplicado de Key en el catálogo: el servidor sigue aceptando Region y region desde otros clientes y desde el formulario del catálogo.
+  Solo el alta desde Product Management lo comprueba. Hay que decidir si se declara como limitación del PR.
+  
+  Un punto menor: vue-tsc marca errores de tipos en SettingDrawer.spec.ts y en otras pruebas que ya existían (por ejemplo require sin
+  tipos). Mis bloques nuevos no los tienen, y el código de producción tampoco.
+  
+  Cómo se obtuvo cada resultado
+  
+  - Observado en pruebas (la última vez que las corrí): frontend 1093 pruebas pasan; Product Management y catálogo, 19 de 19 en 3 corridas;
+  API, 75 pasan; backend, 1795 pasan. Esas pruebas Playwright las corrí contra el stack de desarrollo con proxies, no con la tarea Docker
+  del README. El backend no ha cambiado desde su última corrida.
+  - Deducido leyendo: todo lo etiquetado así en la tabla, incluidos Secrets y el registro de productos.
+ 
+▸ Credits: turn 13.91 • session 411.74 | Time: 1m 51s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◕ 74%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
+
