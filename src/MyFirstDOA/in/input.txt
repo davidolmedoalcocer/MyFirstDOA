@@ -1,1 +1,60 @@
-Ajusta las pruebas de pantalla del PBI 494908 siguiendo las convenciones de e2e/README y e2e/ui/README. Eli señaló accesos directos como .drawer__title-label, .row-actions-overlay, page.locator, .locator('input').fill() y evaluate(). Usa propiedades y acciones de los page objects. Para la tabla, reutiliza getTableRows(), getTableCells() y getRowActionIconButtons(). Separa los paneles Assign Configuration, Add Configuration y Version en sus propios page objects, usa InputComponent para los campos y reutiliza ConfirmationDialogPage para “Save New Revision”. Conserva lo que comprueba cada prueba. Ejecuta las pruebas de Admin UI y pnpm check en e2e/. Explícame qué cambió y qué pasó las pruebas. Conserva el trabajo local y deja el commit y el push para mí.
+• Ajusté las pruebas de pantalla del PBI 494908 a los page objects. Las 31 pruebas de Admin UI pasan en Docker y pnpm check en e2e/ termina con 0 errores.
+  No hice commit ni push y el trabajo local anterior sigue intacto.
+  
+  Qué cambió
+  
+  Cuatro page objects nuevos (cada uno con readonly page, exportados desde pages/index.ts):
+  - AssignConfigurationDrawer: drawer de asignar y de quitar una configuración.
+    - Botones Cancel, X, Submit, Remove y "+".
+    - El selector de clave, con selectKey(), openKeyList() y keyOption().
+    - La definición de solo lectura: expresión, Type, Length y definitionRadio().
+  
+  - AddConfigurationDrawer:
+    - La clave es un InputComponent y la expresión un SearchComponent.
+    - Acciones: enterKey, fillExpression, typeExpression, pickField, chooseStrategy, chooseFormat y chooseLength.
+    - Expone los grupos y las opciones de Type y Length.
+  
+  - VersionDrawer: el número como InputComponent, el origen y los botones. enterVersion() escribe y sale del campo con Tab; selectSource() elige el origen.
+  - EditSettingDrawer:
+    - El drawer de edición del catálogo.
+    - "Save New Revision" reutiliza ConfirmationDialogPage con new ConfirmationDialogPage(page, 'Save New Revision').
+  
+  ProductManagementPage pasó de unas 60 propiedades a una treintena, y lo demás vive en los cuatro page objects, expuestos como propiedades. Los menús usan
+  DropdownComponent y MenuItemComponent. Solo quedaron las propiedades de Product (de develop) y las de pestaña, tabla y menú Add Version.
+  
+  Tabla:
+  - Filas: getConfigurationRows() usa getTableRows() y getTableCells(). El mensaje de tabla vacía ocupa una sola celda, así que no cuenta como fila de
+  datos.
+  - Acciones de fila: getEditConfigurationButton() y getRemoveConfigurationButton() usan getRowActionIconButtons() y getRowActionIcons(). Reconocen la
+  acción por el nombre del icono, pencil o trash-can. getConfigurationRowActions() devuelve los nombres de los iconos que se dibujan al pasar el ratón.
+  
+  Accesos directos retirados de los tests:
+  - Ya no hay .drawer__title-label, .row-actions-overlay, .locator('input'), evaluate() ni page.locator(.
+  - El título se comprueba con toHaveJSProperty('label', …) sobre el drawer.
+  - En los tests solo quedan page.route, page.on, page.reload y page.keyboard.
+  
+  Archivo aparte. Moví los tests de Configurations a ProductVersionConfigurations.test.ts, con el tag de área @product-versions, porque Eli lo pidió en
+  otro comentario. ProductManagement.test.ts conserva solo los tests de develop. Las 18 pruebas que movimos siguen comprobando lo mismo; solo cambió cómo
+  llegan a los elementos.
+  
+  Otros cambios menores:
+  - Helper nuevo: openConfigurationsOf(producto) junta tres pasos que se repetían.
+  - Comprobación de desactivado: ahora usa TestHelpers.expectDisabled.
+  - Un paso distinto del anterior: el clic en "From Version" es de puntero, no el clic del wrapper del menú. Ese último no abría el drawer.
+  
+  Resultado de las pruebas
+  - Admin UI completo en Docker: 31 pasan: 9 de Product Management, 21 de este PBI y 1 de Settings.
+  - pnpm check en e2e/: TypeScript, ESLint, Prettier y la comprobación de tags (251 pruebas) pasan. ESLint da 0 errores y 144 advertencias. En los archivos
+  de este PBI queda una, no-force-option, por el clic forzado sobre el Submit desactivado, que es justo lo que comprueba esa prueba.
+  
+  Pendiente
+  - Lectura de Key y Value: getDisplayedColumns() de uikit.test omite la primera columna, así que getConfigurationRows() toma Key y Value como las dos
+  primeras celdas, según cómo declara las columnas la pestaña. Si alguien cambia el orden, hay que ajustarlo ahí.
+  - No ejecuté API ni tenant-ui, porque este cambio solo toca pruebas y page objects de Admin UI.
+ 
+▸ Credits: turn 44.27 • session 721.27 | Time: 10m 28s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◑ 60%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
