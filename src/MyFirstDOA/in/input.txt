@@ -1,1 +1,27 @@
-Aplica los tres ajustes de pruebas que pidió Eli para el PBI 494908. Usa toBeHidden() al comprobar que un drawer se cerró. Empieza en minúscula los títulos nuevos de API y quita los prefijos Configurations: y Add Version menu: de los títulos de UI de este PBI. En la prueba de versiones Released y Deprecated, comprueba explícitamente que Add Configuration está deshabilitado en ambos estados. Ajusta solo lo que siga pendiente, ejecuta las pruebas afectadas y pnpm check en e2e/. Dime el resultado de cada punto. Déjame el commit y el push.
+• Apliqué los tres ajustes de Eli. Todo lo afectado pasa; no hice commit ni push.
+  
+  1. toBeHidden() al cerrar un drawer. Cambié las 15 comprobaciones de cierre en ProductVersionConfigurations.test.ts (Assign, Add Configuration, Version y
+  Edit Setting). Dejé toHaveCount(0) donde se comprueba que un elemento no existe, por ejemplo Type y Length, la expresión, los campos de vault y las
+  opciones de la lista. Las pruebas de Admin UI de este PBI pasaron con el cambio.
+  
+  2. Títulos en minúscula.
+    - API: en ProductVersionSettings.test.ts faltaban dos. Quedaron "reading a version returns only its own settings…" y "assigning a catalog Setting to an
+  InDevelopment version…". Las cuatro pruebas de claves duplicadas ya empezaban en minúscula.
+    - UI: quité los prefijos "Configurations: " y "Add Version menu: ". Quedan "the trash shows on hover…", "the trash stays hidden on hover…" y "From
+  Version needs a version to copy from, New Version is not available, and Cancel creates nothing". "From Version" conserva la mayúscula porque es una
+  etiqueta de pantalla.
+  
+  3. Add Configuration deshabilitado en Released y Deprecated. En la prueba de la basura oculta añadí, dentro del bucle de ambos estados,
+  TestHelpers.expectDisabled(addConfigurationButton, true) tras abrir la pestaña Configurations. Pasa para los dos.
+  
+  Resultados
+  - Admin UI completo en Docker: 31 pasan.
+  - API con el filtro @pbi-494908: 6 pasan.
+  - pnpm check en e2e/: tsc, ESLint (0 errores, 143 advertencias que ya existían), Prettier y la comprobación de tags (251 pruebas) pasan.
+ 
+▸ Credits: turn 7.98 • session 738.53 | Time: 1m 44s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-qa · claude-sonnet-5.5 · medium · ◕ 61%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
