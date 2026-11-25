@@ -1,7 +1,53 @@
-Corrige el alta de configuraciones en Product Management → Configurations → Assign Configuration → + → Add Configuration. Si ya existe una configuración llamada Region y el usuario pulsa Submit con region, el formulario debe mostrar que la llave ya existe, conservar lo escrito y evitar que se cree una segunda configuración. La comparación debe ignorar mayúsculas y minúsculas, incluso cuando Region aún no esté asignada a la versión seleccionada.
+• El alta desde el botón + ya detecta que la llave existe aunque solo cambie la capitalización: muestra el mensaje, conserva lo escrito y
+  no crea nada. Lo comprobé en el navegador y por API.
+  
+  Cómo funciona
+  
+  Antes de crear, ProductAssignConfigurationDrawer.vue le pregunta al catálogo completo: GET /settings?$filter=tolower(key) eq 'region.…'.
+  Si ya hay un Setting con esa llave sin distinguir mayúsculas, no llama al POST de creación y muestra:
+  
+  │ This setting key already exists.
+  
+  Es el mismo texto que usa el catálogo cuando rechaza una llave duplicada. Se consulta el catálogo y no la lista Select Key, que omite lo
+  ya asignado y solo trae Configurations. La comprobación cubre cualquier placement.
+  
+  Lo observado
+  
+  En pantalla:
+  - Region.<sufijo> existe en el catálogo pero no está asignada a la versión, así que Select Key la ofrece pero no hay nada asignado.
+  - Desde +, con region.<sufijo> y {{CName}}, Submit muestra "This setting key already exists." en el formulario.
+  - El formulario sigue abierto y conserva la Key y la expresión.
+  
+  En la API: buscando esa llave sin distinguir mayúsculas hay un solo Setting, el original Region.<sufijo>, con su id y su capitalización
+  originales.
+  
+  Sin la comprobación, la misma prueba falla: no aparece el mensaje y el formulario crea el segundo Setting (region.…). La limpieza lo
+  borró. Con ella pasa. No quedó ningún Setting ni producto de prueba, y review-released-3qzx1t sigue Released.
+  
+  Archivos modificados
+  
+  - sharedUIComponents/src/services/settingService.ts: función nueva settingKeyExistsIgnoringCase. No toqué checkSettingKeyExists, que usa
+  el formulario del catálogo.
+  - sharedUIComponents/src/components/ProductAssignConfigurationDrawer.vue: llama a esa función antes de crear.
+  - sharedUIComponents/src/services/__tests__/settingService.spec.ts: 2 pruebas (filtro en minúsculas, y escape de una comilla).
+  - sharedUIComponents/src/components/__tests__/ProductAssignConfigurationDrawer.spec.ts: 2 pruebas (rechaza sin crear y conserva lo
+  escrito; sí crea cuando no existe).
+  - e2e/ui/tests/adminUi/ProductManagement.test.ts: la prueba Playwright.
+  - e2e/ui/src/utils/ApiHelpers.ts: método para listar los Settings con una llave sin distinguir mayúsculas.
+  
+  Frontend completo: 1093 pruebas pasan. Product Management y el catálogo Settings pasaron 19 de 19 en 3 de 3 corridas. Sin commit ni push.
+  
+  Límites
+  
+  - Solo desde esta pantalla. El servidor sigue sin rechazar region si ya existe Region: otro cliente, o el formulario del catálogo, puede
+  crear el duplicado. Ese era el límite autorizado.
+  - Carrera. Dos altas casi simultáneas con Region y region podrían pasar la comprobación a la vez, porque no hay una restricción en la
+  base de datos.
+  - Si falla la consulta al catálogo, el formulario muestra el error genérico "Failed to add the configuration." y no crea nada.
+ 
+▸ Credits: turn 14.20 • session 397.83 | Time: 4m 23s
 
-El alcance autorizado es el alta desde esta pantalla. Usa el catálogo de configuraciones para comprobar el duplicado. La lista Select Key omite las configuraciones ya asignadas, por lo que usarla como única fuente dejaría casos sin detectar.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◕ 72%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Verifícalo en el navegador con una prueba básica de Playwright. Crea una configuración propia con una llave única que empiece por Region. Desde +, intenta crearla otra vez cambiando solo Region por region. Comprueba que aparece el mensaje y consulta la API para confirmar que solo existe la configuración original. Limpia los datos de la prueba.
-
-Escribe el código, el mensaje y la prueba en inglés. Respóndeme en español con los archivos modificados y lo que observaste en la pantalla y en la API.
+›  ask a question or describe a task ↵
