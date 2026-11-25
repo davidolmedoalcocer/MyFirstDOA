@@ -1,64 +1,7 @@
-• En Product Management → Configurations → lápiz, Placement queda fijo en Configuration. Se puede editar el valor (Expression o Generated)
-  y guardar con la confirmación Save New Revision. El catálogo Settings no cambió. Lo comprobé en el navegador.
-  
-  Cómo quedó
-  
-  - SettingDrawer.vue tiene una prop nueva lockPlacement, desactivada por defecto. Cuando está activa, el campo Placement queda de solo
-  lectura: Configuration sigue marcado y Secret no se puede seleccionar, así que los campos de vault nunca aparecen.
-  - La tabla Configurations de Product Management es la única que la activa (lock-placement). El catálogo no la usa.
-  - Puse readonly en el campo del formulario, no en el grupo de radios: el campo gestiona el estado de su control, y ya nos había pasado en
-  la definición de solo lectura de Assign.
-  
-  Resultado en el navegador
-  
-  ┌──────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Comprobación                         │ Observado                                                                                  │
-  ├──────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Placement en Product Management      │ Campo de solo lectura, con Configuration marcado.                                          │
-  ├──────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Clic en Secret                       │ No cambia: Secret sigue desmarcado, Configuration marcado y no aparecen Vault Key ni Vault │
-  │                                      │ OCID.                                                                                      │
-  ├──────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Editar y guardar                     │ Cambiar a despues {{ClusterName}} pide Save New Revision. Cancelar conserva antes y el     │
-  │                                      │ Setting queda con 1 revisión. Al confirmar queda la revisión 2 del mismo Setting.          │
-  ├──────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Recargar                             │ La llave sigue visible en Configurations (nunca se vuelve Secret) y ambas versiones que la │
-  │                                      │ usan muestran despues {{ClusterName}}.                                                     │
-  ├──────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Editar como Generated (sonda aparte) │ Con Placement fijo, elegir Generated, Hex y 32 y guardar. Tras recargar la fila muestra    │
-  │                                      │ Generated: Type = Hex, Length = 32.                                                        │
-  ├──────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Catálogo Settings (sonda aparte)     │ Placement no es de solo lectura. Al pulsar Secret queda marcado y aparecen los 2 campos de │
-  │                                      │ vault, como antes.                                                                         │
-  └──────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────┘
-  
-  Sin la restricción, la prueba de Edit falla con Placement sin bloquear, como era antes. Las sondas las borré y el repositorio no tiene
-  archivos de sonda.
-  
-  Archivos modificados
-  
-  - sharedUIComponents/src/components/SettingDrawer.vue: la prop lockPlacement y el readonly del campo Placement.
-  - sharedUIComponents/src/components/ProductConfigurationsTabPanel.vue: activa lock-placement.
-  - sharedUIComponents/src/components/__tests__/SettingDrawer.spec.ts: 3 pruebas nuevas: sin bloqueo por defecto en Add y en Edit,
-  bloqueado cuando se pide, y el resto del formulario sigue editable.
-  - sharedUIComponents/src/components/__tests__/ProductTabPanels.spec.ts: comprueba que el panel pide el bloqueo.
-  - e2e/ui/tests/adminUi/ProductManagement.test.ts: amplié la prueba Edit Configuration con el Placement fijo y el clic en Secret, y con
-  que la llave sigue visible en Configurations tras recargar.
-  - e2e/ui/src/pages/ProductManagementPage.wrapper.ts: localizadores del campo Placement, de sus opciones y de los campos de vault.
-  
-  Pruebas
-  
-  - Frontend completo: 1089 pasan.
-  - Admin UI e2e, Product Management y catálogo Settings juntos: 18 pasan en 3 de 3 corridas.
-  - No quedaron datos de prueba, y review-released-3qzx1t sigue Released.
-  - Aviso: vue-tsc marca muchas líneas de SettingDrawer.spec.ts (por ejemplo 87 y 104, un error de tipos ya existente). El bloque nuevo de
-  lockPlacement ya no está entre ellas, y los tipos del código de producción no tienen errores. No quise tocar el resto del archivo.
-  
-  Sin commit ni push.
- 
-▸ Credits: turn 26.17 • session 383.62 | Time: 5m 57s
+Corrige el alta de configuraciones en Product Management → Configurations → Assign Configuration → + → Add Configuration. Si ya existe una configuración llamada Region y el usuario pulsa Submit con region, el formulario debe mostrar que la llave ya existe, conservar lo escrito y evitar que se cree una segunda configuración. La comparación debe ignorar mayúsculas y minúsculas, incluso cuando Region aún no esté asignada a la versión seleccionada.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-sonnet-5.5 · medium · ◕ 71%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+El alcance autorizado es el alta desde esta pantalla. Usa el catálogo de configuraciones para comprobar el duplicado. La lista Select Key omite las configuraciones ya asignadas, por lo que usarla como única fuente dejaría casos sin detectar.
 
-›  ask a question or describe a task ↵
+Verifícalo en el navegador con una prueba básica de Playwright. Crea una configuración propia con una llave única que empiece por Region. Desde +, intenta crearla otra vez cambiando solo Region por region. Comprueba que aparece el mensaje y consulta la API para confirmar que solo existe la configuración original. Limpia los datos de la prueba.
+
+Escribe el código, el mensaje y la prueba en inglés. Respóndeme en español con los archivos modificados y lo que observaste en la pantalla y en la API.
