@@ -1,1 +1,136 @@
-Prepara en español la propuesta de archivos para el commit del PBI 494908. Usa la revisión de cierre que ya hiciste y el estado actual de Git, incluidos los archivos nuevos. Agrupa por pantalla, API y pruebas. Para cada grupo indica las rutas y qué función del PBI entregan. Si algún archivo contiene además un cambio ajeno o dudoso, señala el cambio exacto y por qué requiere mi decisión. Solo presenta la propuesta, sin modificar archivos, preparar cambios en Git ni hacer commit.
+• Esta es la propuesta de commit para el PBI 494908. No modifiqué archivos ni toqué Git, solo leí git status y los diffs. Son 29 archivos modificados y 17
+  nuevos, sobre 43cc0110 (develop).
+  
+  Partí de la revisión de cierre. Leí los diffs de los archivos dudosos (mocks, modelos, SettingDrawer.vue, ApiHelpers.ts, settingService.ts y el .map de
+  productManagement.ts). Los demás los clasifiqué por su nombre y por la revisión de cierre, sin releer cada hunk. En particular no volví a separar hunk
+  por hunk los tests de ProductVersionSettings.test.ts (API) ni los specs de Vitest.
+  
+  1. Pantalla (sharedUIComponents y el wrapper e2e de UI)
+  
+  Entrega:
+  - Pestaña Configurations de la versión: lista, ordenada por Key y solo de la versión elegida.
+  - Assign Configuration, con la definición del Setting en solo lectura.
+  - Add Configuration desde "+": Expression con campos {{…}} de la lista, Generated, error si la clave ya existe sin distinguir mayúsculas, y bloqueo si la
+  lista de campos no carga.
+  - Edit, con Placement fijo en Configuration.
+  - Remove, con confirmación.
+  - Fila sin acciones cuando la versión está Released o Deprecated.
+  - Menú Add Version → From Version.
+  
+  Nuevos:
+  - components/ProductAddConfigurationDrawer.vue
+  - components/ProductAssignConfigurationDrawer.vue
+  - components/ProductSettingDefinition.vue
+  - components/ProductVersionDrawer.vue
+  - components/__tests__/ProductAddConfigurationDrawer.spec.ts
+  - components/__tests__/ProductAssignConfigurationDrawer.spec.ts
+  - components/__tests__/ProductVersionDrawer.spec.ts
+  - models/productVersionSetting.ts
+  - services/odataPaging.ts
+  - services/productVersionService.ts
+  - services/productVersionSettingService.ts
+  - services/__tests__/odataPaging.spec.ts
+  - services/__tests__/productVersionService.spec.ts
+  - services/__tests__/productVersionSettingService.spec.ts
+  
+  Modificados:
+  - components/ProductConfigurationsTabPanel.vue
+  - components/ProductManagementDashboard.vue
+  - components/SettingDrawer.vue: añade la prop lockPlacement, por defecto false, así que el catálogo no cambia.
+  - models/index.ts, models/product.ts, models/productManagement.ts
+  - services/index.ts, services/settingService.ts: añade settingKeyExistsIgnoringCase.
+  - stores/productManagement.ts
+  - mocks/productManagementMockData.ts
+  - Specs de ProductManagementDashboard, ProductTabPanels, SettingDrawer, settingService y productManagement (store).
+  
+  2. API (devPortalService)
+  
+  Entrega:
+  - Copiar las Configurations de otra versión al crear una (From Version). Usa SourceProductVersionId en ProductVersionDto.
+  - Regla de clave: dos Configurations de una misma versión no pueden llamarse igual sin distinguir mayúsculas (responde 409). Los Secrets conservan el
+  comportamiento de develop, así que Config Region más Secret region sigue dando 201.
+  
+  Modificados:
+  - Api/Constants/ProductBuildDocs.cs
+  - Api/Controllers/OData/ProductVersionsController.cs
+  - Api/Mappings/DtoMapper.cs
+  - Domain.Services/ProductVersionService.cs
+  - Domain.Services/ProductVersionSettingService.cs
+  - Domain/Services/Interfaces/IProductVersionService.cs
+  - Domain/Services/Interfaces/IProductVersionSettingService.cs
+  - Dto/ProductVersionDto.cs
+  
+  Tests (nuevo): test/Domain.Services.Test/ProductVersionSettingKeyConflictTests.cs
+  
+  Tests (modificados):
+  - ProductVersionsControllerTests.cs
+  - ProductVersionServiceTests.cs
+  - ProductVersionSettingServiceTests.cs
+  
+  3. Pruebas e2e (Playwright)
+  
+  Entrega:
+  - UI, 17 pruebas con la etiqueta 494908: ya pasaron en Docker.
+  - API, 4 pruebas con la etiqueta 494908, incluida la de Region/region: pasaron en Docker en la última corrida de API.
+  
+  Nuevos:
+  - e2e/ui/tests/adminUi/ProductManagement.test.ts
+  - e2e/ui/src/pages/ProductManagementPage.wrapper.ts
+  
+  Modificados:
+  - e2e/ui/src/pages/index.ts (una línea de export)
+  - e2e/ui/src/utils/ApiHelpers.ts: helpers para crear versiones, builds, release, deprecate y limpieza de Settings.
+  - e2e/api/tests/ProductVersionSettings.test.ts
+  
+  Cambios ajenos o dudosos que necesitan tu decisión
+  
+  1. sharedUIComponents/src/stores/productManagement.ts: removable: false. Está en .map(p => ({ ...p, displayName: p.displayName ?? p.productName,
+  removable: false })). Oculta el botón Remove Product para todos los productos. No es del PBI. En develop removable venía de datos mock y el botón no
+  tenía acción. Opciones: dejarlo en false, derivarlo de HasReferences, o sacarlo de este commit.
+  
+  2. stores/productManagement.ts: lectura de Products y Versions desde la API. El resto del diff de este archivo reemplaza los mocks por llamadas reales,
+  con el comentario "There's no backend rule yet for removing a Product, so none is offered". Esa carga de datos no es de la pestaña Configurations. Si no
+  es tuya, o es de otro PBI, el commit mezcla alcances.
+  
+  3. models/product.ts: displayName?: string. Lo añade el comentario "PBI 510001". Es un campo de otro PBI. El store lo usa, así que quitarlo rompe el
+  tipo.
+  
+  4. models/productManagement.ts y mocks/productManagementMockData.ts. Eliminan ProductVersionConfiguration y mockConfigurations, que ahora vienen de la
+  API. También reescriben comentarios que mencionan al PBI 495005 y a "removable". Es coherente con el PBI, pero toca la base de otro.
+  
+  5. ProductVersionDto.cs: nombre SourceProductVersionId. La AB#509995 planea CopyFromProductVersionId. Usé otro nombre para no chocar con una migración.
+  Si cambia, hay que renombrar en el DTO, el mapper, el controlador, el servicio y las pruebas.
+  
+  6. ProductVersionService.cs: From Version copia también los Secrets de la versión origen. Falta tu confirmación.
+  
+  7. ProductVersionDrawer.vue y ProductManagementDashboard.vue: ítem "New Version" deshabilitado. Es un marcador de la PBI 494906. Decide si queda aquí o
+  se quita.
+  
+  8. ProductVersionSettingService.cs: comentario obsoleto en ValidateModel. Dice que dos solicitudes simultáneas podrían pasar la validación. La prueba de
+  carrera dio 41 de 41 rondas con 201 y 409, y la causa es el bloqueo de la fila de la versión. Pediste dejar el código sin cambios. Decide si lo corrijo
+  antes del commit.
+  
+  9. Archivos nuevos que no escribí yo: odataPaging.ts, productVersionSetting.ts y ProductSettingDefinition.vue aparecían sin commit antes de mi trabajo.
+  Los incluyo en la propuesta porque mi código los importa. Si pertenecen a otro trabajo, hay que decidir cuál va primero.
+  
+  10. e2e/api/tests/ProductVersionSettings.test.ts. Mezcla pruebas mías (Region/region) con pruebas anteriores sin commit, y no las separé en esta pasada.
+  Puedo hacerlo antes de que decidas.
+  
+  11. Fuera de la propuesta (nada que commitear). Los archivos de /tmp/pbi494908/ (incluido reporte-final-pbi-494908.html, desactualizado en la regla de
+  Secrets) y los datos review-released-3qzx1t. Además, el catálogo sigue permitiendo Region y region; la regla solo actúa en el formulario "+" y al asignar
+  a la versión.
+  
+  Cómo lo partiría (si lo apruebas)
+  
+  - Commit 1, API: grupo 2 completo.
+  - Commit 2, pantalla: grupo 1, sin removable: false ni displayName hasta que decidas.
+  - Commit 3, pruebas e2e: grupo 3.
+  
+  Dime qué hacer con los puntos 1 a 9 y preparo los commits solo cuando lo pidas.
+ 
+▸ Credits: turn 1.60 • session 501.19 | Time: 34s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 7%                                    /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+
+›  ask a question or describe a task ↵
