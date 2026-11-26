@@ -1,40 +1,22 @@
-• Resultados
-  
-  1. git ls-remote --heads origin develop
-  
-  bf4c4d0ac217ad02736b510c691c78fe6b5f2c82    refs/heads/develop
-  
-  2. git ls-remote --heads origin '*518333*'
-  
-  Sin salida. No hay ramas remotas cuyo nombre contenga 518333.
-  
-  Comparación de develop
-  
-  ┌─────────────────────────────────────────────────┬──────────────────────────────────────────┐
-  │ Referencia                                      │ Commit                                   │
-  ├─────────────────────────────────────────────────┼──────────────────────────────────────────┤
-  │ origin/develop local (del diagnóstico anterior) │ 711fe06159fd72cf09d1c073b62b97cc896d20a8 │
-  ├─────────────────────────────────────────────────┼──────────────────────────────────────────┤
-  │ develop en el remoto (ahora)                    │ bf4c4d0ac217ad02736b510c691c78fe6b5f2c82 │
-  └─────────────────────────────────────────────────┴──────────────────────────────────────────┘
-  
-  Son commits distintos. El remoto develop tiene al menos un commit que la referencia local no tiene, así que la copia local está desactualizada.
-  
-  No puedo saber si el remoto es solo más nuevo o si ha divergido, porque no comparé ancestros. Eso requiere los objetos del remoto, que solo llegan con
-  fetch, y no lo ejecuté.
-  
-  Implicaciones
-  
-  - Una rama del bug creada desde origin/develop local partiría de 711fe06, no del develop actual del remoto. Antes de crearla hay que actualizar develop
-  con fetch.
-  - El PR #376 y los 4 commits que tiene la rama del PBI sobre 711fe06 no dicen nada sobre el estado de bf4c4d0.
-  - La rama del bug 518333 todavía no existe en el remoto, así que no hay trabajo previo del bug que revisar.
-  
-  Para determinar la relación entre 711fe06 y bf4c4d0, hace falta un fetch de origin develop. Puedo ejecutarlo cuando lo autorices.
- 
-▸ Credits: turn 0.02 • session 0.16 | Time: 13s
+Estamos trabajando en el Bug 518333, en la rama bug/518333_product-management-text-overflow.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-haiku-5.5 · thinking · medium · ◔ 5%                              /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
+El defecto ya fue reproducido manualmente en develop (bf4c4d0). Los valores largos sin espacios de DisplayName, Name y Namespace desbordan el panel izquierdo de Product Management y se superponen con otros elementos. Los textos largos con espacios se distribuyen correctamente en varias líneas, según las capturas del bug.
 
-›  ask a question or describe a task ↵
+Realiza un análisis enfocado:
+
+1. Identifica el componente Vue que renderiza los tres campos y las instrucciones y README del repositorio que aplican a ese componente. Léelos antes de proponer cambios.
+2. Identifica la causa exacta del desbordamiento, citando archivo y líneas relevantes.
+3. Consulta la documentación oficial de UIKit compartida por Eli:
+https://docs.pd.infios.com/uikit/?path=/docs/getting-started-introduction--docs
+
+Determina si UIKit ya ofrece alguna propiedad, componente o clase para manejar textos largos. Si no puedes acceder a la documentación, indícalo y revisa los componentes instalados y ejemplos existentes en el repositorio.
+
+4. Propón la corrección mínima que permita mantener los textos dentro de sus áreas, conservar su legibilidad y evitar la superposición con otros elementos.
+
+No asumas que debemos utilizar puntos suspensivos.
+
+Indica qué documentación consultaste, qué archivos modificarías y por qué.
+
+No implementes cambios todavía. No ejecutes pruebas. Evita analizar partes del sistema que no estén relacionadas con el defecto.
+
+Responde en español, de manera breve y con evidencia concreta.
