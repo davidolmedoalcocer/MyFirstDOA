@@ -1,24 +1,7 @@
-Cambios
-  
-  - Nueva clase .wrap-anywhere con min-width: 0 y overflow-wrap: anywhere. Solo corta una palabra cuando no cabe en su espacio. Los textos
-  con espacios se siguen distribuyendo igual.
-  - DisplayName: la clase va en el div contenedor (línea 44) y en el infios-text-block del título (línea 45). Así el título puede encogerse
-  y deja espacio al botón de editar.
-  - Name y Namespace (líneas 71-72): la clase va en cada infios-text-block.
-  - Comentario en inglés, con la referencia AB#518333 y el motivo.
-  - Sin cambios en el selector de productos, en .arguments ni en otros archivos.
-  
-  Verificación pendiente
-  
-  - Confirmé el diff con git diff, pero no comprobé el resultado en el navegador. Hace falta revisar un valor largo sin espacios y
-  verificar que los botones de editar y eliminar permanecen dentro del panel.
-  - Si el ajuste no basta, el siguiente paso sería revisar si infios-text-block necesita display: block en su host. Esa suposición no está
-  confirmada.
-  - La rama activa se llama bug/518333_product-managment-text-overflow, con el typo "managment". Conviene corregirlo antes de abrir el PR.
- 
-▸ Credits: turn 0.12 • session 0.63 | Time: 25s
+Antes de aceptar la nueva clase CSS wrap-anywhere, verifica si la versión instalada de UIKit proporciona alguna clase de utilidad equivalente para overflow-wrap: anywhere y min-width: 0.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 8%                /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+Revisa las utilidades CSS disponibles de UIKit, no solamente el componente infios-text-block.
 
-›  ask a question or describe a task ↵
+Si existe una alternativa, indica su nombre exacto y dónde está definida. Si no existe, justifica mantener la clase local.
+
+No modifiques código ni ejecutes pruebas. Responde brevemente en español.
