@@ -1,1 +1,5 @@
-[AB#518333] refactor: share text wrapping utility and improve regression checks
+Thanks for the feedback, Eli. I've moved the text wrapping utility to a shared stylesheet, imported it into both apps, and added the bottom-edge assertion for DisplayName.
+
+I kept `.arguments` unchanged to preserve its existing behavior.
+
+All 12 checks have passed again. The PR is ready for another review.
