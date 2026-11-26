@@ -1,11 +1,68 @@
-Retoma el PR #376 del PBI 494908. Antes de editar, comprueba el estado de Git. Trabaja en pbi/494908_manage-product-version-configurations y conserva cualquier trabajo de la rama del bug 518333. Si hay cambios locales que impidan cambiar de rama con seguridad, usa un worktree separado.
+• Los tres puntos de Kendall están implementados y validados. Los cambios están en el árbol de trabajo, sin commit ni push.
+  
+  Estado de Git
+  
+  El árbol estaba limpio y ya estaba en pbi/494908_manage-product-version-configurations, sin diferencia con origin. Los commits del bug
+  518333 ya estaban dentro de esta rama, así que no hizo falta cambiar de rama ni crear un worktree.
+  
+  Punto 1: el + abre el SettingDrawer
+  - Qué cambié. ProductAssignConfigurationDrawer.vue ahora abre SettingDrawer en modo Add con lock-placement y Configuration como
+  placement. Mientras está abierto, el drawer de Assign no se renderiza, así que solo se ve uno.
+  - Al guardar. Crea el Setting, recarga el catálogo y vuelve a Assign con la clave nueva seleccionada y su definición visible.
+  - Si falla. El error del servidor sale como toast y el formulario sigue abierto.
+  - Validación reutilizada. Literales como true e Information pasan. Una referencia desconocida como {{NotAField}} se rechaza.
+  - Eliminado. ProductAddConfigurationDrawer.vue, su spec y su page object e2e, porque ya no se usan. settingKeyExistsIgnoringCase también
+  sobraba al hacerse insensible checkSettingKeyExists.
+  - Pruebas e2e. Cubren que el placement queda bloqueado, que Cancel conserva la clave elegida, y que se guardan los literales true e
+  Information, un campo {{ClusterName}} y una clave Generated, todos persistidos tras recargar. También cubren que {{NotAField}} se rechaza
+  sin enviar ninguna petición.
+  - Pruebas retiradas. Quité dos pruebas del formulario viejo: la que exigía un {{campo}} y la que bloqueaba el guardado si fallaba la
+  lista de campos. Ese comportamiento ya no existe.
+  
+  Punto 2: checkSettingKeyExists ignora mayúsculas
+  - Qué cambié. Ahora filtra con tolower(key) en cualquier placement y sigue excluyendo el Setting que se edita.
+  - Prueba exacta. Existe la Configuration key-doa y, al escribir Key-doa para un Secret, aparece "A setting with this key already exists."
+  bajo Key y Add queda deshabilitado. Las claves llevan un sufijo aleatorio, e2e.key-doa.<sufijo> y e2e.Key-doa.<sufijo>, porque el README
+  exige datos únicos por prueba.
+  - Servidor. No toqué la protección del servidor. La prueba de API existente "differs only by case" sigue en verde (4 pasaron).
+  
+  Punto 3: getSettings() usa getAllPages
+  
+  Con 101 Configurations creadas por API, el test captura la petición con $skip y toma una clave que llegó en la segunda página. Comprueba
+  que aparece en Select Key, que se puede seleccionar y que muestra su definición.
+  
+  Pruebas
+  - Vitest (sharedUIComponents). Pasan las 1157 pruebas de 83 archivos. Las nuevas cubren:
+    - el paginado de getSettings;
+    - el filtro insensible a mayúsculas;
+    - los literales y el placement bloqueado en SettingDrawer;
+    - el flujo del + con el formulario sustituido por un stub.
+  
+  - Playwright admin-ui. Pasan las 21 pruebas de ProductVersionConfigurations.test.ts y SettingsCatalog.test.ts.
+  - pnpm check en e2e/. 0 errores, con 142 avisos que ya existían.
+  - Fallos intermedios. El formulario solo muestra el aviso de clave duplicada o de campo desconocido cuando el usuario sale del campo. Mis
+  primeras pruebas no lo hacían. Añadí leaveKey y leaveExpression al page object AddSettingDrawer, que pulsan Tab como lo haría un usuario.
+  - Sin ejecutar. No corrí el proyecto tenant-ui ni la suite completa de API.
+  - vue-tsc. Muestra errores de tipos en specs que ya los tenían. Los de SettingDrawer.spec.ts que revisé eran de líneas anteriores a mis
+  cambios.
+  
+  Cómo validarlo en el Admin Portal (http://localhost:8083)
+  1. Punto 1. Ve a Products, elige un producto con una versión en desarrollo y abre la pestaña Configurations. Pulsa Add Configuration y
+  luego el +.
+    - Debe verse solo "Add Setting", con Placement en Configuration y bloqueado.
+    - Crea una clave con valor true y guarda. Debes volver a Assign Configuration con esa clave seleccionada.
+    - Con {{Inventada}}, al salir del campo debe aparecer el error de token no soportado.
+  
+  2. Punto 2. En Settings > Configurations, crea key-doa. En Secrets, pulsa Add Secret y escribe Key-doa como clave. Al salir del campo
+  debe aparecer el aviso de duplicado y Add debe quedar deshabilitado.
+  3. Punto 3. Es difícil verlo a mano, porque necesitas más de 100 Settings en el catálogo. Una vez los tengas, todas las claves Config
+  deben aparecer en Select Key.
+  
+  Si quieres, puedo hacer el commit y el push cuando lo hayas revisado.
+ 
+▸ Credits: turn 16.70 • session 16.70 | Time: 12m 45s
 
-Eli pidió atender estos tres puntos de la revisión de Kendall. Comprueba qué falta en la rama actual, implementa las correcciones necesarias y valida cada comportamiento:
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-sonnet-5.5 · medium · ◔ 17%                   /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-1. En Assign Configuration, el botón + debe abrir el SettingDrawer existente en modo Add, con placement bloqueado en Configuration y un solo drawer visible. Al guardar, debe volver a Assign Configuration con la clave nueva seleccionada. Reutiliza la validación del catálogo: permite literales como true o Information y conserva la validación de referencias a campos desconocidos.
-2. Haz que checkSettingKeyExists ignore mayúsculas y minúsculas entre Configurations y Secrets. Prueba el caso exacto: existe la Configuration key-doa y, al escribir Key-doa para un Secret, el formulario debe mostrar el aviso de duplicado antes de guardar. Conserva también la protección del servidor.
-3. Haz que getSettings() use el helper existente getAllPages. Prueba que una Configuration devuelta en la segunda página aparezca en Select Key y pueda seleccionarse.
-
-Para las pruebas sigue e2e/README.md y e2e/ui/README.md. Si preparas datos por API, consulta también e2e/api/README.md. Reutiliza los page objects y builders existentes. La propuesta de compartir la carga del store entre Secrets y Configurations queda para el seguimiento que ofreció Kendall.
-
-Ejecuta las pruebas afectadas y reporta en español qué comprobaste para cada punto, qué pruebas pasaron y cómo puedo validarlo en el Admin Portal. Deja los cambios locales para mi revisión antes del commit y del push.
+›  ask a question or describe a task ↵
