@@ -1,14 +1,34 @@
-Autorizo el procedimiento propuesto con estas condiciones:
+• Resultados
+  
+  Sin la corrección (HEAD del componente): 2 fallidas
+  
+  - Caso sin espacios: falla en DisplayName ends inside its panel. Línea de la prueba 111. Esperado <= 555, recibido 1470 px. El
+  DisplayName sobresale del encabezado.
+  - Control con espacios: falla en Name ends inside its panel. Línea de la prueba 112. Esperado <= 555, recibido 1261 px. El Name largo sin
+  espacios de los datos del control sobresale de su panel.
+  
+  Los dos fallos son desbordamiento de texto. En el caso sin espacios, la prueba se detiene en el primer fallo (DisplayName), así que la
+  comprobación de superposición entre Name y Namespace no llegó a ejecutarse. En el control, el DisplayName con espacios sí se mantuvo
+  dentro del panel. El fallo viene de los valores largos sin espacios que el control también usa en Name y Namespace.
+  
+  Con la corrección restaurada: 2 pasan
+  
+  Verificaciones
+  
+  - La versión corregida se guardó en /tmp/ProductManagementDashboard.fixed.vue. Una trampa (trap) la restauró al salir, y cmp confirmó la
+  restauración.
+  - Solo se ejecutaron las pruebas con @pbi-518333.
+  - git diff --numstat HEAD:
+  
+  22  0   e2e/ui/src/pages/ProductManagementPage.wrapper.ts
+  134 0   e2e/ui/tests/adminUi/ProductManagement.test.ts
+  12  4   sharedUIComponents/src/components/ProductManagementDashboard.vue
+  
+  - No hubo commit ni push, ni pnpm fix, y no se modificó ningún otro archivo.
+ 
+▸ Credits: turn 0.63 • session 5.21 | Time: 1m 41s
 
-- Guarda la versión corregida del componente antes de ejecutar las pruebas.
-- Utiliza un mecanismo que garantice su restauración incluso si falla la ejecución.
-- Considera que ambas pruebas podrían fallar sin la corrección, porque la segunda también utiliza Name y Namespace largos sin espacios.
-- Ejecuta exclusivamente las pruebas con tag @pbi-518333, primero sin la corrección y después con la corrección restaurada.
-- Confirma que los fallos corresponden al desbordamiento o superposición de texto.
-- No modifiques las pruebas existentes ni las nuevas.
-- No ejecutes pnpm fix ni correcciones globales.
-- No modifiques otros archivos, no hagas commit ni push.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 17%               /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
 
-Reporta los resultados de ambas ejecuciones y el git diff --numstat HEAD final.
-
-Limítate a esta validación. No realices investigaciones adicionales.
+›  ask a question or describe a task ↵
