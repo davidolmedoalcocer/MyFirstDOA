@@ -1,23 +1,15 @@
-• Resultado
-  
-  - sharedUIComponents/README.md: no existe.
-  - README.md raíz: lo leí completo (75 líneas). No contiene reglas de CSS, estilos, UIKit, linting ni convenciones de componentes. Tampoco
-  menciona overflow, word-break ni scoped.
-  
-  Lo único relevante es que el README remite a la documentación de usuario en docs.pd.infios.com/dev-portal para conocer el comportamiento
-  esperado de cada pantalla. Esa documentación no es la de UIKit, así que no resuelve la consulta pendiente sobre UIKit.
-  
-  Conclusión
-  
-  Mantengo la propuesta sin cambios: la clase .wrap-anywhere con min-width: 0 y overflow-wrap: anywhere, aplicada en las líneas 44, 45, 71
-  y 72 de ProductManagementDashboard.vue.
-  
-  Antes de implementar, hay que tener en cuenta que el código existente marca el bug con un comentario de referencia (AB#494905). Mi
-  propuesta debe incluir un comentario que cite el bug 518333, según la convención del proyecto.
- 
-▸ Credits: turn 0.11 • session 0.50 | Time: 9s
+Implementa la corrección propuesta para el Bug 518333.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-haiku-5.5 · thinking · medium · ◔ 8%                    /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+Modifica únicamente ProductManagementDashboard.vue.
 
-›  ask a question or describe a task ↵
+Utiliza min-width: 0 y overflow-wrap: anywhere en los elementos correspondientes a DisplayName, Name y Namespace, según tu diagnóstico previo.
+
+Respeta los estilos y convenciones existentes. Conserva el comportamiento de los textos normales y evita que los botones de edición y eliminación salgan del panel.
+
+No utilices puntos suspensivos ni modifiques el selector de productos.
+
+Si agregas un comentario de referencia, utiliza AB#518333 y escríbelo en inglés, siguiendo el precedente identificado.
+
+No modifiques otros archivos, no agregues dependencias y no ejecutes commit ni push. Todavía no implementes pruebas automatizadas.
+
+Muéstrame el git diff resultante y explica brevemente los cambios realizados en español.
