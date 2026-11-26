@@ -1,23 +1,62 @@
-Vamos a atender los comentarios de Eli sobre el PR #377 del Bug 518333.
-
-Eli considera correcta la solución CSS y las pruebas de regresión, pero solicita los siguientes ajustes:
-
-1. Mover la clase .wrap-anywhere desde ProductManagementDashboard.vue a una hoja de estilos compartida en sharedUIComponents, posiblemente src/styles/text.css.
-2. Importar esa hoja de estilos desde el base.css de Admin UI y Tenant UI mediante el alias @devportal/shared-ui.
-3. Mantener la clase como opt-in. No aplicar reglas globales sobre infios-text-block.
-4. Evaluar si la clase .arguments del mismo componente puede reutilizar esta utilidad sin afectar su comportamiento actual.
-5. Agregar una validación del límite inferior del DisplayName en las nuevas pruebas de regresión del bug. Eli indicó que esta mejora no es bloqueante.
-
-Antes de implementar:
-
-- Revisa la estructura existente de estilos compartidos y los mecanismos de importación.
-- Identifica los archivos exactos que necesitaríamos modificar.
-- Explica cómo implementarías cada ajuste.
-
-No corrijas otras pantallas.
-No modifiques pruebas anteriores al bug 518333.
-No ejecutes pnpm fix ni correcciones globales.
-No modifiques archivos todavía.
-No hagas commit ni push.
-
-Presenta una propuesta breve en español y espera mi autorización.
+• Propuesta de ajustes para el PR #377
+  
+  Estructura actual (hechos)
+  
+  - sharedUIComponents/src no tiene hojas de estilo globales. Todos los estilos actuales son <style scoped> dentro de los componentes.
+  - Cada app carga sus estilos desde src/assets/main.css, que importa base.css. adminUi y tenantUi tienen cada una su propio base.css, y
+  los dos archivos no son idénticos.
+  - El alias @devportal/shared-ui apunta a sharedUIComponents/src en vite.config.ts, y en tsconfig.app.json está en paths. Ya se usa para
+  importar componentes y funciones desde TypeScript y Vue.
+  - ProductManagementDashboard.vue solo lo usa adminUi (ProductManagementView.vue).
+  
+  Ajustes
+  
+  1. Mover .wrap-anywhere. Crear sharedUIComponents/src/styles/text.css con la misma regla y su comentario AB#518333. Eliminar la regla del
+  bloque <style scoped> de ProductManagementDashboard.vue. Las clases class="wrap-anywhere" del template se mantienen.
+  
+  2. Importar desde base.css. Añadir @import '@devportal/shared-ui/styles/text.css'; en adminUi/src/assets/base.css y en
+  tenantUi/src/assets/base.css, después de los imports de uikit. Un @import en CSS debe ir antes de cualquier regla.
+  - Riesgo: que Vite resuelva el alias dentro de un @import de CSS. Lo compruebo con un build de cada app.
+  - Dependencia: el componente de sharedUIComponents ya no funciona solo. Depende de que la app cargue text.css. Hoy solo adminUi lo
+  renderiza, así que no hay impacto en tenantUi.
+  
+  3. Opt-in. La regla solo es la clase .wrap-anywhere. No hay selectores por etiqueta como infios-text-block, así que solo afecta a los
+  elementos que la llevan.
+  
+  4. .arguments. No recomiendo reutilizar la utilidad. .arguments usa word-break: break-all, que corta cualquier palabra en cualquier
+  punto. Esa es la lógica actual para que los argumentos largos se vean completos. overflow-wrap: anywhere solo corta cuando la palabra no
+  cabe, así que el texto con espacios se vería distinto. Cambiaría el aspecto de un campo que no está en el bug. Recomiendo dejar
+  .arguments como está. Si Eli quiere la utilidad, habría que validarla visualmente en la pantalla de versiones.
+  
+  5. Límite inferior de DisplayName. La regla del servicio es NotEmpty y MaximumLength(200) (AddProductDtoValidator.cs). En la UI, el campo
+  es requerido. El límite inferior práctico es un carácter. Añadiría una prueba en ProductManagement.test.ts con un DisplayName de un
+  carácter. Comprobaría la misma geometría (expectProductDetailsFit) y que el encabezado conserva los botones de editar y eliminar.
+  Verificaría además que el campo vacío sigue rechazado, pero esa comprobación ya existe en Add Product requires Display Name.
+  
+  Archivos a modificar
+  
+  ┌──────────────────────────────────────────────────────────────────┬──────────────────────────────────────┐
+  │ Archivo                                                          │ Cambio                               │
+  ├──────────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ sharedUIComponents/src/styles/text.css                           │ Nuevo, con .wrap-anywhere            │
+  ├──────────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ sharedUIComponents/src/components/ProductManagementDashboard.vue │ Quitar la regla local .wrap-anywhere │
+  ├──────────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ adminUi/src/assets/base.css                                      │ Añadir el @import                    │
+  ├──────────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ tenantUi/src/assets/base.css                                     │ Añadir el @import                    │
+  ├──────────────────────────────────────────────────────────────────┼──────────────────────────────────────┤
+  │ e2e/ui/tests/adminUi/ProductManagement.test.ts                   │ Añadir la prueba del límite inferior │
+  └──────────────────────────────────────────────────────────────────┴──────────────────────────────────────┘
+  
+  No cambiaría .arguments, otras pantallas ni pruebas anteriores al bug.
+  
+  Verificación propuesta, tras tu autorización
+  
+  - Build de adminUi y tenantUi para comprobar que el alias resuelve en CSS.
+  - Pruebas @pbi-518333 en Admin UI, que deben seguir pasando.
+  - pnpm check restringido a los archivos tocados, sin pnpm fix.
+  
+  Espero tu autorización para implementar.
+ 
+▸ Credits: turn 1.37 • session 6.58 | Time: 29s
