@@ -1,48 +1,12 @@
-• Resultado
-  
-  Implementé los puntos 1, 2 y 3, y añadí la comprobación del límite inferior del DisplayName. Los builds y las dos pruebas @pbi-518333
-  pasan.
-  
-  Archivos y cambios
-  
-  - Nuevo sharedUIComponents/src/styles/text.css: contiene .wrap-anywhere con su comentario AB#518333. No hay selectores por etiqueta, así
-  que la clase es opt-in.
-  - sharedUIComponents/src/components/ProductManagementDashboard.vue: quité la regla local .wrap-anywhere. Las clases del template no
-  cambian. .arguments queda igual.
-  - adminUi/src/assets/base.css y tenantUi/src/assets/base.css: añadí @import '@devportal/shared-ui/styles/text.css'; después de los
-  imports de uikit.
-  - e2e/ui/tests/adminUi/ProductManagement.test.ts: en expectProductDetailsFit, añadí una comprobación de que el bottom de cada línea del
-  DisplayName no supera el bottom de sidebar-header, con EDGE_TOLERANCE_PX. Las dos pruebas existentes la usan. No creé ninguna prueba
-  nueva ni modifiqué pruebas anteriores al bug.
-  
-  Validaciones
-  
-  - Build de Admin UI: exit 0.
-  - Build de Tenant UI: exit 0.
-  - Alias en CSS: wrap-anywhere aparece en los CSS generados de ambas apps, así que @devportal/shared-ui se resuelve dentro de @import.
-  - Pruebas @pbi-518333 en Admin UI: 2 pasan.
-  - ESLint y Prettier del archivo de prueba: sin errores.
-  
-  Commit inesperado en la rama
-  
-  Durante la sesión apareció el commit 475ce927 [AB#518333] fix: prevent product details text overflow, de David Olmedo, a las 16:57. No lo
-  creé yo. Contiene los tres archivos que modificamos antes: el Page Object, la prueba y el componente con la clase local. Por eso los
-  cambios de esta tarea aparecen contra HEAD como:
-  
-  1   0   adminUi/src/assets/base.css
-  5   0   e2e/ui/tests/adminUi/ProductManagement.test.ts
-  0   8   sharedUIComponents/src/components/ProductManagementDashboard.vue
-  1   0   tenantUi/src/assets/base.css
-  
-  Además, sharedUIComponents/src/styles/text.css es nuevo y no está en HEAD. El commit 475ce927 no incluye el text.css ni los cambios de
-  base.css. Para que el PR refleje esta versión, hace falta un commit nuevo o reescribir el anterior. Lo dejo a tu decisión, porque no hice
-  commit ni push.
-  
-  No restauré ningún archivo y no ejecuté pnpm fix.
- 
-▸ Credits: turn 1.25 • session 7.83 | Time: 1m 55s
+Observé que muchas clases CSS utilizadas en el repositorio tienen el prefijo infios-, como infios-flex, infios-gap-md e infios-align-items-center.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 19%               /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+Investiga específicamente:
 
-›  ask a question or describe a task ↵
+1. Si el prefijo infios- es exclusivo de las utilidades oficiales de UIKit.
+2. Si existen clases CSS globales o compartidas creadas por el equipo de Dev Portal y qué convención de nombres utilizan.
+3. Si la documentación de UIKit o las instrucciones del repositorio establecen alguna regla para nombrar utilidades CSS personalizadas.
+4. Si nuestra nueva clase .wrap-anywhere debería conservar su nombre o utilizar algún prefijo.
+
+Proporciona ejemplos reales, rutas de archivos y evidencia documental. Distingue las reglas establecidas de tus recomendaciones personales.
+
+No modifiques archivos, no ejecutes pruebas y no repitas investigaciones anteriores. Responde brevemente en español.
