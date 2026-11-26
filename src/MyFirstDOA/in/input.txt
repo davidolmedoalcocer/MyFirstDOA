@@ -1,63 +1,13 @@
-• Propuesta de prueba de regresión
-  
-  Archivo: e2e/ui/tests/adminUi/ProductManagement.test.ts, dentro del describe('Product management') con tag @products. Mi propuesta no
-  requiere otro Page Object.
-  
-  Tag: { tag: '@pbi-518333' }, como indica el README para bugs.
-  
-  Datos de entrada
-  
-  - Caso A, sin espacios: tres valores de 150 caracteres, sin espacios, en minúsculas con guiones. Se generan con un helper nuevo
-  longProductNames(), junto a productNames(). El límite del servicio es 200 caracteres (AddProductDtoValidator.cs), así que 150 cubre el
-  caso sin salirse del límite.
-  - Caso B, con espacios: mismos campos, pero con palabras separadas. Es el control: debe seguir partiéndose en varias líneas.
-  - Creación: api.createProduct({ displayName, productName, namespace }) de ApiHelpers, que registra el borrado con cleanup.
-  
-  Flujo
-  
-  1. productPage.navigate(ROUTES.ADMIN_UI), openFromNav().
-  2. selectProduct(displayName), que ya espera a que el encabezado muestre el nombre.
-  
-  Validaciones
-  
-  Todas se miden con las cajas renderizadas de cada línea de texto (Range.getClientRects() sobre el texto del host), no con clases ni
-  posiciones:
-  
-  1. Dentro de su área. Cada línea de DisplayName está dentro de [slot="sidebar-header"]. Cada línea de Name y Namespace está dentro de
-  [slot="sidebar-content"].
-  2. Sin superposición entre campos. La caja de Name no se cruza con la de Namespace.
-  3. Botones fuera de la zona del texto. El botón de editar (editProductButton) y el de eliminar (removeProductButton) están dentro de
-  sidebar-header y no se cruzan con la caja del DisplayName.
-  4. Texto completo visible. Las líneas suman el valor entero. Con el caso A, Name y Namespace ocupan más de una línea.
-  5. Caso B. Pasa las mismas validaciones y además ocupa varias líneas, lo que prueba que el texto normal no cambió.
-  
-  Por qué detecta el defecto
-  
-  Sin la corrección, el valor de 150 caracteres sin espacios no se corta. Su caja sale de la columna del grid y se cruza con Namespace
-  (validación 2). El DisplayName empuja el botón de editar (validación 3). Con la corrección, las líneas caben dentro de las áreas y no se
-  cruzan.
-  
-  Cambios que implicaría
-  
-  - En ProductManagementPage.wrapper.ts, un método para leer las cajas de línea de un locator (getTextLineRects). Es el único cambio fuera
-  del archivo de prueba.
-  - En ProductManagement.test.ts, el helper longProductNames() y las dos pruebas.
-  
-  Desconocido
-  
-  - Validación de nombres en la UI. AddProductDtoValidator solo impone NotEmpty y MaximumLength(200). Si la UI o el API exigen formato (por
-  ejemplo, minúsculas o sin espacios para productName), los valores de 150 caracteres deben ajustarse. Lo confirmaría al ejecutar la
-  prueba.
-  - Si [slot="sidebar-header"] es estable. Es un atributo que el propio componente define, no una clase, pero es una dependencia del
-  template. Si se considera frágil, la alternativa es añadir data-testid a los contenedores.
-  - Resultado real. No he ejecutado la prueba. Para confirmar que detecta el defecto, habría que ejecutarla sobre develop (debe fallar) y
-  sobre la rama con el fix (debe pasar).
-  
-  No he modificado archivos.
- 
-▸ Credits: turn 0.65 • session 1.46 | Time: 46s
+Implementa las pruebas de regresión propuestas para el Bug 518333, con las siguientes consideraciones:
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 13%               /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+- Mantén las pruebas sencillas y reutiliza los Page Objects, ApiHelpers y builders existentes.
+- Usa valores largos válidos, únicos y representativos del defecto original.
+- Comprueba los límites visuales de los tres campos, la ausencia de superposición y la ubicación de los botones.
+- Evita cálculos innecesariamente complejos para comprobar el texto completo.
+- Conserva el caso de control con textos que contienen espacios.
+- No dependas de clases CSS internas ni de la nueva clase wrap-anywhere.
+- Limita los cambios a los archivos de pruebas y su Page Object.
+- Ejecuta las pruebas específicas del bug con la corrección aplicada.
+- No hagas commit ni push.
 
-›  ask a question or describe a task ↵
+Reporta los archivos modificados, las validaciones implementadas y los resultados de ejecución. Responde brevemente en español.
