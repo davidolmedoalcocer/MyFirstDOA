@@ -1,4 +1,23 @@
-Hi Eli, I've completed the fix for Bug 518333 and confirmed that the issue already existed on develop. I also added two regression tests, and all 12 checks have passed.
+Vamos a atender los comentarios de Eli sobre el PR #377 del Bug 518333.
 
-PR #377 is ready for review:
-https://github.com/infios-tools/dev-portal/pull/377
+Eli considera correcta la solución CSS y las pruebas de regresión, pero solicita los siguientes ajustes:
+
+1. Mover la clase .wrap-anywhere desde ProductManagementDashboard.vue a una hoja de estilos compartida en sharedUIComponents, posiblemente src/styles/text.css.
+2. Importar esa hoja de estilos desde el base.css de Admin UI y Tenant UI mediante el alias @devportal/shared-ui.
+3. Mantener la clase como opt-in. No aplicar reglas globales sobre infios-text-block.
+4. Evaluar si la clase .arguments del mismo componente puede reutilizar esta utilidad sin afectar su comportamiento actual.
+5. Agregar una validación del límite inferior del DisplayName en las nuevas pruebas de regresión del bug. Eli indicó que esta mejora no es bloqueante.
+
+Antes de implementar:
+
+- Revisa la estructura existente de estilos compartidos y los mecanismos de importación.
+- Identifica los archivos exactos que necesitaríamos modificar.
+- Explica cómo implementarías cada ajuste.
+
+No corrijas otras pantallas.
+No modifiques pruebas anteriores al bug 518333.
+No ejecutes pnpm fix ni correcciones globales.
+No modifiques archivos todavía.
+No hagas commit ni push.
+
+Presenta una propuesta breve en español y espera mi autorización.
