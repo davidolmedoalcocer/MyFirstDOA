@@ -1,11 +1,57 @@
-Necesitamos demostrar que las nuevas pruebas del bug 518333 detectan el defecto original.
+• Procedimiento propuesto
+  
+  El rojo requiere quitar la corrección del componente durante la ejecución. La forma más directa es copiar la versión corregida fuera del
+  repo, restaurar la versión de HEAD y ejecutar las mismas pruebas.
+  
+  Pasos, en orden:
+  
+  1. Guardar la versión corregida fuera del repo:
+  
+    cp sharedUIComponents/src/components/ProductManagementDashboard.vue /tmp/ProductManagementDashboard.fixed.vue
+  
+  2. Quitar la corrección (la versión de HEAD no tiene el CSS nuevo):
+  
+    git show HEAD:sharedUIComponents/src/components/ProductManagementDashboard.vue >
+  sharedUIComponents/src/components/ProductManagementDashboard.vue
+    git diff --stat -- sharedUIComponents
+  
+    Comprobar que el diff del componente sale vacío.
+  
+  3. Ejecutar solo las pruebas del bug:
+  
+    bash .workspaceScripts/task_e2eRun.sh --project=admin-ui --grep @pbi-518333
+  
+    Resultado esperado: la prueba de valores sin espacios falla con "does not overlap" o "inside its panel", y el control con espacios
+  pasa.
+  
+  4. Restaurar la corrección:
+  
+    cp /tmp/ProductManagementDashboard.fixed.vue sharedUIComponents/src/components/ProductManagementDashboard.vue
+    cmp /tmp/ProductManagementDashboard.fixed.vue sharedUIComponents/src/components/ProductManagementDashboard.vue && echo restored
+    git diff --stat
+  
+    Debe volver a aparecer el diff de 16 líneas del componente.
+  
+  Puntos a vigilar
+  
+  - Imagen con la versión correcta. El script reconstruye la imagen de Admin UI desde el árbol de trabajo. Si la prueba roja pasa sin la
+  corrección, la imagen no se reconstruyó y el resultado no sirve. Hay que comprobar en el log que la imagen se construyó (Image ... Built)
+  y que el fallo aparece.
+  - Sin cambios en otros archivos. El único archivo que se toca es el componente, y solo mientras dura el paso 3. Las pruebas, el Page
+  Object y los demás archivos quedan igual.
+  - Fallo por el motivo correcto. Revisar que el fallo viene de las comprobaciones de superposición o de límites, no de un error de
+  selector o de un timeout.
+  
+  Alternativa sin tocar el workspace
+  
+  git worktree add --detach /tmp/rojo HEAD daría una copia separada sin tocar el workspace. Pero el stack de pruebas se construye desde el
+  repo del workspace, así que habría que adaptar los comandos de Compose. Es más trabajo y no lo recomiendo.
+  
+  Espero tu autorización para ejecutar los pasos 1 a 4.
+ 
+▸ Credits: turn 0.99 • session 4.57 | Time: 13s
 
-Propón cómo ejecutar exclusivamente las nuevas pruebas con y sin la corrección CSS, conservando los cambios actuales.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 16%               /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
 
-No modifiques archivos, no cambies de rama, no ejecutes git checkout, restore, reset, stash ni pnpm fix.
-
-No modifiques pruebas existentes ni ejecutes toda la suite.
-
-Indica el procedimiento mínimo y los comandos exactos. Espera mi autorización antes de ejecutarlos.
-
-Responde brevemente en español.
+›  ask a question or describe a task ↵
