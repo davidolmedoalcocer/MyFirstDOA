@@ -1,360 +1,5 @@
-node ➜ /workspaces/dev-portal (bug/518333_product-managment-text-overflow) $ git diff HEAD && cat /workspaces/dev-portal/sharedUIComponents
-/src/styles/text.css
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-:
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
---- a/sharedUIComponents/src/components/ProductManagementDashboard.vue
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
---- a/sharedUIComponents/src/components/ProductManagementDashboard.vue
-+++ b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
---- a/sharedUIComponents/src/components/ProductManagementDashboard.vue
-+++ b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-@@ -295,14 +295,6 @@ async function selectVersion(version: ProductVersion) {
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
---- a/sharedUIComponents/src/components/ProductManagementDashboard.vue
-+++ b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-@@ -295,14 +295,6 @@ async function selectVersion(version: ProductVersion) {
-   word-break: break-all;
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
---- a/sharedUIComponents/src/components/ProductManagementDashboard.vue
-+++ b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-@@ -295,14 +295,6 @@ async function selectVersion(version: ProductVersion) {
-   word-break: break-all;
- }
-:...skipping...
-diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
-index 0956d72d..d1f868f9 100644
---- a/adminUi/src/assets/base.css
-+++ b/adminUi/src/assets/base.css
-@@ -4,6 +4,7 @@
- @import '@infios/uikit/themes/light.css';
- @import '@infios/uikit/styles/flex.module.css';
- @import '@infios/uikit/styles/grid.module.css';
-+@import '@devportal/shared-ui/styles/text.css';
- 
- body {
-   --infios-scroll-lock-size: 0 !important;
-diff --git a/e2e/ui/tests/adminUi/ProductManagement.test.ts b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-index 07dfb3fc..b71655b0 100644
---- a/e2e/ui/tests/adminUi/ProductManagement.test.ts
-+++ b/e2e/ui/tests/adminUi/ProductManagement.test.ts
-@@ -109,6 +109,11 @@ async function expectProductDetailsFit(page: Page, productPage: ProductManagemen
-   const removeButton = edgesOf(await productPage.removeProductButton.locator.boundingBox())
- 
-   expectInside(heading, header, 'DisplayName')
-+  for (const line of heading) {
-+    expect(line.bottom, 'DisplayName ends inside the header height').toBeLessThanOrEqual(
-+      header.bottom + EDGE_TOLERANCE_PX,
-+    )
-+  }
-   expectInside(name, content, 'Name')
-   expectInside(namespace, content, 'Namespace')
-   expect(overlaps(unionOf(name), unionOf(namespace)), 'Name does not overlap Namespace').toBe(false)
-diff --git a/sharedUIComponents/src/components/ProductManagementDashboard.vue b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-index 61d40c75..50650442 100644
---- a/sharedUIComponents/src/components/ProductManagementDashboard.vue
-+++ b/sharedUIComponents/src/components/ProductManagementDashboard.vue
-@@ -295,14 +295,6 @@ async function selectVersion(version: ProductVersion) {
-   word-break: break-all;
- }
- 
-:...skipping...
+node ➜ /workspaces/dev-portal (bug/518333_product-managment-text-overflow) $ git --no-pager diff HEAD && cat /workspaces/dev-portal/sharedU
+IComponents/src/styles/text.css
 diff --git a/adminUi/src/assets/base.css b/adminUi/src/assets/base.css
 index 0956d72d..d1f868f9 100644
 --- a/adminUi/src/assets/base.css
@@ -392,4 +37,39 @@ index 61d40c75..50650442 100644
  }
  
 -/* AB#518333: a value without spaces must wrap inside its panel instead of overflowing
-:
+-   into the edit and remove buttons. min-width: 0 lets flex and grid items shrink below
+-   their longest word. */
+-.wrap-anywhere {
+-  min-width: 0;
+-  overflow-wrap: anywhere;
+-}
+-
+ .version-header {
+   min-height: 40px;
+ }
+diff --git a/tenantUi/src/assets/base.css b/tenantUi/src/assets/base.css
+index 965b5733..0229ed40 100644
+--- a/tenantUi/src/assets/base.css
++++ b/tenantUi/src/assets/base.css
+@@ -4,6 +4,7 @@
+ @import '@infios/uikit/themes/light.css';
+ @import '@infios/uikit/styles/flex.module.css';
+ @import '@infios/uikit/styles/grid.module.css';
++@import '@devportal/shared-ui/styles/text.css';
+ 
+ body {
+   --infios-scroll-lock-size: 0 !important;
+/*
+ * Shared text utilities. Opt-in: a class applies only where it's set, never to a whole component
+ * tag such as infios-text-block.
+ */
+
+/*
+ * AB#518333: a value without spaces must wrap inside its panel instead of overflowing into
+ * neighbouring elements. min-width: 0 lets flex and grid items shrink below their longest word.
+ */
+.wrap-anywhere {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+node ➜ /workspaces/dev-portal (bug/518333_product-managment-text-overflow) $ 
