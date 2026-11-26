@@ -1,28 +1,17 @@
-• Resultado
-  
-  UIKit 15.552.0 no tiene una clase de utilidad equivalente a overflow-wrap: anywhere ni a min-width: 0. Mantengo la clase local
-  .wrap-anywhere.
-  
-  Evidencia
-  
-  - Utilidades instaladas (dist/styles/*.css): las clases de flex/grid/spacing existen, pero no hay selectores overflow, truncate,
-  ellipsis, break ni min-w. Las coincidencias de min-width: 0 en esos archivos son consultas @media (min-width: 0), no declaraciones.
-  - Búsqueda global en dist/: overflow-wrap y word-break solo aparecen dentro de chunks JS, en estilos internos de componentes (shadow
-  DOM). Usan break-word, no anywhere, y no son clases globales.
-  - Documentación de utilidades (uikit-foundations.md): no lista ninguna utilidad de desbordamiento ni de ajuste de texto.
-  - TextBlock: ya confirmé que no expone propiedades para esto.
-  
-  Por qué la clase local se justifica
-  
-  - anywhere y break-word se comportan distinto. anywhere también reduce el ancho mínimo del contenido, y eso es lo que permite encoger el
-  flex item. Con break-word, el ancho mínimo no baja, y el problema del botón de editar seguiría.
-  - UIKit no ofrece min-width: 0 como utilidad, así que el ajuste para flex y grid tiene que ir en CSS del consumidor.
-  
-  La clase queda como estaba. Si UIKit publica una utilidad futura, conviene reemplazar .wrap-anywhere en el componente.
- 
-▸ Credits: turn 0.16 • session 0.80 | Time: 21s
+La corrección del Bug 518333 fue validada manualmente con nombres largos sin espacios y nombres cortos.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 9%                /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+Necesitamos una prueba automatizada de regresión.
 
-›  ask a question or describe a task ↵
+Lee e2e/README.md y e2e/ui/README.md antes de proponer la prueba.
+
+Identifica las pruebas existentes de Product Management y reutiliza los Page Objects y componentes disponibles, siguiendo las indicaciones de Eli de no depender de clases CSS internas.
+
+Si necesitas crear un producto mediante API, consulta e2e/api/README.md y reutiliza el builder existente.
+
+Propón una prueba Playwright que compruebe que DisplayName, Name y Namespace permanecen dentro de sus respectivas áreas y no se superponen.
+
+Indica el archivo, el nombre de la prueba, los datos de entrada y las validaciones concretas.
+
+La prueba debe detectar el defecto original, no limitarse a comprobar que el texto existe o es visible.
+
+No modifiques archivos todavía. Responde brevemente en español.
