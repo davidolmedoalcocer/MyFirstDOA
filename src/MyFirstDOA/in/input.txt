@@ -1,53 +1,11 @@
-• Resultado
-  
-  Las dos pruebas del bug 518333 pasan con la corrección aplicada, en dos ejecuciones sobre el árbol final: 2 passed.
-  
-  Archivos modificados
-  
-  - sharedUIComponents/src/components/ProductManagementDashboard.vue: corrección de la sesión anterior, sin cambios en esta sesión.
-  - e2e/ui/src/pages/ProductManagementPage.wrapper.ts: método getTextLineEdges(locator). Lee las cajas de cada línea renderizada de un
-  valor con un Range, porque la caja del elemento no crece cuando el texto se desborda.
-  - e2e/ui/tests/adminUi/ProductManagement.test.ts: helpers longProductNames(), expectProductDetailsFit() y dos pruebas con tag
-  @pbi-518333. Solo añade líneas, sin borrar nada del archivo.
-  
-  Pruebas
-  
-  1. Valores largos sin espacios. DisplayName, Name y Namespace tienen 150 caracteres, sin espacios, únicos por ejecución y dentro del
-  límite de 200 del servicio. Comprueba:
-    - Cada línea de DisplayName queda dentro de [slot="sidebar-header"].
-    - Cada línea de Name y Namespace queda dentro de [slot="sidebar-content"], con 1 px de tolerancia.
-    - Name y Namespace no se superponen.
-    - Los botones de editar y eliminar quedan dentro del encabezado y no se cruzan con el DisplayName.
-    - Name y Namespace ocupan más de una línea, así que el texto completo se ve.
-  
-  2. Control con espacios. Un DisplayName de unos 150 caracteres con espacios ocupa varias líneas y cumple las mismas comprobaciones de
-  posición y superposición.
-  
-  Las pruebas usan data-testid y los atributos slot del componente, no clases CSS ni wrap-anywhere. Los datos se crean con
-  api.createProduct, de ApiHelpers, que registra la limpieza.
-  
-  Verificaciones
-  
-  - eslint y prettier pasan en los dos archivos modificados.
-  - checkTags.ts pasa: 238 pruebas con etiquetas válidas.
-  - tsc no muestra errores en los archivos modificados. Hay errores de tipos ya existentes en otros archivos del e2e (por ejemplo,
-  toHaveCount y ApiHelpers.ts), que no toqué.
-  
-  Incidencia corregida
-  
-  pnpm fix ejecuta eslint --fix sobre toda la carpeta e2e y modificó 10 archivos ajenos al bug. Entre ellos, Tenants.test.ts cambió
-  count(filter) por toHaveCount, que no existe para EntitySet. Restauré esos archivos con git checkout a HEAD. Antes de la ejecución el
-  árbol estaba limpio, así que no se perdió trabajo previo. El estado final es solo los tres archivos de arriba.
-  
-  Pendiente
-  
-  - No ejecuté la prueba sobre develop para confirmar que falla sin la corrección. Sin ese resultado, la prueba demuestra que pasa con el
-  fix, pero no que detecta el defecto original.
-  - No hice commit ni push.
- 
-▸ Credits: turn 2.12 • session 3.58 | Time: 6m 18s
+Necesitamos demostrar que las nuevas pruebas del bug 518333 detectan el defecto original.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc-dev · claude-haiku-5.5 · thinking · medium · ◔ 16%               /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+Propón cómo ejecutar exclusivamente las nuevas pruebas con y sin la corrección CSS, conservando los cambios actuales.
 
-›  ask a question or describe a task ↵
+No modifiques archivos, no cambies de rama, no ejecutes git checkout, restore, reset, stash ni pnpm fix.
+
+No modifiques pruebas existentes ni ejecutes toda la suite.
+
+Indica el procedimiento mínimo y los comandos exactos. Espera mi autorización antes de ejecutarlos.
+
+Responde brevemente en español.
