@@ -1,25 +1,76 @@
-Vamos a trabajar en el Bug 518333: UI - [Product Management] - Long DisplayName, Name and Namespace text exceeds the delimited area.
+• Diagnóstico de solo lectura: Bug 518333
+  
+  Confirmé que el workspace y el código que sirve Admin UI son el mismo almacenamiento. Por eso, cambiar de rama en el workspace cambia también el código
+  de Admin UI.
+  
+  Comandos ejecutados
+  
+  1. git branch --show-current, git status --short --branch, git log -1, git remote -v, git rev-parse origin/develop, git rev-list --left-right --count
+  HEAD...origin/develop
+  2. docker ps -a (estado y montajes de los contenedores)
+  3. docker inspect de dev-portal-admin-ui y dev-portal-admin-ui-testing
+  4. grep de admin-ui en los archivos compose
+  5. docker volume inspect del volumen dev-portal-211bab…
+  6. docker run --rm -v <volumen>:/app:ro alpine … (lectura de .git/HEAD, refs, packed-refs y logs)
+  7. docker run … alpine sh -c 'apk add git …': no devolvió salida, probablemente por falta de red.
+  8. docker inspect distracted_spence y findmnt -T /workspaces/dev-portal
+  9. git diff --stat origin/develop...HEAD, git worktree list, git stash list, git branch -a | grep 518333
+  
+  Nota: el primer docker run alpine descargó la imagen alpine:latest. No modifiqué repositorio, archivos ni contenedores.
+  
+  HECHOS
+  
+  - Rama actual: pbi/494908_manage-product-version-configurations.
+  - Working tree: limpio. git status --short no muestra archivos modificados, staged ni untracked. No puedo ver archivos ignorados por .gitignore.
+  - Commit actual (HEAD): 221449f9 (merge de origin/develop dentro de la rama, autor David Olmedo, 26-nov-2026).
+  - origin/develop local: 711fe06 ("Merge PR #375"). HEAD está 4 commits por delante y 0 por detrás. 711fe06 es antecesor de HEAD.
+  - Actualidad de origin/develop: no puedo confirmarla. No hice fetch, así que el remoto real puede tener commits nuevos.
+  - Stash: hay 4 entradas, ninguna relacionada con el bug 518333. Una de ellas está en practice/494905-…, otra en fix/dev-portal-setup-improvements.
+  Cambiar de rama no las toca.
+  - Worktrees: solo existe /workspaces/dev-portal.
+  - Contenedores:
+    - Arriba: dev-portal-postgres-db, dev-portal-postgres-testing (healthy), distracted_spence (devcontainer) y dev-portal-513634-k1-dozzle-1.
+    - Detenidos con exit 255 hace unos 3 minutos (terminaron a las 15:25:35 UTC): dev-portal-admin-ui, dev-portal-admin-ui-testing, dev-portal-tenant-ui,
+  dev-portal-tenant-ui-testing, dev-portal-service y dev-portal-service-testing.
+  
+  - Código que usa Admin UI: el compose monta el volumen devcontainer_workspace en /app y fija working_dir en /app/dev-portal/adminUi. Ese volumen es
+  dev-portal-211bab….
+  - Relación con el workspace: findmnt muestra que /workspaces es el mismo dispositivo y volumen (dev-portal-211bab…/_data). El devcontainer lo monta en
+  /workspaces y Admin UI en /app.
+  - Estado de Git en ese volumen: su .git/HEAD apunta a la misma rama, y refs/heads/pbi/494908_… contiene 221449f. Su packed-refs tiene origin/develop en
+  8c38ba8, pero el ref suelto de refs/remotes/origin/develop existe y gana sobre el empaquetado.
+  - Recurso sin verificar: no hay binario git en alpine, así que no pude correr git status dentro del volumen.
+  
+  INFERENCIAS
+  
+  - El código que sirve Admin UI es el mismo working tree de la rama actual. Al estar limpio el workspace, el volumen también debe estarlo.
+  - El valor 8c38ba8 de packed-refs es un resto antiguo. Git lee 711fe06 porque el ref suelto tiene prioridad.
+  - Hacer checkout en el workspace cambiaría de inmediato el código que sirve Admin UI al reiniciarlo o al recargar su servidor de desarrollo.
+  - Para mantener separado el bug 518333 del PR #376, la rama del bug debería partir de develop (711fe06 o un fetch posterior), no de pbi/494908_…. Así no
+  arrastra los 4 commits del PR pendiente.
+  - Las caídas con exit 255 de varios contenedores al mismo tiempo sugieren un reinicio o caída del entorno Docker, no un fallo de la aplicación. Es una
+  suposición.
+  
+  DESCONOCIDOS
+  
+  - Si la rama tiene archivos ignorados (por ejemplo node_modules o .env) que un checkout podría afectar.
+  - Si origin/develop remoto avanzó desde 711fe06. Requiere fetch, que no ejecuté.
+  - La causa del exit 255 de Admin UI, tenant UI y service. Requiere revisar docker logs, que no ejecuté.
+  - Si el remoto de GitHub contiene ya una rama para el bug 518333.
+  
+  Impedimentos para cambiar de rama
+  
+  - No hay impedimento técnico inmediato. El working tree está limpio y no hay worktrees ni operaciones de Git en curso que lo bloqueen.
+  - Riesgo a tener en cuenta: un checkout cambia el código que sirve Admin UI, aunque el contenedor esté detenido. Conviene decidir si el bug se trabaja en
+  el workspace compartido o en otra copia.
+  - Riesgo de contaminar el PR #376: si el cambio del bug se hace sobre la rama del PBI, sus commits terminarían en el PR pendiente. Partir de develop lo
+  evita.
+  
+  No implementé nada. Para continuar necesito que indiques si quieres que haga fetch para confirmar origin/develop y qué base usar para la rama del bug.
+ 
+▸ Credits: turn 0.14 • session 0.14 | Time: 1m 31s
 
-Antes de iniciar cualquier implementación, realiza exclusivamente un diagnóstico de solo lectura.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sdlc · claude-haiku-5.5 · thinking · medium · ◔ 5%                              /workspaces/dev-portal · (pbi/494908_manage-product-version-configurations)
 
-Contexto:
-- PR #376 del PBI 494908.
-- Rama: `pbi/494908_manage-product-version-configurations`.
-- Rama destino: `develop`.
-- El PR está pendiente de revisión.
-- Necesitamos mantener completamente separados los cambios del bug 518333.
-
-Verifica:
-
-1. Rama actual de Git.
-2. Estado del working tree, incluyendo archivos modificados, staged y untracked.
-3. Commit actual y referencia local de origin/develop, indicando si puedes determinar su actualidad.
-4. Estado de los contenedores relacionados con Admin UI.
-5. Qué directorio de código fuente utiliza actualmente el frontend y si corresponde al working tree de la rama actual.
-6. Si existe alguna circunstancia que impida cambiar de rama de forma segura posteriormente.
-
-No ejecutes checkout, switch, pull, fetch, stash, reset, commit ni push. No modifiques archivos ni reinicies contenedores.
-
-No implementes ninguna solución todavía.
-
-Entrega los comandos ejecutados, sus resultados y tus conclusiones en español, separando HECHOS, INFERENCIAS y DESCONOCIDOS.
+›  ask a question or describe a task ↵
