@@ -1,59 +1,25 @@
-Bug 518333-UI - [Product Management] - Long DisplayName, Name and Namespace text exceeds the delimited area
+Vamos a trabajar en el Bug 518333: UI - [Product Management] - Long DisplayName, Name and Namespace text exceeds the delimited area.
 
-https://dev.azure.com/highjumpvso/Development%20Tools/_workitems/edit/518333
+Antes de iniciar cualquier implementación, realiza exclusivamente un diagnóstico de solo lectura.
 
-Repro Steps
-Given I want to validate that the text for DisplayName, Name and Namespace is visible in the UI in the Product Management section.
-When I create a product
-And I add a single long line as a DisplayName, Name, and Namespace
-Then I observe that the text is of the side-bar container is overlapping the content container
+Contexto:
+- PR #376 del PBI 494908.
+- Rama: `pbi/494908_manage-product-version-configurations`.
+- Rama destino: `develop`.
+- El PR está pendiente de revisión.
+- Necesitamos mantener completamente separados los cambios del bug 518333.
 
+Verifica:
 
-Please refer to the images below for more details.
+1. Rama actual de Git.
+2. Estado del working tree, incluyendo archivos modificados, staged y untracked.
+3. Commit actual y referencia local de origin/develop, indicando si puedes determinar su actualidad.
+4. Estado de los contenedores relacionados con Admin UI.
+5. Qué directorio de código fuente utiliza actualmente el frontend y si corresponde al working tree de la rama actual.
+6. Si existe alguna circunstancia que impida cambiar de rama de forma segura posteriormente.
 
-Single line text exceeds the delimited area
-Image
-Long text does not exceed the delimited area
-Image
+No ejecutes checkout, switch, pull, fetch, stash, reset, commit ni push. No modifiques archivos ni reinicies contenedores.
 
+No implementes ninguna solución todavía.
 
-
-
-================================
-Eli Kramme
-We should prioritize the open PR (I'm assuming you're working on that right now) but once you've submitted changes for that you should be able to pick up an item from the Approved column of the Ucayali lane
- 
-Was this something that Mariana raised related to your work item?
- 
-Bug 518333: UI - [Product Management] - Long DisplayName, Name and Namespace text exceeds the delimited area
-
-	
-            Azure DevOps Services | Sign In
-        
-
- 
-It sounded like it may have been pre-existing, but she found it when reviewing your branch?
-
-David
-Mariana told me that bug before I committed my changes
- 
-I can take that bug if you want
-
-Eli Kramme
-Yeah, that would be great: should be adjacent to the code you've been working with on the current PBI
- 
-Are you familiar with where the UIKit library docs live?
- 
-https://docs.pd.infios.com/uikit/?path=/docs/getting-started-introduction--docs
- 
-Have to be on the VPN to access, but this gives a pretty good doc site for the different UIKit components we use on the front-end
-
-David
-Great!!. Thanks for sharing the documentation I'll review it and work on the bug once I've submitted my PR changes
-
-Eli Kramme
-Sounds great, hope the week finishes well!
-
-David
-thanks, have a great long weekend 
- 
+Entrega los comandos ejecutados, sus resultados y tus conclusiones en español, separando HECHOS, INFERENCIAS y DESCONOCIDOS.
