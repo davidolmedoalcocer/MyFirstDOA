@@ -1,69 +1,7 @@
-• Diagnóstico: Bug 518333
-  
-  Estado de Git. La rama activa es bug/518333_product-managment-text-overflow, con el typo "managment". Tu mensaje la llama
-  product-management. HEAD está en bf4c4d0, igual que origin/develop local y remoto. El working tree está limpio. La rama parte de develop
-  y no del PBI, así que no arrastra el PR #376.
-  
-  1. Componente y documentación leída
-  
-  - Componente: sharedUIComponents/src/components/ProductManagementDashboard.vue. Lo usa adminUi/src/views/ProductManagementView.vue.
-  - Documentación leída: .kiro/steering/uikit-usage.md (las reglas de UIKit cargadas al inicio) y la referencia local uikit-text-block.md,
-  además de uikit-patterns.md y uikit-foundations.md.
-  - No leí README.md raíz ni sharedUIComponents/README.md. Solo busqué en adminUi/README.md y no encontré nada relevante para CSS.
-  
-  2. Causa
-  
-  - Name y Namespace (líneas 71-72). El texto va dentro de infios-text-block sin ninguna regla para cortar palabras largas. Por defecto, el
-  navegador solo corta en espacios, así que un valor sin espacios se queda en una línea y sobresale de su celda.
-  - DisplayName (líneas 44-47). El título está en un div flex (línea 44) con justify-between. Como hijo flex, el text-block tiene
-  min-width: auto, así que no se encoge por debajo de su palabra más larga. El título empuja el botón de editar (líneas 49-54).
-  - Evidencia: TextBlock no tiene reglas de ajuste de texto. Busqué wrap, break, overflow y display en text-block.styles.js y
-  text-block.component.js y no hay coincidencias.
-  - Precedente en el repo: la clase .arguments (línea 126 y estilo en la línea 294-295) ya usa word-break: break-all.
-  
-  Inferencia: la causa de Name y Namespace es la falta de corte de palabras largas. La del título sale de las reglas flex. Ambas explican
-  que los textos con espacios sí se distribuyan bien.
-  
-  3. Documentación UIKit
-  
-  - La URL oficial no devolvió contenido legible con web_fetch (53 bytes).
-  - En la referencia local de TextBlock, los atributos son size, weight, color, subtext, pretext, alignment, pretext-spacing y
-  subtext-spacing. Ninguno trata textos largos. Tampoco hay slots para eso.
-  - Conclusión: UIKit no ofrece una propiedad para envolver o truncar. La solución va en CSS del componente que lo usa.
-  
-  4. Propuesta mínima
-  
-  Solo cambiaría ProductManagementDashboard.vue:
-  
-  /* Bug 518333: long unbroken values must wrap inside the sidebar */
-  .wrap-anywhere {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  
-  Aplicar la clase:
-  - Línea 44: el div del título, para que pueda encogerse.
-  - Línea 45: el infios-text-block del DisplayName.
-  - Líneas 71 y 72: Name y Namespace.
-  
-  Por qué overflow-wrap: anywhere y no break-all: solo corta cuando la palabra no cabe. break-all corta también palabras cortas y normales,
-  lo que perjudica la legibilidad. Así no uso puntos suspensivos.
-  
-  No tocaría el product-select del dropdown (líneas 26-34). Muestra el DisplayName, pero no está en el panel izquierdo. Si también
-  desborda, conviene abrir otro bug.
-  
-  Desconocido
-  
-  - Si infios-text-block se comporta como bloque o como inline. Sin renderizar, no puedo confirmar que min-width: 0 funcione sobre el host
-  del componente.
-  - Si el ajuste se ve bien en modo oscuro y en los tamaños de pantalla del bug.
-  - El ajuste del título no está verificado en el navegador. No ejecuté pruebas, como pediste.
-  
-  No modifiqué archivos.
- 
-▸ Credits: turn 0.13 • session 0.39 | Time: 1m 8s
+Completa únicamente la revisión pendiente del README.md raíz y sharedUIComponents/README.md, si existen.
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-sdlc · claude-haiku-5.5 · thinking · medium · ◔ 7%                    /workspaces/dev-portal · (bug/518333_product-managment-text-overflow)
+Indica si contienen alguna regla que afecte la corrección CSS propuesta para ProductManagementDashboard.vue.
 
-›  ask a question or describe a task ↵
+Confirma si mantienes tu propuesta o necesitas ajustarla después de leerlos.
+
+No repitas el diagnóstico anterior, no modifiques archivos y responde brevemente.
