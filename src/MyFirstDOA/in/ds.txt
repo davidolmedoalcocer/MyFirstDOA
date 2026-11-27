@@ -1,5 +1,8 @@
-What’s up: I addressed the review feedback on PR #376 for PBI 494908 and requested another review from Eli. All 12 checks passed.
+What’s Up
+Yesterday I addressed review feedback on PBI 494908 (Product Version Configurations) and worked on bug 518333, which caused long text to overflow the Product Management sidebar. All 12 checks passed on the PBI pull request.
 
-Top priority: I’ll work on bug 518333 in Product Management. I’ll reproduce the text overflow in the sidebar and check the UIKit docs for the appropriate fix.
+Top Priority
+Today I’ll review code while I wait for Eli’s feedback and address any follow-up comments.
 
-Blockers: None.
+Blockers
+No blockers.
